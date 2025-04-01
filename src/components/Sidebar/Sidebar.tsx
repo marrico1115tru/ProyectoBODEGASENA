@@ -26,9 +26,6 @@ const Sidebar = () => {
           <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/")}> 
             <Home /> {isOpen && "Home"}
           </Button>
-          <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/settings")}> 
-            <Settings /> {isOpen && "Settings"}
-          </Button>
           <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/reports")}> 
             <FileText /> {isOpen && "Reportes"}
           </Button>
