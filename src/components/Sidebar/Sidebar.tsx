@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Home, Settings, Menu } from "lucide-react";
+import { Home, Settings, Menu, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const navigate = useNavigate();
 
   return (
     <div className="flex">
@@ -21,17 +23,17 @@ const Sidebar = () => {
           <Menu />
         </Button>
         <nav className="flex flex-col gap-4">
-          <Button variant="ghost" className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/")}> 
             <Home /> {isOpen && "Home"}
           </Button>
-          <Button variant="ghost" className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/settings")}> 
             <Settings /> {isOpen && "Settings"}
+          </Button>
+          <Button variant="ghost" className="flex items-center gap-2" onClick={() => navigate("/reports")}> 
+            <FileText /> {isOpen && "Reportes"}
           </Button>
         </nav>
       </aside>
-      <main className="flex-1 p-4">
-        <Card className="p-6">Main Content Area</Card>
-      </main>
     </div>
   );
 };
