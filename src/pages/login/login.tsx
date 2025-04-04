@@ -14,7 +14,7 @@ const Login = () => {
     <div className="p-6 flex flex-col items-center justify-center h-screen">
       <h1 className="text-2xl font-bold mb-4">Login</h1>
       {/* Botón de Login */}
-      <Button onClick={handleLogin}>Iniciar sesión</Button>
+      <Button onClick={handleLogin}>Iniciar</Button>
     </div>
   );
 };
