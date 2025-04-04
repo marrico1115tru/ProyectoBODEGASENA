@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar/Sidebar";
 import Reports from "./pages/reports/reports";
 import Login from "./pages/login/login";
 import Products from "./pages/products/products";
+import Inicio from "./pages/Inicio/inicio";
 
 function App() {
   const location = useLocation();
@@ -14,6 +15,7 @@ function App() {
     <div className="flex">
       {!isLogin && <Sidebar />}
       <Routes>
+        <Route path="/presentacion" element={<Inicio />} />
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/home" element={<IndexPage />} />

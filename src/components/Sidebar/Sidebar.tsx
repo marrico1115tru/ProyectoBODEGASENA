@@ -13,6 +13,10 @@ const Sidebar = () => {
     <div className="flex">
       <aside
         className={`${
+
+
+
+          
           isOpen ? "w-64" : "w-16"
         } h-screen bg-gray-900 text-white transition-all duration-300 p-4 flex flex-col`}
       >
@@ -32,6 +36,15 @@ const Sidebar = () => {
           >
             <Home />
             {isOpen && "Home"}
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 justify-start"
+            onClick={() => navigate("/inicio")}
+          >
+            <FileText />
+            {isOpen && "inicio"}
           </Button>
 
           <Button

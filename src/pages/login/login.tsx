@@ -7,14 +7,14 @@ const Login = () => {
 
   const handleLogin = () => {
     // Aquí podrías validar credenciales antes de redirigir
-    navigate("/home");
+    navigate("/Home");
   };
 
   return (
     <div className="p-6 flex flex-col items-center justify-center h-screen">
       <h1 className="text-2xl font-bold mb-4">Login</h1>
       {/* Botón de Login */}
-      <Button onClick={handleLogin}>Iniciar</Button>
+      <Button className= "login-button" onClick={handleLogin}>Iniciar</Button>
     </div>
   );
 };
