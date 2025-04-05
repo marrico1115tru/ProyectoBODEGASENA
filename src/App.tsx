@@ -15,7 +15,7 @@ function App() {
     <div className="flex">
       {!isLogin && <Sidebar />}
       <Routes>
-        <Route path="/presentacion" element={<Inicio />} />
+        <Route path="/inicio" element={<Inicio />} />
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/home" element={<IndexPage />} />
