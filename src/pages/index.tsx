@@ -13,37 +13,37 @@ const cards = [
     id: 1,
     image: "/src/img/agropecuarioimg.jpeg",
     description: "Espacio organizado y fresco, donde se resguardan con cuidado insumos, herramientas y productos del campo, listos para impulsar el trabajo agrícola con eficiencia y orden.",
-    link: "/pantalla1"
+    link: "/agropecuario"
   },
   {
     id: 2,
     image: "/src/img/ambientalimg.jpeg",
     description: "Espacio responsable y ordenado, diseñado para almacenar materiales y recursos con criterios sostenibles, cuidando cada detalle en armonía con el medio ambiente.",
-    link: "/pantalla2"
+    link: "/ambiental"
   },
   {
     id: 3,
     image: "/src/img/cafeimg.jpeg",
     description: "Espacio cálido y aromático donde se conservan granos, utensilios y esencias del café, preservando su frescura y sabor para cada taza perfecta.",
-    link: "/pantalla3"
+    link: "/escuelacafe"
   },
   {
     id: 4,
     image: "/src/img/gastronomiaimg.jpeg",
     description: "Ambiente pulcro y bien conservado, donde ingredientes, utensilios y productos gourmet se almacenan con cuidado, conservando la esencia y calidad de la cocina",
-    link: "/pantalla4"
+    link: "/gastronomia"
   },
   {
     id: 5,
     image: "/src/img/ticsimg.jpeg",
     description: "Entorno seguro y organizado donde se almacenan equipos, componentes y tecnología, listos para apoyar soluciones digitales con eficiencia e innovación.",
-    link: "/pantalla5"
+    link: "/tic"
   },
   {
     id: 6,
     image: "/src/img/viasimg.jpeg",
     description: "Espacio técnico y ordenado donde se almacenan materiales e insumos esenciales para la construcción y mantenimiento de caminos, impulsando el desarrollo vial con precisión y seguridad.",
-    link: "/pantalla6"
+    link: "/vias"
   },
 ];
 
