@@ -13,6 +13,9 @@ import Gastronomia from "./pages/gastronomia/gastronomia";
 import EscuelaCafeView from "./pages/EscuelaCafe/EscuelaCafe";
 import ViasView from "./pages/vias/vias";
 import TicView from "./pages/tic/tic";
+import CategoriasProductos from "./pages/categoriasProductos/categoriasProductos";
+import Proveedores from "./pages/proveedores/proveedores";
+import Vencimiento from "./pages/vencimiento/vencimiento";
 
 
 
@@ -37,6 +40,9 @@ function App() {
         <Route path="/vias" element={<ViasView />} />
         <Route path="/tic" element={<TicView />} />
         <Route path="/escuelacafe" element={<EscuelaCafeView />} />
+        <Route path="/categoriasProductos" element={<CategoriasProductos />} />
+        <Route path="/proveedores" element={<Proveedores />} />
+        <Route path="/vencimiento" element={<Vencimiento />} />
         
         
    
