@@ -1,60 +1,67 @@
-import React from 'react';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { Link } from "@heroui/link";
+import { Snippet } from "@heroui/snippet";
+import { Code } from "@heroui/code";
+import { button as buttonStyles } from "@heroui/theme";
 
-const categories = [
+import { siteConfig } from "@/config/site";
+import { title, subtitle } from "@/components/primitives";
+import { GithubIcon } from "@/components/icons";
+import DefaultLayout from "@/layouts/default";
+
+const cards = [
   {
-    title: 'Cleaning Supplies',
-    description: 'Brooms, mops, soaps',
-    image: 'https://via.placeholder.com/150',
+    id: 1,
+    image: "src/img/limpieza (2).jpeg",
+    description: "limpieza esssss",
+    link: ""
   },
   {
-    title: 'Educational Resources',
-    description: 'Products from the TIC area',
-    image: 'https://via.placeholder.com/150',
+    id: 2,
+    image: "/src/img/ambientalimg.jpeg",
+    description: "Espacio responsable y ordenado, diseñado para almacenar materiales y recursos con criterios sostenibles, cuidando cada detalle en armonía con el medio ambiente.",
+    link: "/ambiental"
   },
   {
-    title: 'Machine Tools',
-    description: 'Products from the Agricultural area',
-    image: 'https://via.placeholder.com/150',
+    id: 3,
+    image: "/src/img/cafeimg.jpeg",
+    description: "Espacio cálido y aromático donde se conservan granos, utensilios y esencias del café, preservando su frescura y sabor para cada taza perfecta.",
+    link: "/escuelacafe"
   },
   {
-    title: 'Agricultural inputs',
-    description: 'Products from the Environmental area',
-    image: 'https://via.placeholder.com/150',
+    id: 4,
+    image: "/src/img/gastronomiaimg.jpeg",
+    description: "Ambiente pulcro y bien conservado, donde ingredientes, utensilios y productos gourmet se almacenan con cuidado, conservando la esencia y calidad de la cocina",
+    link: "/gastronomia"
   },
   {
-    title: 'New Category',
-    description: 'Description here',
-    image: 'https://via.placeholder.com/150',
+    id: 5,
+    image: "/src/img/ticsimg.jpeg",
+    description: "Entorno seguro y organizado donde se almacenan equipos, componentes y tecnología, listos para apoyar soluciones digitales con eficiencia e innovación.",
+    link: "/tic"
+  },
+  {
+    id: 6,
+    image: "/src/img/viasimg.jpeg",
+    description: "Espacio técnico y ordenado donde se almacenan materiales e insumos esenciales para la construcción y mantenimiento de caminos, impulsando el desarrollo vial con precisión y seguridad.",
+    link: "/vias"
   },
 ];
 
-export default function CategoriesView() {
+export default function IndexPage() {
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">WAREHOUSE</h1>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Buscar material"
-            className="border rounded pl-10 pr-4 py-2 w-64"
-          />
-          <MagnifyingGlassIcon className="w-5 h-5 text-gray-500 absolute left-3 top-2.5" />
+    <DefaultLayout>
+      <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-7xl px-4">
+          {cards.map((card) => (
+            <Link key={card.id} href={card.link} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <img src={card.image} alt={`Card ${card.id}`} className="w-full h-48 object-cover" />
+              <div className="p-4">
+                <p className="text-gray-700 text-center">{card.description}</p>
+              </div>
+            </Link>
+          ))}
         </div>
-      </div>
-
-      {/* Categories grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {categories.map((cat, index) => (
-          <div key={index} className="bg-white rounded shadow p-4">
-            <img src={cat.image} alt={cat.title} className="w-full h-32 object-cover rounded mb-2" />
-            <h2 className="text-lg font-semibold text-gray-800">{cat.title}</h2>
-            <p className="text-sm text-gray-600">{cat.description}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+      </section>
+    </DefaultLayout>
   );
 }

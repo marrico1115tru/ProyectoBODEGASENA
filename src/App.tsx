@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import IndexPage from "@/pages/index";
 import Sidebar from "./components/Sidebar/Sidebar";
@@ -18,6 +18,9 @@ import Proveedores from "./pages/proveedores/proveedores";
 import Vencimiento from "./pages/vencimiento/vencimiento";
 
 
+import { Route, Routes, useLocation } from "react-router-dom";
+
+const queryClient = new QueryClient();
 
 function App() {
   const location = useLocation();
@@ -25,6 +28,7 @@ function App() {
 
   return (
     <div className="flex">
+      <QueryClientProvider client={queryClient}>
       {!isLogin && <Sidebar />}
       <Routes>
         <Route path="/inicio" element={<Inicio />} />
@@ -43,12 +47,8 @@ function App() {
         <Route path="/categoriasProductos" element={<CategoriasProductos />} />
         <Route path="/proveedores" element={<Proveedores />} />
         <Route path="/vencimiento" element={<Vencimiento />} />
-        
-        
-   
-        
-
       </Routes>
+      </QueryClientProvider>
     </div>
   );
 }
