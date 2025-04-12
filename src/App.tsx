@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import IndexPage from "@/pages/index";
 import Sidebar from "./components/Sidebar/Sidebar";
-import Reports from "./pages/reports/reports";
+import Estadistica from "./pages/estadisticas/estadisticas";
 import Login from "./pages/login/login";
 import Products from "./pages/products/products";
 import Inicio from "./pages/Inicio/inicio";
@@ -16,6 +16,7 @@ import TicView from "./pages/tic/tic";
 import CategoriasProductos from "./pages/categoriasProductos/categoriasProductos";
 import Proveedores from "./pages/proveedores/proveedores";
 import Vencimiento from "./pages/vencimiento/vencimiento";
+import ReportsInfo from "./pages/reportsInfo/reportsInfo";
 
 
 import { Route, Routes, useLocation } from "react-router-dom";
@@ -35,7 +36,7 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/home" element={<IndexPage />} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/estadisticas" element={<Estadistica />} />
         <Route path="/products" element={<Products />} />
         <Route path="/categoriaspro" element={<CategoriesView />} />
         <Route path="/agropecuario" element={<Agropecuario />} />
@@ -47,6 +48,7 @@ function App() {
         <Route path="/categoriasProductos" element={<CategoriasProductos />} />
         <Route path="/proveedores" element={<Proveedores />} />
         <Route path="/vencimiento" element={<Vencimiento />} />
+        <Route path= "/reportsInfo" element={<ReportsInfo/>} />
       </Routes>
       </QueryClientProvider>
     </div>

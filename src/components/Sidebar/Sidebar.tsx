@@ -1,5 +1,17 @@
 import { useState } from "react";
-import { Home, Menu, FileText, ChevronDown, ChevronUp, PackagePlus, Users, CalendarClock } from "lucide-react";
+import {
+  Home,
+  Menu,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  PackagePlus,
+  Users,
+  CalendarClock,
+  BarChart2,
+  PieChart,
+  List,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -7,151 +19,204 @@ const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [showReports, setShowReports] = useState(false);
   const [showProductsSubmenu, setShowProductsSubmenu] = useState(false);
+  const [showInfoReportsSubmenu, setShowInfoReportsSubmenu] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-return (
-  <div className="flex">
-    <aside
-      className={`${
-        isOpen ? "w-64" : "w-16"
-      } h-screen bg-gray-900 text-white transition-all duration-300 p-4 flex flex-col`}
-    >
-      {/* Botón para colapsar */}
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => setIsOpen(!isOpen)}
+  return (
+    <div className="flex">
+      <aside
+        className={`${
+          isOpen ? "w-64" : "w-16"
+        } h-screen bg-slate-800 text-slate-100 transition-all duration-300 p-4 flex flex-col shadow-lg`}
       >
-        <Menu />
-      </Button>
-
-      {/* Navegación */}
-      <nav className="flex flex-col gap-2">
+        {/* Botón para colapsar */}
         <Button
           variant="ghost"
-          className="flex items-center gap-2 justify-start"
-          onClick={() => navigate("/")}
+          className="mb-6 text-slate-300 hover:text-white"
+          onClick={() => setIsOpen(!isOpen)}
         >
-          <Home />
-          {isOpen && "Home"}
+          <Menu />
         </Button>
 
-        <Button
-          variant="ghost"
-          className="flex items-center gap-2 justify-start"
-          onClick={() => navigate("/inicio")}
-        >
-          <FileText />
-          {isOpen && "Inicio"}
-        </Button>
-
-        {/* Desplegable de Productos */}
-        <div>
+        {/* Navegación */}
+        <nav className="flex flex-col gap-2 text-sm font-medium">
           <Button
             variant="ghost"
-            className="flex items-center gap-2 justify-between w-full"
-            onClick={() => setShowProductsSubmenu(!showProductsSubmenu)}
+            className={`flex items-center gap-2 justify-start hover:bg-slate-700 ${
+              location.pathname === "/" ? "text-blue-400" : ""
+            }`}
+            onClick={() => navigate("/")}
           >
-            <div className="flex items-center gap-2">
-              <FileText />
-              {isOpen && "Productos"}
-            </div>
-            {isOpen &&
-              (showProductsSubmenu ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              ))}
+            <Home className="w-5 h-5" />
+            {isOpen && "Home"}
           </Button>
 
-          {showProductsSubmenu && isOpen && (
-            <div className="ml-6 mt-1 flex flex-col gap-1">
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/categoriaspro" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/categoriaspro")}
-              >
-                <PackagePlus className="w-4 h-4 mr-2" />
-                Categorias
-              </Button>
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/proveedores" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/proveedores")}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Proveedores
-              </Button>
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/vencimiento" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/vencimiento")}
-              >
-                <CalendarClock className="w-4 h-4 mr-2" />
-                Fechas de Caducidad
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Desplegable de Reportes */}
-        <div>
           <Button
             variant="ghost"
-            className="flex items-center gap-2 justify-between w-full"
-            onClick={() => setShowReports(!showReports)}
+            className={`flex items-center gap-2 justify-start hover:bg-slate-700 ${
+              location.pathname === "/inicio" ? "text-blue-400" : ""
+            }`}
+            onClick={() => navigate("/inicio")}
           >
-            <div className="flex items-center gap-2">
-              <FileText />
-              {isOpen && "Reportes"}
-            </div>
-            {isOpen &&
-              (showReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+            <FileText className="w-5 h-5" />
+            {isOpen && "Inicio"}
           </Button>
 
-          {showReports && isOpen && (
-            <div className="ml-6 mt-1 flex flex-col gap-1">
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/reports" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/reports")}
-              >
-                Ventas
-              </Button>
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/reports/inventario" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/reports/inventario")}
-              >
-                Inventario
-              </Button>
-              <Button
-                variant="ghost"
-                className={`justify-start ${
-                  location.pathname === "/reports/usuarios" ? "text-blue-400" : ""
-                }`}
-                onClick={() => navigate("/reports/usuarios")}
-              >
-                Usuarios
-              </Button>
-            </div>
-          )}
-        </div>
-      </nav>
-    </aside>
-  </div>
-);
+          {/* Submenú Productos */}
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 justify-between w-full hover:bg-slate-700"
+              onClick={() => setShowProductsSubmenu(!showProductsSubmenu)}
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                {isOpen && "Productos"}
+              </div>
+              {isOpen &&
+                (showProductsSubmenu ? (
+                  <ChevronUp size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                ))}
+            </Button>
+
+            {showProductsSubmenu && isOpen && (
+              <div className="ml-6 mt-1 flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/categoriaspro" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/categoriaspro")}
+                >
+                  <PackagePlus className="w-4 h-4 mr-2" />
+                  Categorías
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/proveedores" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/proveedores")}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Proveedores
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/vencimiento" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/vencimiento")}
+                >
+                  <CalendarClock className="w-4 h-4 mr-2" />
+                  Fechas de Caducidad
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Submenú Estadisticas */}
+          <div>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 justify-between w-full hover:bg-slate-700"
+              onClick={() => setShowReports(!showReports)}
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                {isOpen && "Estadisticas"}
+              </div>
+              {isOpen &&
+                (showReports ? (
+                  <ChevronUp size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                ))}
+            </Button>
+
+            {showReports && isOpen && (
+              <div className="ml-6 mt-1 flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/reports" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/Estadisticas")}
+                >
+                  Centros Formacion
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/reports/inventario" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/reports/inventario")}
+                >
+                  Inventario
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={`justify-start text-left hover:text-blue-300 ${
+                    location.pathname === "/reports/usuarios" ? "text-blue-400" : ""
+                  }`}
+                  onClick={() => navigate("/reports/usuarios")}
+                >
+                  Usuarios
+                </Button>
+
+                {/* Submenú InfoReports */}
+                <div>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 justify-between w-full hover:text-blue-300"
+                    onClick={() => setShowInfoReportsSubmenu(!showInfoReportsSubmenu)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4" />
+                      InfoReports
+                    </div>
+                    {showInfoReportsSubmenu ? (
+                      <ChevronUp size={16} />
+                    ) : (
+                      <ChevronDown size={16} />
+                    )}
+                  </Button>
+
+                  {showInfoReportsSubmenu && (
+                    <div className="ml-6 mt-1 flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        className={`justify-start text-left hover:text-blue-300 ${
+                          location.pathname === "/reportsInfo" ? "text-blue-400" : ""
+                        }`}
+                        onClick={() => navigate("/reportsInfo")}
+                      >
+                        <List className="w-4 h-4 mr-2" />
+                        Reportes centros Formacion
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={`justify-start text-left hover:text-blue-300 ${
+                          location.pathname === "reportsInfo" ? "text-blue-400" : ""
+                        }`}
+                        onClick={() => navigate("/reportsInfo")}
+                      >
+                        <PieChart className="w-4 h-4 mr-2" />
+                        Gráficos
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </nav>
+      </aside>
+    </div>
+  );
 };
 
 export default Sidebar;
