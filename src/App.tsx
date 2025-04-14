@@ -1,22 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import IndexPage from "@/pages/index";
-import Sidebar from "./components/Sidebar/Sidebar";
-import Estadistica from "./pages/estadisticas/estadisticas";
-import Login from "./pages/login/login";
-import Products from "./pages/products/products";
-import Inicio from "./pages/Inicio/inicio";
-import CategoriesView from "./pages/categoriaspro/categoriaspro";
-import Agropecuario from "./pages/agropecuario/agropecuario";
-import AmbientalView from "./pages/ambiental/ambiental";
-import Gastronomia from "./pages/gastronomia/gastronomia";
-import EscuelaCafeView from "./pages/EscuelaCafe/EscuelaCafe";
-import ViasView from "./pages/vias/vias";
-import TicView from "./pages/tic/tic";
-import CategoriasProductos from "./pages/categoriasProductos/categoriasProductos";
-import Proveedores from "./pages/proveedores/proveedores";
-import Vencimiento from "./pages/vencimiento/vencimiento";
-import ReportsInfo from "./pages/reportsInfo/reportsInfo";
+import IndexPage from "@/components/organismos/pages/index";
+import Sidebar from "./components/organismos/Sidebar/Sidebar";
+import Estadistica from "./components/organismos/pages/estadisticas/estadisticas";
+import Login from "./components/organismos/pages/login/login";
+import Products from "./components/organismos/pages/products/products";
+import Inicio from "./components/organismos/pages/Inicio/inicio";
+import CategoriesView from "./components/organismos/pages/categoriaspro/categoriaspro";
+import Agropecuario from "./components/organismos/pages/agropecuario/agropecuario";
+import AmbientalView from "./components/organismos/pages/ambiental/ambiental";
+import Gastronomia from "./components/organismos/pages/gastronomia/gastronomia";
+import EscuelaCafeView from "./components/organismos/pages/EscuelaCafe/EscuelaCafe";
+import ViasView from "./components/organismos/pages/vias/vias";
+import TicView from "./components/organismos/pages/tic/tic";
+import CategoriasProductos from "./components/organismos/pages/categoriasProductos/categoriasProductos";
+import Proveedores from "./components/organismos/pages/proveedores/proveedores";
+import Vencimiento from "./components/organismos/pages/vencimiento/vencimiento";
+import ReportsInfo from "./components/organismos/pages/reportsInfo/reportsInfo";
 
 
 import { Route, Routes, useLocation } from "react-router-dom";
