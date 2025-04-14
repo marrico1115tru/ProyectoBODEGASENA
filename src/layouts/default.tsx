@@ -42,4 +42,4 @@ export default function DefaultLayout({
       </footer>
     </div>
   );
-}
+}  

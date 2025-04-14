@@ -50,8 +50,8 @@ const InventoryLanding = () => {
           {/* Left image */}
           <div className="w-full md:w-1/3 bg-white rounded-2xl shadow-xl p-6 border border-blue-100">
             <img
-              src="/src/img/sena_bodega.jpg"
-              alt="Bodega SENA"
+              src="src/img/bodegas.jpeg"
+            
               className="rounded-xl mx-auto max-h-60 object-cover"
             />
           </div>
@@ -59,7 +59,7 @@ const InventoryLanding = () => {
           {/* Right description */}
           <div className="md:w-2/3 text-center md:text-left space-y-5">
             <h2 className="text-3xl md:text-4xl font-extrabold text-blue-700 leading-snug">
-              Bodegas del SENA: Espacios de Aprendizaje y Desarrollo
+              Bodegas : Espacios de Aprendizaje y Desarrollo
             </h2>
             <p className="text-gray-700 text-lg leading-relaxed">
               Las bodegas del SENA están diseñadas como centros de almacenamiento especializados, adaptados para diversas áreas de formación y desarrollo profesional. Estos espacios no solo sirven como almacenes, sino también como lugares donde se promueve el aprendizaje práctico, impulsando la capacitación de estudiantes en diferentes sectores productivos.
