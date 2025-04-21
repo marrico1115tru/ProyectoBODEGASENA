@@ -72,11 +72,11 @@ const Sidebar = () => {
         {showProductsSubmenu && isOpen && (
           <div className="ml-6 mt-1 flex flex-col gap-1">
             <SidebarButton
-              to="/categoriaspro"
+              to="/categorias"
               icon={<PackagePlus className="w-4 h-4" />}
               label="Categorías"
               isOpen={isOpen}
-              activePaths={["/categoriaspro"]}
+              activePaths={["/categorias"]}
             />
             <SidebarButton
               to="/proveedores"
