@@ -1,64 +1,109 @@
-import { useEffect, useState } from "react";
-import { getBodegas, Bodega } from "@/Api/Bodegas";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Bodega, fetchBodegas } from "@/Api/Bodegas";
 
-const BodegaStats = () => {
-  const [bodegas, setBodegas] = useState<Bodega[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const ReporteBodegas: React.FC = () => {
+  const [data, setData] = useState<Bodega[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
-    getBodegas()
-      .then(setBodegas)
-      .catch((err) => setError(err.message));
+    const obtenerDatos = async () => {
+      try {
+        const bodegas = await fetchBodegas();
+        setData(bodegas);
+      } catch (error) {
+        console.error("Error al obtener las bodegas:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    obtenerDatos();
   }, []);
 
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (!bodegas.length) return <div>Cargando estadísticas...</div>;
+  const datosFiltrados = useMemo(() => {
+    return data.filter((item) =>
+      item.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      (item.ubicacion ?? "").toLowerCase().includes(busqueda.toLowerCase())
+    );
+  }, [busqueda, data]);
 
-  const total = bodegas.length;
-  const sinUbicacion = bodegas.filter((b) => !b.ubicacion).length;
+  const totalBodegas = data.length;
+  const ubicacionesUnicas = useMemo(
+    () => [...new Set(data.map((bodega) => bodega.ubicacion).filter(Boolean))].length,
+    [data]
+  );
 
-  const groupedByYear = bodegas.reduce((acc: Record<string, number>, bodega) => {
-    const year = new Date(bodega.fecha_registro).getFullYear().toString();
-    acc[year] = (acc[year] || 0) + 1;
-    return acc;
-  }, {});
-
-  const chartData = Object.entries(groupedByYear).map(([year, count]) => ({
-    year,
-    count,
-  }));
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-lg font-medium text-gray-600">Cargando reporte...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Reporte de Bodegas</h2>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">Reporte de Bodegas</h2>
 
-      <div className="mb-6 space-y-2">
-        <p><strong>Total de Bodegas:</strong> {total}</p>
-        <p><strong>Bodegas sin ubicación:</strong> {sinUbicacion}</p>
+      {/* RESUMEN */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
+          <p className="text-gray-500 text-sm">Total de Bodegas</p>
+          <p className="text-xl font-semibold text-blue-600">{totalBodegas}</p>
+        </div>
+        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
+          <p className="text-gray-500 text-sm">Ubicaciones únicas</p>
+          <p className="text-xl font-semibold text-green-600">{ubicacionesUnicas}</p>
+        </div>
+        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
+          <p className="text-gray-500 text-sm">Último registro</p>
+          <p className="text-xl font-semibold text-purple-600">
+            {data.length > 0
+              ? new Date(
+                  Math.max(...data.map((b) => new Date(b.fecha_registro).getTime()))
+                ).toLocaleDateString('es-CO')
+              : 'N/A'}
+          </p>
+        </div>
       </div>
 
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#4F46E5" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* BÚSQUEDA */}
+      <input
+        type="text"
+        placeholder="Buscar por nombre o ubicación..."
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        className="mb-6 p-2 border border-gray-300 rounded w-full"
+      />
+
+      {/* TABLA */}
+      <table className="min-w-full bg-white border border-gray-200 rounded-md overflow-hidden">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Nombre</th>
+            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Ubicación</th>
+            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Fecha de Registro</th>
+          </tr>
+        </thead>
+        <tbody>
+          {datosFiltrados.map((bodega) => (
+            <tr key={bodega.id} className="hover:bg-gray-50">
+              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">{bodega.nombre}</td>
+              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">{bodega.ubicacion ?? 'N/A'}</td>
+              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">
+                {new Date(bodega.fecha_registro).toLocaleString('es-CO')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {datosFiltrados.length === 0 && (
+        <p className="mt-4 text-sm text-gray-500">No se encontraron resultados.</p>
+      )}
     </div>
   );
 };
 
-export default BodegaStats;
+export default ReporteBodegas;

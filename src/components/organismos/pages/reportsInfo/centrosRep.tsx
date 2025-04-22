@@ -1,12 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-
-interface CentroFormacion {
-  id: number;
-  nombre: string;
-  ubicacion: string;
-  telefono: string;
-  fecha_registro: string;
-}
+import { fetchCentrosFormacion, CentroFormacion } from '@/Api/centros';
 
 const ReporteCentros: React.FC = () => {
   const [data, setData] = useState<CentroFormacion[]>([]);
@@ -14,16 +7,18 @@ const ReporteCentros: React.FC = () => {
   const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
-    fetch('http://localhost:3100/API/CentroFormacion')
-      .then((res) => res.json())
-      .then((json) => {
-        setData(json);
+    const obtenerDatos = async () => {
+      try {
+        const centros = await fetchCentrosFormacion();
+        setData(centros);
+      } catch (error) {
+        console.error("Error al obtener los datos de centros:", error);
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error al obtener datos:', err);
-        setLoading(false);
-      });
+      }
+    };
+
+    obtenerDatos();
   }, []);
 
   const datosFiltrados = useMemo(() => {

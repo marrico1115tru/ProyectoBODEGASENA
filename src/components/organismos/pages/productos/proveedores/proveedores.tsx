@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default"; // Asegúrate de que este path sea correcto
+import DefaultLayout from "@/layouts/default"; 
 
 const suppliers = [
   { id: 1, name: "Supplier A", contact: "123-456-7890", email: "a@example.com", terms: "Net 30" },
