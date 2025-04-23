@@ -116,29 +116,29 @@ const Sidebar = () => {
           {showReports && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
-                to="/Estadisticas"
+                to="/CentrosFormacion"
                 label="Centros Formación"
                 isOpen={isOpen}
-                activePaths={["/Estadisticas"]}
+                activePaths={["/centrosFormacion"]}
               />
               <SidebarButton
-                to="/reports/inventario"
-                label="Inventario"
+                to="/BodegasView"
+                label="Bodegas"
                 isOpen={isOpen}
-                activePaths={["/reports/inventario"]}
+                activePaths={["/bodegasView"]}
               />
               <SidebarButton
-                to="/reports/usuarios"
-                label="Usuarios"
+                to="/EstadisticasAreas"
+                label="Areas"
                 isOpen={isOpen}
-                activePaths={["/reports/usuarios"]}
+                activePaths={["/estadisticasAreas"]}
               />
               <SidebarButton
-                to="/reports/bodega"
-                label="Movimientos Bodega"
+                to="/CategoriasEstadisticas"
+                label=""
                 isOpen={isOpen}
                 icon={<Warehouse className="w-4 h-4" />}
-                activePaths={["/reports/bodega"]}
+                activePaths={["/categorias"]}
               />
               <SidebarButton
                 to="/reports/pedidos"
@@ -182,11 +182,11 @@ const Sidebar = () => {
                 activePaths={["/bodegasRep"]}
               />
               <SidebarButton
-                to="/ReportesProductos"
+                to="/AreasRepo"
                 icon={<ClipboardList className="w-4 h-4" />}
-                label="Reportes Productos"
+                label="Reportes Areas"
                 isOpen={isOpen}
-                activePaths={["/ReportesProductos"]}
+                activePaths={["/areasRepo"]}
               />
               <SidebarButton
                 to="/ReportesStock"

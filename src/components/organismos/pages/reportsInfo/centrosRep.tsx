@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchCentrosFormacion, CentroFormacion } from '@/Api/centros';
+import { fetchCentrosFormacion, CentroFormacion } from '@/Api/centrosFormacion';
 
 const ReporteCentros: React.FC = () => {
   const [data, setData] = useState<CentroFormacion[]>([]);

@@ -17,7 +17,12 @@ import Categorias from "./components/organismos/pages/productos/categorias/categ
 import CategoriasView from "@/components/organismos/pages/productos/categorias/CategoriasView";
 import ProductosPorCategoria from "@/components/organismos/pages/productos/categorias/ProductosPorCategoria";
 import BodegasRep from "./components/organismos/pages/reportsInfo/bodegasRep";
-import CentrosFormacion from "./components/organismos/pages/estadisticas/centrosFormacion";
+import Areas from "./components/organismos/pages/estadisticas/areas";
+import CentrosFormacionView from "@/components/organismos/pages/views/CentrosFormacionView";
+import BodegasView from "@/components/organismos/pages/estadisticas/bodegasView";
+import EstadisticasAreas from "./components/organismos/pages/estadisticas/areas";
+import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
+import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/CategoriasEstadisticas";
 
 import { Route, Routes, useLocation } from "react-router-dom";
 
@@ -49,7 +54,12 @@ function App() {
           <Route path="/categorias-view" element={<CategoriasView />} />
           <Route path="/categoria/:categoria" element={<ProductosPorCategoria />} />
           <Route path="/bodegasRep" element={<BodegasRep />} />
-          <Route path="/centrosFormacion" element={<CentrosFormacion />} />
+          <Route path="/areas" element={<Areas/>} />
+          <Route path="/centrosFormacion" element={<CentrosFormacionView/>}/>
+          <Route path="/bodegasView" element={<BodegasView/>}/>
+          <Route path="/estadisticasAreas" element={<EstadisticasAreas/>}/>
+          <Route path="/areasRep" element={<AreasRepo/>}/>
+          <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas/>}/>
         </Routes>
       </QueryClientProvider>
     </div>
