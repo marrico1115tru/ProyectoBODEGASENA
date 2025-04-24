@@ -81,9 +81,9 @@ const Sidebar = () => {
               <SidebarButton
                 to="/categorias"
                 icon={<PackagePlus className="w-4 h-4" />}
-                label="Categorías"
+                label="Productos"
                 isOpen={isOpen}
-                activePaths={["/categorias"]}
+                activePaths={["/Productos"]}
               />
               <SidebarButton
                 to="/proveedores"
@@ -95,9 +95,9 @@ const Sidebar = () => {
               <SidebarButton
                 to="/vencimiento"
                 icon={<CalendarClock className="w-4 h-4" />}
-                label="Fechas de Caducidad"
+                label=""
                 isOpen={isOpen}
-                activePaths={["/vencimiento"]}
+                activePaths={["/"]}
               />
             </div>
           )}
@@ -135,9 +135,8 @@ const Sidebar = () => {
               />
               <SidebarButton
                 to="/CategoriasEstadisticas"
-                label=""
+                label="Categorias"
                 isOpen={isOpen}
-                icon={<Warehouse className="w-4 h-4" />}
                 activePaths={["/categorias"]}
               />
               <SidebarButton

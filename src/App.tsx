@@ -11,11 +11,7 @@ import EscuelaCafeView from "./components/organismos/pages/Inicio/EscuelaCafe";
 import ViasView from "./components/organismos/pages/Inicio/vias";
 import TicView from "./components/organismos/pages/Inicio/tic";
 import Proveedores from "./components/organismos/pages/productos/proveedores/proveedores";
-import Vencimiento from "./components/organismos/pages/productos/vencimiento/vencimiento";
 import CentrosRep from "./components/organismos/pages/reportsInfo/centrosRep";
-import Categorias from "./components/organismos/pages/productos/categorias/categorias";
-import CategoriasView from "@/components/organismos/pages/productos/categorias/CategoriasView";
-import ProductosPorCategoria from "@/components/organismos/pages/productos/categorias/ProductosPorCategoria";
 import BodegasRep from "./components/organismos/pages/reportsInfo/bodegasRep";
 import Areas from "./components/organismos/pages/estadisticas/areas";
 import CentrosFormacionView from "@/components/organismos/pages/views/CentrosFormacionView";
@@ -47,12 +43,8 @@ function App() {
           <Route path="/vias" element={<ViasView />} />
           <Route path="/tic" element={<TicView />} />
           <Route path="/escuelacafe" element={<EscuelaCafeView />} />
-          <Route path="/proveedores" element={<Proveedores />} />
-          <Route path="/vencimiento" element={<Vencimiento />} />
+          <Route path="/proveedores" element={<Proveedores />} />        
           <Route path="/centrosRep" element={<CentrosRep />} />
-          <Route path="/categorias" element={<Categorias />} />
-          <Route path="/categorias-view" element={<CategoriasView />} />
-          <Route path="/categoria/:categoria" element={<ProductosPorCategoria />} />
           <Route path="/bodegasRep" element={<BodegasRep />} />
           <Route path="/areas" element={<Areas/>} />
           <Route path="/centrosFormacion" element={<CentrosFormacionView/>}/>
