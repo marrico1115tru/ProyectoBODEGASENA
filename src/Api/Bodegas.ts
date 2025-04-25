@@ -1,4 +1,3 @@
-// src/api/bodegas.ts
 
 export interface Bodega {
   id: number;
