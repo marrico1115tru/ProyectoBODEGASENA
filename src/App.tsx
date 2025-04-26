@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import IndexPage from "@/components/organismos/pages/index";
 import Sidebar from "./components/organismos/Sidebar/Sidebar";
@@ -19,8 +20,7 @@ import BodegasView from "@/components/organismos/pages/estadisticas/bodegasView"
 import EstadisticasAreas from "./components/organismos/pages/estadisticas/areas";
 import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
 import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/CategoriasEstadisticas";
-
-import { Route, Routes, useLocation } from "react-router-dom";
+import ProductosTable from "./components/organismos/pages/productos/productosTable";
 
 const queryClient = new QueryClient();
 
@@ -43,15 +43,17 @@ function App() {
           <Route path="/vias" element={<ViasView />} />
           <Route path="/tic" element={<TicView />} />
           <Route path="/escuelacafe" element={<EscuelaCafeView />} />
-          <Route path="/proveedores" element={<Proveedores />} />        
+          <Route path="/proveedores" element={<Proveedores />} />
+      
+          <Route path="/productos/listar" element={<ProductosTable />} />
           <Route path="/centrosRep" element={<CentrosRep />} />
           <Route path="/bodegasRep" element={<BodegasRep />} />
-          <Route path="/areas" element={<Areas/>} />
-          <Route path="/centrosFormacion" element={<CentrosFormacionView/>}/>
-          <Route path="/bodegasView" element={<BodegasView/>}/>
-          <Route path="/estadisticasAreas" element={<EstadisticasAreas/>}/>
-          <Route path="/areasRep" element={<AreasRepo/>}/>
-          <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas/>}/>
+          <Route path="/areas" element={<Areas />} />
+          <Route path="/centrosFormacion" element={<CentrosFormacionView />} />
+          <Route path="/bodegasView" element={<BodegasView />} />
+          <Route path="/estadisticasAreas" element={<EstadisticasAreas />} />
+          <Route path="/areasRep" element={<AreasRepo />} />
+          <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas />} />
         </Routes>
       </QueryClientProvider>
     </div>

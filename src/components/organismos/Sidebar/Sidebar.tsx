@@ -12,9 +12,9 @@ import {
   PieChart,
   List,
   ClipboardList,
-  Warehouse,
   ShoppingCart,
   Archive,
+  Table,
 } from "lucide-react";
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ const Sidebar = () => {
         </Button>
       </div>
 
-      {/* Contenedor con scroll para los botones */}
+      {/* Contenedor con scroll */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
         <nav className="flex flex-col gap-2 text-sm font-medium">
           <SidebarButton
@@ -52,7 +52,6 @@ const Sidebar = () => {
             isOpen={isOpen}
             activePaths={["/"]}
           />
-
           <SidebarButton
             to="/inicio"
             icon={<FileText className="w-5 h-5" />}
@@ -79,11 +78,18 @@ const Sidebar = () => {
           {showProductsSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
+                to="/productos/listar"
+                icon={<Table className="w-4 h-4" />}
+                label="Ver Productos"
+                isOpen={isOpen}
+                activePaths={["/productos/listar"]}
+              />
+              <SidebarButton
                 to="/categorias"
                 icon={<PackagePlus className="w-4 h-4" />}
-                label="Productos"
+                label="Categorias"
                 isOpen={isOpen}
-                activePaths={["/Productos"]}
+                activePaths={["/categorias"]}
               />
               <SidebarButton
                 to="/proveedores"
@@ -95,9 +101,9 @@ const Sidebar = () => {
               <SidebarButton
                 to="/vencimiento"
                 icon={<CalendarClock className="w-4 h-4" />}
-                label=""
+                label="Vencimiento"
                 isOpen={isOpen}
-                activePaths={["/"]}
+                activePaths={["/vencimiento"]}
               />
             </div>
           )}
@@ -108,36 +114,34 @@ const Sidebar = () => {
             label="Estadísticas"
             isOpen={isOpen}
             onClick={() => setShowReports(!showReports)}
-            endIcon={
-              showReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />
-            }
+            endIcon={showReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           />
 
           {showReports && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
-                to="/CentrosFormacion"
+                to="/centrosFormacion"
                 label="Centros Formación"
                 isOpen={isOpen}
                 activePaths={["/centrosFormacion"]}
               />
               <SidebarButton
-                to="/BodegasView"
+                to="/bodegasView"
                 label="Bodegas"
                 isOpen={isOpen}
                 activePaths={["/bodegasView"]}
               />
               <SidebarButton
-                to="/EstadisticasAreas"
+                to="/estadisticasAreas"
                 label="Areas"
                 isOpen={isOpen}
                 activePaths={["/estadisticasAreas"]}
               />
               <SidebarButton
-                to="/CategoriasEstadisticas"
+                to="/categoriasEstadisticas"
                 label="Categorias"
                 isOpen={isOpen}
-                activePaths={["/categorias"]}
+                activePaths={["/categoriasEstadisticas"]}
               />
               <SidebarButton
                 to="/reports/pedidos"
@@ -155,44 +159,38 @@ const Sidebar = () => {
             label="InfoReports"
             isOpen={isOpen}
             onClick={() => setShowInfoReportsSubmenu(!showInfoReportsSubmenu)}
-            endIcon={
-              showInfoReportsSubmenu ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )
-            }
+            endIcon={showInfoReportsSubmenu ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           />
 
           {showInfoReportsSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
-                to="/CentrosRep"
+                to="/centrosRep"
                 icon={<List className="w-4 h-4" />}
                 label="Reportes Centros"
                 isOpen={isOpen}
                 activePaths={["/centrosRep"]}
               />
               <SidebarButton
-                to="/BodegasRep"
+                to="/bodegasRep"
                 icon={<PieChart className="w-4 h-4" />}
                 label="Reportes Bodegas"
                 isOpen={isOpen}
                 activePaths={["/bodegasRep"]}
               />
               <SidebarButton
-                to="/AreasRepo"
+                to="/areasRep"
                 icon={<ClipboardList className="w-4 h-4" />}
                 label="Reportes Areas"
                 isOpen={isOpen}
-                activePaths={["/areasRepo"]}
+                activePaths={["/areasRep"]}
               />
               <SidebarButton
-                to="/ReportesStock"
+                to="/reportesStock"
                 icon={<Archive className="w-4 h-4" />}
                 label="Stock General"
                 isOpen={isOpen}
-                activePaths={["/ReportesStock"]}
+                activePaths={["/reportesStock"]}
               />
             </div>
           )}
