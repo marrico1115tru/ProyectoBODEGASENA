@@ -22,6 +22,7 @@ import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
 import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/CategoriasEstadisticas";
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
+import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ function App() {
           <Route path="/estadisticasAreas" element={<EstadisticasAreas />} />
           <Route path="/areasRep" element={<AreasRepo />} />
           <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas />} />
+          <Route path="/Bodega" element={<Bodega/>}/>
         </Routes>
       </QueryClientProvider>
     </div>

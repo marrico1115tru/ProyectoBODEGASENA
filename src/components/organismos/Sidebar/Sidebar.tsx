@@ -208,6 +208,17 @@ const Sidebar = () => {
               />
             </div>
           )}
+          {showAdminSubmenu && isOpen && (
+            <div className="ml-6 mt-1 flex flex-col gap-1">
+              <SidebarButton
+                to="/Bodega"
+                icon={<Users className="w-4 h-4" />}
+                label="Bodegas"
+                isOpen={isOpen}
+                activePaths={["/Bodega"]}
+              />
+            </div>
+          )}
           
         </nav>
       </div>
