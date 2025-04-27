@@ -24,6 +24,7 @@ const Sidebar = () => {
   const [showReports, setShowReports] = useState(false);
   const [showProductsSubmenu, setShowProductsSubmenu] = useState(false);
   const [showInfoReportsSubmenu, setShowInfoReportsSubmenu] = useState(false);
+  const [showAdminSubmenu, setShowAdminSubmenu] = useState(false); // <<--- NUEVO
 
   return (
     <aside
@@ -45,6 +46,8 @@ const Sidebar = () => {
       {/* Contenedor con scroll */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
         <nav className="flex flex-col gap-2 text-sm font-medium">
+
+          {/* Home */}
           <SidebarButton
             to="/"
             icon={<Home className="w-5 h-5" />}
@@ -66,15 +69,8 @@ const Sidebar = () => {
             label="Productos"
             isOpen={isOpen}
             onClick={() => setShowProductsSubmenu(!showProductsSubmenu)}
-            endIcon={
-              showProductsSubmenu ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )
-            }
+            endIcon={showProductsSubmenu ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           />
-
           {showProductsSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
@@ -116,7 +112,6 @@ const Sidebar = () => {
             onClick={() => setShowReports(!showReports)}
             endIcon={showReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           />
-
           {showReports && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
@@ -145,9 +140,9 @@ const Sidebar = () => {
               />
               <SidebarButton
                 to="/reports/pedidos"
+                icon={<ShoppingCart className="w-4 h-4" />}
                 label="Pedidos"
                 isOpen={isOpen}
-                icon={<ShoppingCart className="w-4 h-4" />}
                 activePaths={["/reports/pedidos"]}
               />
             </div>
@@ -161,7 +156,6 @@ const Sidebar = () => {
             onClick={() => setShowInfoReportsSubmenu(!showInfoReportsSubmenu)}
             endIcon={showInfoReportsSubmenu ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           />
-
           {showInfoReportsSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
@@ -194,6 +188,27 @@ const Sidebar = () => {
               />
             </div>
           )}
+
+          {/* Admin */}
+          <SidebarButton
+            icon={<Users className="w-5 h-5" />}
+            label="Admin"
+            isOpen={isOpen}
+            onClick={() => setShowAdminSubmenu(!showAdminSubmenu)}
+            endIcon={showAdminSubmenu ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          />
+          {showAdminSubmenu && isOpen && (
+            <div className="ml-6 mt-1 flex flex-col gap-1">
+              <SidebarButton
+                to="/usuarios"
+                icon={<Users className="w-4 h-4" />}
+                label="Usuarios"
+                isOpen={isOpen}
+                activePaths={["/usuarios"]}
+              />
+            </div>
+          )}
+          
         </nav>
       </div>
     </aside>

@@ -21,6 +21,7 @@ import EstadisticasAreas from "./components/organismos/pages/estadisticas/areas"
 import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
 import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/CategoriasEstadisticas";
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
+import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +45,7 @@ function App() {
           <Route path="/tic" element={<TicView />} />
           <Route path="/escuelacafe" element={<EscuelaCafeView />} />
           <Route path="/proveedores" element={<Proveedores />} />
-      
+          <Route path="usuarios" element={<UsersView />} />
           <Route path="/productos/listar" element={<ProductosTable />} />
           <Route path="/centrosRep" element={<CentrosRep />} />
           <Route path="/bodegasRep" element={<BodegasRep />} />
