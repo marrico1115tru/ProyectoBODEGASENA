@@ -23,6 +23,8 @@ import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/C
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
 import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
+import CentrosFormaciones from "./components/organismos/pages/Admin/centrosformacion/CentrosFormacion.tsx";
+import MovimientosTable from "./components/organismos/pages/Admin/entradas_salidas/MovimientosTable.tsx";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +59,8 @@ function App() {
           <Route path="/areasRep" element={<AreasRepo />} />
           <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas />} />
           <Route path="/Bodega" element={<Bodega/>}/>
+          <Route path="/CentrosFormaciones" element={<CentrosFormaciones/>}/>
+          <Route path="/MovimientosTable" element={<MovimientosTable/>}/>
         </Routes>
       </QueryClientProvider>
     </div>

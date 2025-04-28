@@ -13,7 +13,6 @@ export default function DefaultLayout({
         <div className="flex items-center space-x-3">
           <img
             src="src/img/log.png"
-            
             className="h-8 w-8 rounded-full border border-blue-200 shadow-sm"
           />
           <span className="text-xl font-bold tracking-wide text-blue-800 drop-shadow-sm">
@@ -24,7 +23,7 @@ export default function DefaultLayout({
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow container mx-auto px-6 py-12 max-w-7xl">
+      <main className="flex-grow w-full px-6 py-12">
         {children}
       </main>
 
@@ -42,4 +41,4 @@ export default function DefaultLayout({
       </footer>
     </div>
   );
-}  
+}

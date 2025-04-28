@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   Archive,
   Table,
-} from "lucide-react";
+  Warehouse,
+} from "lucide-react"; // IMPORTANTE: Agregado el icono Warehouse
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +25,7 @@ const Sidebar = () => {
   const [showReports, setShowReports] = useState(false);
   const [showProductsSubmenu, setShowProductsSubmenu] = useState(false);
   const [showInfoReportsSubmenu, setShowInfoReportsSubmenu] = useState(false);
-  const [showAdminSubmenu, setShowAdminSubmenu] = useState(false); // <<--- NUEVO
+  const [showAdminSubmenu, setShowAdminSubmenu] = useState(false);
 
   return (
     <aside
@@ -46,7 +47,7 @@ const Sidebar = () => {
       {/* Contenedor con scroll */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
         <nav className="flex flex-col gap-2 text-sm font-medium">
-
+          
           {/* Home */}
           <SidebarButton
             to="/"
@@ -103,6 +104,15 @@ const Sidebar = () => {
               />
             </div>
           )}
+
+          {/* Entradas y Salidas */}
+          <SidebarButton
+            to="/MovimientosTable"
+            icon={<Warehouse className="w-5 h-5" />}
+            label="Entradas y Salidas"
+            isOpen={isOpen}
+            activePaths={["/MovimientosTable"]}
+          />
 
           {/* Estadísticas */}
           <SidebarButton
@@ -206,10 +216,6 @@ const Sidebar = () => {
                 isOpen={isOpen}
                 activePaths={["/usuarios"]}
               />
-            </div>
-          )}
-          {showAdminSubmenu && isOpen && (
-            <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
                 to="/Bodega"
                 icon={<Users className="w-4 h-4" />}
@@ -217,9 +223,15 @@ const Sidebar = () => {
                 isOpen={isOpen}
                 activePaths={["/Bodega"]}
               />
+              <SidebarButton
+                to="/CentrosFormaciones"
+                icon={<Users className="w-4 h-4" />}
+                label="Centros Formacion"
+                isOpen={isOpen}
+                activePaths={["/CentrosFormaciones"]}
+              />
             </div>
           )}
-          
         </nav>
       </div>
     </aside>
