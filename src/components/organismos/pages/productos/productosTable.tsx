@@ -103,6 +103,7 @@ const ProductosTable = () => {
         <input id="fecha_caducidad" type="date" class="swal2-input">
       `,
       focusConfirm: false,
+      confirmButtonText:'Guardar',
       preConfirm: () => {
         const getInput = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
         return {
