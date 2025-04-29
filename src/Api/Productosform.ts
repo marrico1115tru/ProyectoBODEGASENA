@@ -1,3 +1,5 @@
+import {z} from 'zod';
+
 const API_URL = 'http://localhost:3500/API/Productos';
 
 // Definimos el tipo Producto
@@ -76,9 +78,25 @@ export const updateProducto = async (
     throw error;
   }
 };
+export const productoSchema = z.object({
+ 
+  codigo_sena: z.string().min(1, "El código SENA es obligatorio."),
+  unspc: z.string().optional(), // No estaba en tu formulario, así que puede ser opcional
+  nombre: z.string().min(1, "El nombre es obligatorio."),
+  descripcion: z.string().min(1, "La descripción es obligatoria."),
+  cantidad: z.number().int().nonnegative(), // entero >= 0
+  unidad_medida: z.string().min(1, "La unidad de medida es obligatoria."),
+  tipo_material: z.string().min(1, "El tipo de material es obligatorio."),
+  id_area: z.number().int().positive(),
+  id_categoria: z.number().int().positive(),
+  fecha_caducidad: z.string().regex(
+    /^\d{4}-\d{2}-\d{2}$/,
+    "La fecha de caducidad debe tener el formato YYYY-MM-DD."
+  ),
+});
 
 // Eliminar un producto
-export const deleteProducto = async (id: number): Promise<void> => {
+export default async (id: number): Promise<void> => {
   try {
     const response = await fetch(`${API_URL}/${id}`, {
       method: 'DELETE',

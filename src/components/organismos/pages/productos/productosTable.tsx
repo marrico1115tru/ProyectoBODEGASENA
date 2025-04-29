@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 import Swal from 'sweetalert2';
-import { fetchProductos, createProducto, updateProducto, deleteProducto, Producto } from '@/Api/Productosform';
+import deleteProducto, { fetchProductos, createProducto, updateProducto, Producto, productoSchema } from '@/Api/Productosform';
 
 const ProductosTable = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -77,6 +77,16 @@ const ProductosTable = () => {
     });
 
     if (formValues) {
+      const validation = productoSchema.safeParse(formValues);
+
+      if(!validation.success){ 
+        Swal.fire({
+          icon:"error",
+          title:"error de validacion",
+          html:validation.error.errors.map(e =>e.message).join('<br>'),
+        })
+        return;
+      }
       try {
         await updateProducto(producto.id, formValues);
         await cargarProductos();
@@ -121,6 +131,17 @@ const ProductosTable = () => {
     });
 
     if (formValues) {
+      const validation = productoSchema.safeParse(formValues);
+
+      if(!validation.success){ 
+        Swal.fire({
+          icon:"error",
+          title:"error de validacion",
+          html:validation.error.errors.map(e =>e.message).join('<br>'),
+        })
+        return;
+      }
+
       try {
         await createProducto(formValues);
         await cargarProductos();
