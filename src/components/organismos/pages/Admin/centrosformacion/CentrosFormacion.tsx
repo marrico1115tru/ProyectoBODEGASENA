@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import DefaultLayout from '@/layouts/default';
-import { fetchCentros, createCentro, updateCentro, deleteCentro, CentroFormacion } from '@/Api/centrosformacionform';
+import { fetchCentros, createCentro, updateCentro, deleteCentro, CentroFormacion } from '@/Api/centrosformacionTable';
 
 const CentrosFormaciones = () => {
   const [centros, setCentros] = useState<CentroFormacion[]>([]);
