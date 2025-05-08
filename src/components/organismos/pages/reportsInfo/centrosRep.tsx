@@ -1,109 +1,176 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { fetchCentrosFormacion, CentroFormacion } from '@/Api/centrosFormacion';
+import React, { useState, useRef } from "react";
+import dayjs from "dayjs";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { useReactToPrint } from "react-to-print";
+import { fetchCentrosFormacion, CentroFormacion } from "@/Api/centrosFormacion";
+import { getUsers } from "@/Api/Usuariosform";
 
 const ReporteCentros: React.FC = () => {
-  const [data, setData] = useState<CentroFormacion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState("");
+  const today = dayjs();
+  const firstDay = today.subtract(1, "month").startOf("month").format("YYYY-MM-DD");
+  const lastDay = today.subtract(1, "month").endOf("month").format("YYYY-MM-DD");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const obtenerDatos = async () => {
-      try {
-        const centros = await fetchCentrosFormacion();
-        setData(centros);
-      } catch (error) {
-        console.error("Error al obtener los datos de centros:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [startDate, setStartDate] = useState(firstDay);
+  const [endDate, setEndDate] = useState(lastDay);
+  const [reportType, setReportType] = useState("productos");
+  const [reportData, setReportData] = useState([]);
+  const [zoom, setZoom] = useState(1);
 
-    obtenerDatos();
-  }, []);
+  const componentRef = useRef();
 
-  const datosFiltrados = useMemo(() => {
-    return data.filter((item) =>
-      item.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      item.ubicacion.toLowerCase().includes(busqueda.toLowerCase())
-    );
-  }, [busqueda, data]);
+  const handleGenerate = async () => {
+    try {
+      const users = await getUsers();
+      setReportData(users);
+    } catch (err) {
+      console.error("Error fetching report:", err);
+    }
+  };
 
-  const totalCentros = data.length;
-  const ubicacionesUnicas = useMemo(
-    () => [...new Set(data.map((centro) => centro.ubicacion))].length,
-    [data]
-  );
+  // const handleGenerate = async () => {
+  //   setLoading(true);
+  //   setReportData([]);
+  //   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-lg font-medium text-gray-600">Cargando reporte...</p>
-      </div>
-    );
-  }
+  //   const mockData = {
+  //     productos: [
+  //       { nombre: "Producto A", cantidad: 10 },
+  //       { nombre: "Producto B", cantidad: 20 }
+  //     ],
+  //     sitios: [
+  //       { sitio: "Sitio Norte", visitas: 123 },
+  //       { sitio: "Sitio Sur", visitas: 98 }
+  //     ],
+  //     usuarios: [
+  //       { usuario: "Juan", email: "juan@example.com" },
+  //       { usuario: "Ana", email: "ana@example.com" }
+  //     ],
+  //     areas: [
+  //       { area: "Administración", empleados: 5 },
+  //       { area: "Operaciones", empleados: 12 }
+  //     ]
+  //   };
+
+  //   setReportData(mockData[reportType] || []);
+  //   setLoading(false);
+  // };
+
+  const handleDownloadPDF = async () => {
+    const canvas = await html2canvas(componentRef.current);
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF();
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save("reporte.pdf");
+  };
+
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current
+  });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">Reporte de Centros de Formación</h2>
+    <div className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
+      <div className="w-full max-w-screen-md bg-white p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Generar Reporte</h1>
 
-      {/* RESUMEN GENERAL */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
-          <p className="text-gray-500 text-sm">Total de Centros</p>
-          <p className="text-xl font-semibold text-blue-600">{totalCentros}</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="productos">Productos</option>
+            <option value="sitios">Sitios</option>
+            <option value="usuarios">Usuarios</option>
+            <option value="areas">Áreas</option>
+          </select>
+          <button
+            onClick={handleGenerate}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+            disabled={loading}
+          >
+            {loading ? "Generando..." : "Generar reporte"}
+          </button>
         </div>
-        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
-          <p className="text-gray-500 text-sm">Ubicaciones únicas</p>
-          <p className="text-xl font-semibold text-green-600">{ubicacionesUnicas}</p>
-        </div>
-        <div className="bg-white p-4 shadow rounded-md border border-gray-200">
-          <p className="text-gray-500 text-sm">Último registro</p>
-          <p className="text-xl font-semibold text-purple-600">
-            {data.length > 0
-              ? new Date(
-                  Math.max(...data.map((c) => new Date(c.fecha_registro).getTime()))
-                ).toLocaleDateString('es-CO')
-              : 'N/A'}
-          </p>
-        </div>
+
+        {reportData.length > 0 && (
+          <>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={handleDownloadPDF}
+                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+              >
+                Descargar PDF
+              </button>
+              <button
+                onClick={handlePrint}
+                className="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded"
+              >
+                Imprimir
+              </button>
+              <button
+                onClick={() => setZoom((z) => z + 0.1)}
+                className="bg-gray-300 px-3 py-1 rounded"
+              >
+                Zoom +
+              </button>
+              <button
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                className="bg-gray-300 px-3 py-1 rounded"
+              >
+                Zoom -
+              </button>
+            </div>
+
+            <div
+              ref={componentRef}
+              style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
+              className="bg-white p-4 shadow border rounded"
+            >
+              <h2 className="text-xl font-semibold text-gray-800 mb-1">Reporte de {reportType}</h2>
+              <p className="text-sm text-gray-600 mb-1">
+                Desde: <strong>{startDate}</strong> - Hasta: <strong>{endDate}</strong>
+              </p>
+              <p className="text-sm text-gray-600 mb-4">Este reporte muestra un resumen de los datos seleccionados.</p>
+
+              <table className="w-full table-auto border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-200 text-gray-700">
+                    {Object.keys(reportData[0]).map((key) => (
+                      <th key={key} className="border px-3 py-2">{key.toUpperCase()}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportData.map((row, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      {Object.values(row).map((val, j) => (
+                        <td key={j} className="border px-3 py-2 text-gray-800">{val}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* BÚSQUEDA */}
-      <input
-        type="text"
-        placeholder="Buscar por nombre o ubicación..."
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        className="mb-6 p-2 border border-gray-300 rounded w-full"
-      />
-
-      {/* TABLA */}
-      <table className="min-w-full bg-white border border-gray-200 rounded-md overflow-hidden">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Nombre</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Ubicación</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Teléfono</th>
-            <th className="py-3 px-4 text-left font-semibold text-sm text-gray-700">Fecha de Registro</th>
-          </tr>
-        </thead>
-        <tbody>
-          {datosFiltrados.map((centro) => (
-            <tr key={centro.id} className="hover:bg-gray-50">
-              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">{centro.nombre}</td>
-              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">{centro.ubicacion}</td>
-              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">{centro.telefono}</td>
-              <td className="py-2 px-4 border-t border-gray-200 text-sm text-gray-700">
-                {new Date(centro.fecha_registro).toLocaleString('es-CO')}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {datosFiltrados.length === 0 && (
-        <p className="mt-4 text-sm text-gray-500">No se encontraron resultados para tu búsqueda.</p>
-      )}
     </div>
   );
 };
