@@ -22,8 +22,9 @@ import CentrosFormaciones from "./components/organismos/pages/Admin/centrosforma
 import MovimientosTable from "./components/organismos/pages/Admin/entradas_salidas/MovimientosTable.tsx";
 import VistaProductos from "./components/organismos/pages/estadisticas/VistaProductos.tsx"
 import VistaSolicitudesEntregas from "./components/organismos/pages/estadisticas/VistaSolicitudesEntregas.tsx";
-
-
+import VistaEstadisticasUsuarios from "./components/organismos/pages/estadisticas/VistaEstadisticasUsuarios.tsx";
+import VistaEstadisticasSitios from "./components/organismos/pages/estadisticas/VistaEstadisticasSitios.tsx";
+import VistaEstadisticasAccesos from "./components/organismos/pages/estadisticas/VistaEstadisticasAccesos.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -56,6 +57,9 @@ function App() {
           <Route path="/MovimientosTable" element={<MovimientosTable/>}/>
           <Route path="/VistaProductos" element={<VistaProductos/>}/>
           <Route path="/VistaSolicitudesEntregas" element={<VistaSolicitudesEntregas/>}/>
+          <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios/>}/>
+          <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios/>}/> 
+          <Route path="/VistaEstadisticasAccesos" element={<VistaEstadisticasAccesos/>}/>
          
 
         </Routes>

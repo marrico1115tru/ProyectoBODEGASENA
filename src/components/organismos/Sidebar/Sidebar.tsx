@@ -137,24 +137,26 @@ const Sidebar = () => {
                 activePaths={["/VistaSolicitudesEntregas"]}
               />
               <SidebarButton
-                to="/estadisticasAreas"
-                label="Areas"
+                to="/VistaEstadisticasUsuarios"
+                label="Usuarios"
                 isOpen={isOpen}
-                activePaths={["/estadisticasAreas"]}
+                activePaths={["/VistaEstadisticasUsuarios"]}
               />
               <SidebarButton
-                to="/categoriasEstadisticas"
-                label="Categorias"
+                to="/VistaEstadisticasSitios"
+                label="Sitios"
                 isOpen={isOpen}
-                activePaths={["/categoriasEstadisticas"]}
+                activePaths={["/VistaEstadisticasSitios"]}
+
               />
-              <SidebarButton
-                to="/reports/pedidos"
-                icon={<ShoppingCart className="w-4 h-4" />}
-                label="Pedidos"
+               <SidebarButton
+                to="/VistaEstadisticasAccesos"
+                label="Accesos y opciones"
                 isOpen={isOpen}
-                activePaths={["/reports/pedidos"]}
+                activePaths={["/VistaEstadisticasAccesos"]}
               />
+             
+              
             </div>
           )}
 
