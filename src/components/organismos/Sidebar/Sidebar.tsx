@@ -125,16 +125,16 @@ const Sidebar = () => {
           {showReports && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1">
               <SidebarButton
-                to="/EstadisticasCentros"
-                label="Centros Formación"
+                to="/VistaProductos"
+                label="Productos"
                 isOpen={isOpen}
-                activePaths={["/EstadisticasCentros"]}
+                activePaths={["/VistaProductos"]}
               />
               <SidebarButton
-                to="/bodegasView"
-                label="Bodegas"
+                to="/VistaSolicitudesEntregas"
+                label="SolicitudesEntregas"
                 isOpen={isOpen}
-                activePaths={["/bodegasView"]}
+                activePaths={["/VistaSolicitudesEntregas"]}
               />
               <SidebarButton
                 to="/estadisticasAreas"

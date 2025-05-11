@@ -14,17 +14,14 @@ import TicView from "./components/organismos/pages/Inicio/tic";
 import Proveedores from "./components/organismos/pages/productos/proveedores/proveedores";
 import CentrosRep from "./components/organismos/pages/reportsInfo/centrosRep";
 import BodegasRep from "./components/organismos/pages/reportsInfo/bodegasRep";
-import Areas from "./components/organismos/pages/estadisticas/areas";
-import BodegasView from "@/components/organismos/pages/estadisticas/bodegasView";
-import EstadisticasAreas from "./components/organismos/pages/estadisticas/areas";
 import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
-import CategoriasEstadisticas from "./components/organismos/pages/estadisticas/CategoriasEstadisticas";
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
 import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
 import CentrosFormaciones from "./components/organismos/pages/Admin/centrosformacion/CentrosFormacion.tsx";
 import MovimientosTable from "./components/organismos/pages/Admin/entradas_salidas/MovimientosTable.tsx";
-import EstadisticasCentros from "./components/organismos/pages/estadisticas/EstadisticasCentros.tsx"
+import VistaProductos from "./components/organismos/pages/estadisticas/VistaProductos.tsx"
+import VistaSolicitudesEntregas from "./components/organismos/pages/estadisticas/VistaSolicitudesEntregas.tsx";
 
 
 const queryClient = new QueryClient();
@@ -53,15 +50,14 @@ function App() {
           <Route path="/productos/listar" element={<ProductosTable />} />
           <Route path="/centrosRep" element={<CentrosRep />} />
           <Route path="/bodegasRep" element={<BodegasRep />} />
-          <Route path="/areas" element={<Areas />} />
-          <Route path="/bodegasView" element={<BodegasView />} />
-          <Route path="/estadisticasAreas" element={<EstadisticasAreas />} />
           <Route path="/areasRep" element={<AreasRepo />} />
-          <Route path="/categoriasEstadisticas" element={<CategoriasEstadisticas />} />
           <Route path="/Bodega" element={<Bodega/>}/>
           <Route path="/CentrosFormaciones" element={<CentrosFormaciones/>}/>
           <Route path="/MovimientosTable" element={<MovimientosTable/>}/>
-          <Route path="/EstadisticasCentros" element={<EstadisticasCentros/>}/>
+          <Route path="/VistaProductos" element={<VistaProductos/>}/>
+          <Route path="/VistaSolicitudesEntregas" element={<VistaSolicitudesEntregas/>}/>
+         
+
         </Routes>
       </QueryClientProvider>
     </div>
