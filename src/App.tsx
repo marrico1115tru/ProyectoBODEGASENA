@@ -11,7 +11,6 @@ import Gastronomia from "./components/organismos/pages/Inicio/gastronomia";
 import EscuelaCafeView from "./components/organismos/pages/Inicio/EscuelaCafe";
 import ViasView from "./components/organismos/pages/Inicio/vias";
 import TicView from "./components/organismos/pages/Inicio/tic";
-import Proveedores from "./components/organismos/pages/productos/proveedores/proveedores";
 import CentrosRep from "./components/organismos/pages/reportsInfo/centrosRep";
 import BodegasRep from "./components/organismos/pages/reportsInfo/bodegasRep";
 import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
@@ -46,7 +45,6 @@ function App() {
           <Route path="/vias" element={<ViasView />} />
           <Route path="/tic" element={<TicView />} />
           <Route path="/escuelacafe" element={<EscuelaCafeView />} />
-          <Route path="/proveedores" element={<Proveedores />} />
           <Route path="usuarios" element={<UsersView />} />
           <Route path="/productos/listar" element={<ProductosTable />} />
           <Route path="/centrosRep" element={<CentrosRep />} />
