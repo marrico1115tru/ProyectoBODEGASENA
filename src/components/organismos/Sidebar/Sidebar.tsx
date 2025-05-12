@@ -12,11 +12,10 @@ import {
   PieChart,
   List,
   ClipboardList,
-  ShoppingCart,
   Archive,
   Table,
   Warehouse,
-} from "lucide-react"; // IMPORTANTE: Agregado el icono Warehouse
+} from "lucide-react"; 
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
 
@@ -33,7 +32,7 @@ const Sidebar = () => {
         isOpen ? "w-64" : "w-16"
       } min-h-screen bg-slate-800 text-slate-100 transition-all duration-300 flex flex-col shadow-lg`}
     >
-      {/* Botón para colapsar */}
+      {}
       <div className="p-4">
         <Button
           variant="ghost"
@@ -81,27 +80,7 @@ const Sidebar = () => {
                 isOpen={isOpen}
                 activePaths={["/productos/listar"]}
               />
-              <SidebarButton
-                to="/categorias"
-                icon={<PackagePlus className="w-4 h-4" />}
-                label="Categorias"
-                isOpen={isOpen}
-                activePaths={["/categorias"]}
-              />
-              <SidebarButton
-                to="/proveedores"
-                icon={<Users className="w-4 h-4" />}
-                label="Proveedores"
-                isOpen={isOpen}
-                activePaths={["/proveedores"]}
-              />
-              <SidebarButton
-                to="/vencimiento"
-                icon={<CalendarClock className="w-4 h-4" />}
-                label="Vencimiento"
-                isOpen={isOpen}
-                activePaths={["/vencimiento"]}
-              />
+             
             </div>
           )}
 
