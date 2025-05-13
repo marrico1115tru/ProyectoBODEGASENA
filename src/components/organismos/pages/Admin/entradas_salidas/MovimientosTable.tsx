@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 import Swal from 'sweetalert2';
-import { 
-  fetchMovimientos, 
-  createMovimiento, 
-  updateMovimiento, 
-  deleteMovimiento, 
-  MovimientoMaterial 
+import {
+  fetchMovimientos,
+  createMovimiento,
+  updateMovimiento,
+  deleteMovimiento,
+  MovimientoMaterial
 } from '@/Api/Movimientosform';
 
 const MovimientosTable = () => {
@@ -131,19 +131,23 @@ const MovimientosTable = () => {
   return (
     <DefaultLayout>
       <div className="p-6">
-        <Card className="w-full">
+        <Card className="w-full rounded-2xl shadow-md p-6 bg-white">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Movimientos de Materiales</h1>
-            <Button onClick={handleCreate} size="sm">
+            <Button 
+              onClick={handleCreate} 
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+            >
               Nuevo Movimiento
             </Button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm table-auto border border-gray-300">
-              <thead className="bg-gray-800 text-white">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full table-auto text-sm">
+              <thead className="bg-gray-700 text-white">
                 <tr>
                   {["Tipo", "Cantidad", "Fecha", "Producto ID", "Usuario ID", "Acciones"].map((header) => (
-                    <th key={header} className="px-4 py-3 text-center font-bold">
+                    <th key={header} className="px-4 py-3 text-center font-semibold">
                       {header}
                     </th>
                   ))}
@@ -158,7 +162,7 @@ const MovimientosTable = () => {
                   </tr>
                 ) : (
                   movimientos.map((movimiento) => (
-                    <tr key={movimiento.id} className="hover:bg-gray-100">
+                    <tr key={movimiento.id} className="hover:bg-gray-100 border-b">
                       <td className="px-4 py-3 text-center">{getTipoTexto(movimiento.tipo)}</td>
                       <td className="px-4 py-3 text-center">{movimiento.cantidad}</td>
                       <td className="px-4 py-3 text-center">{new Date(movimiento.fecha).toLocaleDateString()}</td>
@@ -167,15 +171,15 @@ const MovimientosTable = () => {
                       <td className="px-4 py-3 flex justify-center gap-2">
                         <Button 
                           onClick={() => handleEdit(movimiento)} 
-                          size="sm" 
-                          className="bg-yellow-400 hover:bg-yellow-500 text-white"
+                          size="sm"
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg transition"
                         >
                           Editar
                         </Button>
                         <Button 
                           onClick={() => handleDelete(movimiento.id)} 
-                          size="sm" 
-                          className="bg-red-500 hover:bg-red-600 text-white"
+                          size="sm"
+                          className="bg-red-500 hover:bg-red-600 text-white rounded-lg transition"
                         >
                           Eliminar
                         </Button>

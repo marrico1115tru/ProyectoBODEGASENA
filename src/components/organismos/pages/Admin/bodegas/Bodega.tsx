@@ -123,22 +123,22 @@ const BodegasView = () => {
 
   return (
     <DefaultLayout>
-      <div className="p-8">
-        <Card className="mb-6 w-full">
+      <div className="bg-[#0f172a] min-h-screen p-8">
+        <Card className="bg-white rounded-2xl shadow-md p-6 mb-6 w-full">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-800">Bodegas</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Gestión de Bodegas</h1>
             <Button
               onClick={handleCreate}
-              className="bg-black hover:bg-gray-900 text-white px-4 py-2 rounded-lg"
+              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg"
             >
               Crear Bodega
             </Button>
           </div>
         </Card>
 
-        <Card className="w-full">
-          <div className="w-full overflow-x-auto">
-            <table className="min-w-full text-sm text-left text-gray-700 border border-gray-200 rounded-lg overflow-hidden">
+        <Card className="bg-white rounded-2xl shadow-md p-6 w-full">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm text-left text-gray-700">
               <thead className="bg-slate-800 text-white">
                 <tr>
                   <th className="px-6 py-3">Nombre</th>
@@ -151,20 +151,22 @@ const BodegasView = () => {
                 {bodegas.map((bodega) => (
                   <tr
                     key={bodega.id}
-                    className="bg-white border-b hover:bg-gray-100 transition-colors"
+                    className="bg-white border-b hover:bg-blue-50 transition-colors"
                   >
                     <td className="px-6 py-4">{bodega.nombre}</td>
                     <td className="px-6 py-4">{bodega.ubicacion}</td>
-                    <td className="px-6 py-4">{new Date(bodega.fecha_registro).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      {new Date(bodega.fecha_registro).toLocaleDateString()}
+                    </td>
                     <td className="px-6 py-4 flex gap-2">
                       <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
                         onClick={() => handleEdit(bodega)}
                       >
                         Editar
                       </Button>
                       <Button
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
                         onClick={() => handleDelete(bodega.id)}
                       >
                         Eliminar

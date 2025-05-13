@@ -1,111 +1,85 @@
-// src/pages/VistaEstadisticasUsuarios.tsx
 import React, { useEffect, useState } from 'react';
-import { BarChart, PieChart } from '../estadisticas/Graficasbases/GraficasBaseUsuarios';
 import axios from 'axios';
-import { Card } from '@/components/ui/card'; // Asegúrate que esta ruta sea correcta
+import { BarChart, PieChart } from '../estadisticas/Graficasbases/GraficasBaseSitios';
+import { Card } from '@/components/ui/card';
+import DefaultLayout from '@/layouts/default';
 
 const VistaEstadisticasUsuarios: React.FC = () => {
-  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [productosPrestados, setProductosPrestados] = useState<any[]>([]);
+  const [usuariosPorRol, setUsuariosPorRol] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchUsuarios = async () => {
+    const fetchEstadisticas = async () => {
       try {
-        const response = await axios.get('http://localhost:3500/api/usuarios');
-        setUsuarios(response.data);
+        const [responsePrestamos, responseRoles] = await Promise.all([
+          axios.get('http://localhost:3500/api/usuarios/productos-prestados'),
+          axios.get('http://localhost:3500/api/usuarios/usuarios-por-rol')
+        ]);
+
+        setProductosPrestados(responsePrestamos.data);
+        setUsuariosPorRol(responseRoles.data);
       } catch (error) {
-        console.error('Error al obtener usuarios:', error);
+        console.error('Error al obtener estadísticas:', error);
       }
     };
-    fetchUsuarios();
+
+    fetchEstadisticas();
   }, []);
 
-  // Usuarios por Rol y Sede
-  const usuariosPorRolYSede = usuarios.reduce((acc: Record<string, number>, usuario) => {
-    const clave = `${usuario.cargo} - ${usuario.area?.nombre || 'Sin Área'}`;
-    acc[clave] = (acc[clave] || 0) + 1;
-    return acc;
-  }, {});
-
-  const dataBarrasRolYSede = {
-    labels: Object.keys(usuariosPorRolYSede),
+  const dataBarProductos = {
+    labels: productosPrestados.map((item) => item.usuario),
     datasets: [
       {
-        label: 'Usuarios por Rol y Sede',
-        data: Object.values(usuariosPorRolYSede),
-        backgroundColor: '#4F46E5',
+        label: 'Productos Prestados',
+        data: productosPrestados.map((item) => item.totalProductosPrestados),
+        backgroundColor: '#2563EB',
       },
     ],
   };
 
-  // Usuarios por Ficha de Formación
-  const usuariosPorFicha = usuarios.reduce((acc: Record<string, number>, usuario) => {
-    const clave = usuario.ficha?.nombre || 'Sin Ficha';
-    acc[clave] = (acc[clave] || 0) + 1;
-    return acc;
-  }, {});
-
-  const dataBarrasFicha = {
-    labels: Object.keys(usuariosPorFicha),
+  const dataPieUsuarios = {
+    labels: usuariosPorRol.map((item) => item.rol),
     datasets: [
       {
-        label: 'Usuarios por Ficha de Formación',
-        data: Object.values(usuariosPorFicha),
-        backgroundColor: '#22C55E',
-      },
-    ],
-  };
-
-  // Formación Activa vs Inactiva
-  const formacionActivaInactiva = {
-    labels: ['Activa', 'Inactiva'],
-    datasets: [
-      {
-        data: [
-          usuarios.filter((u) => new Date(u.fechaFinal) > new Date()).length,
-          usuarios.filter((u) => new Date(u.fechaFinal) <= new Date()).length,
+        data: usuariosPorRol.map((item) => item.cantidadUsuarios),
+        backgroundColor: [
+          '#1E40AF',
+          '#2563EB',
+          '#3B82F6',
+          '#60A5FA',
+          '#93C5FD',
         ],
-        backgroundColor: ['#4F46E5', '#EF4444'],
       },
     ],
   };
 
   return (
-    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 p-4'>
-      {/* Gráfica de barras de Usuarios por Rol y Sede */}
-      <Card>
-        <div className='p-4'>
-          <h2 className='text-xl font-bold mb-1'>Usuarios por Rol y Sede</h2>
-          <p className='text-sm text-gray-500 mb-4'>
-            Visualiza la cantidad total de usuarios agrupados por su rol y sede.
-          </p>
-          <BarChart data={dataBarrasRolYSede} />
-        </div>
-      </Card>
+    <DefaultLayout>
+      <div className="p-6 bg-[#0f172a] min-h-screen">
+        <h1 className="text-white text-3xl font-bold mb-6 text-center">Estadísticas de Usuarios</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+            <h2 className="text-xl font-bold mb-2 text-center">Productos Prestados</h2>
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Productos prestados por cada usuario
+            </p>
+            <div className="max-w-2xl mx-auto">
+              <BarChart data={dataBarProductos} />
+            </div>
+          </Card>
 
-      {/* Gráfica de barras de Usuarios por Ficha de Formación */}
-      <Card>
-        <div className='p-4'>
-          <h2 className='text-xl font-bold mb-1'>Usuarios por Ficha de Formación</h2>
-          <p className='text-sm text-gray-500 mb-4'>
-            Visualiza la cantidad de usuarios en cada ficha de formación.
-          </p>
-          <BarChart data={dataBarrasFicha} />
+          <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+            <h2 className="text-xl font-bold mb-2 text-center">Usuarios por Rol</h2>
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Distribución de usuarios por rol
+            </p>
+            <div className="max-w-md mx-auto">
+              <PieChart data={dataPieUsuarios} />
+            </div>
+          </Card>
         </div>
-      </Card>
-
-      {/* Gráfica de pastel para Formación Activa vs Inactiva */}
-      <Card className='md:col-span-2'>
-        <div className='p-4'>
-          <h2 className='text-xl font-bold mb-1'>Formación Activa vs Inactiva</h2>
-          <p className='text-sm text-gray-500 mb-4'>
-            Visualiza el estado actual de las formaciones.
-          </p>
-          <div className='max-w-md mx-auto'>
-            <PieChart data={formacionActivaInactiva} />
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </DefaultLayout>
   );
 };
 

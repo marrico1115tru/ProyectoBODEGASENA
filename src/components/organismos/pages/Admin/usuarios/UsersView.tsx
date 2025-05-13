@@ -152,22 +152,22 @@ const UsuariosView = () => {
 
   return (
     <DefaultLayout>
-      <div className="p-8">
-        <Card className="mb-6 max-w-6xl mx-auto">
+      <div className="p-8 space-y-6">
+        <Card className="max-w-6xl mx-auto p-6 shadow-md border border-gray-200">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-800">Usuarios</h1>
             <Button
               onClick={handleCreate}
-              className="bg-black hover:bg-gray-900 text-white px-4 py-2 rounded-lg"
+              className="bg-black hover:bg-gray-900 text-white"
             >
               Crear Usuario
             </Button>
           </div>
         </Card>
 
-        <Card className="max-w-6xl mx-auto">
+        <Card className="max-w-6xl mx-auto p-4 shadow-md border border-gray-200">
           <div className="w-full overflow-x-auto">
-            <table className="min-w-full text-sm text-left text-gray-700">
+            <table className="min-w-full text-sm text-left text-gray-800">
               <thead className="bg-slate-800 text-white">
                 <tr>
                   <th className="px-4 py-2">Nombre</th>
@@ -195,7 +195,7 @@ const UsuariosView = () => {
                     <td className="px-4 py-2 capitalize">{usuario.cargo}</td>
                     <td className="px-2 py-2">{usuario.id_area}</td>
                     <td className="px-2 py-2">{usuario.id_ficha}</td>
-                    <td className="px-4 py-2 flex gap-2">
+                    <td className="px-4 py-2 flex flex-wrap gap-2">
                       <Button
                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
                         onClick={() => handleEdit(usuario)}

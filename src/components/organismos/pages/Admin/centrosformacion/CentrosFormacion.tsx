@@ -34,10 +34,10 @@ const CentrosFormaciones = () => {
 
   const openEditModal = (centro: CentroFormacion) => {
     setEditingCentro(centro);
-    setFormData({ 
-      nombre: centro.nombre, 
-      ubicacion: centro.ubicacion, 
-      telefono: centro.telefono ?? '' 
+    setFormData({
+      nombre: centro.nombre,
+      ubicacion: centro.ubicacion,
+      telefono: centro.telefono ?? ''
     });
     setOpenModal(true);
   };
@@ -85,14 +85,16 @@ const CentrosFormaciones = () => {
   return (
     <DefaultLayout>
       <div className="p-8">
-        <Card className="max-w-7xl mx-auto shadow-lg rounded-2xl p-6">
+        <Card className="max-w-7xl mx-auto shadow-xl rounded-2xl p-6 border border-gray-200 bg-white">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-extrabold text-gray-800">Centros de Formación</h1>
-            <Button onClick={openCreateModal} className="bg-black hover:bg-gray-800 text-white" size="lg">Nuevo Centro</Button>
+            <h1 className="text-3xl font-bold text-gray-800">Centros de Formación</h1>
+            <Button onClick={openCreateModal} className="bg-black hover:bg-gray-800 text-white" size="lg">
+              Nuevo Centro
+            </Button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-center table-auto border border-gray-300">
+            <table className="w-full text-sm text-center table-auto border border-gray-200 rounded-xl overflow-hidden">
               <thead className="bg-gray-900 text-white text-base">
                 <tr>
                   <th className="px-4 py-3">Nombre</th>
@@ -102,7 +104,7 @@ const CentrosFormaciones = () => {
                   <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white text-gray-800">
                 {centros.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-gray-500 text-lg">
@@ -111,16 +113,24 @@ const CentrosFormaciones = () => {
                   </tr>
                 ) : (
                   centros.map((centro) => (
-                    <tr key={centro.id} className="hover:bg-gray-100">
+                    <tr key={centro.id} className="hover:bg-gray-50 transition">
                       <td className="px-4 py-4">{centro.nombre}</td>
                       <td className="px-4 py-4">{centro.ubicacion}</td>
                       <td className="px-4 py-4">{centro.telefono || 'N/A'}</td>
                       <td className="px-4 py-4">{new Date(centro.fecha_registro).toLocaleDateString()}</td>
                       <td className="px-4 py-4 flex justify-center gap-3">
-                        <Button onClick={() => openEditModal(centro)} size="sm" className="bg-yellow-400 hover:bg-yellow-500 text-white px-4">
+                        <Button
+                          onClick={() => openEditModal(centro)}
+                          size="sm"
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg px-4 py-1"
+                        >
                           Editar
                         </Button>
-                        <Button onClick={() => handleDelete(centro.id)} size="sm" className="bg-red-500 hover:bg-red-600 text-white px-4">
+                        <Button
+                          onClick={() => handleDelete(centro.id)}
+                          size="sm"
+                          className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-1"
+                        >
                           Eliminar
                         </Button>
                       </td>
@@ -134,9 +144,11 @@ const CentrosFormaciones = () => {
 
         {/* Modal */}
         <Dialog open={openModal} onOpenChange={setOpenModal}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md rounded-xl shadow-lg">
             <DialogHeader>
-              <DialogTitle>{editingCentro ? "Editar Centro" : "Nuevo Centro"}</DialogTitle>
+              <DialogTitle className="text-xl font-semibold">
+                {editingCentro ? "Editar Centro" : "Nuevo Centro"}
+              </DialogTitle>
             </DialogHeader>
 
             <div className="flex flex-col gap-4 py-4">
@@ -158,8 +170,13 @@ const CentrosFormaciones = () => {
             </div>
 
             <DialogFooter>
-              <Button onClick={() => setOpenModal(false)} variant="outline">Cancelar</Button>
-              <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button onClick={() => setOpenModal(false)} variant="outline">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 {editingCentro ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>

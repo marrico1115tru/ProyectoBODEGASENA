@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { PieChart } from '../estadisticas/Graficasbases/GraficasBaseUsuarios';
-import { Card } from '@/components/ui/card'; 
+import { PieChart } from '../estadisticas/Graficasbases/GraficasBaseSitios';
+import { Card } from '@/components/ui/card';
+import DefaultLayout from '@/layouts/default';
 
 const VistaEstadisticasSitios: React.FC = () => {
   const [sitios, setSitios] = useState<any[]>([]);
@@ -10,7 +10,7 @@ const VistaEstadisticasSitios: React.FC = () => {
   useEffect(() => {
     const fetchSitios = async () => {
       try {
-        const response = await axios.get('http://localhost:3500/api/sitios'); 
+        const response = await axios.get('http://localhost:3500/api/sitios');
         setSitios(response.data);
       } catch (error) {
         console.error('Error al obtener sitios:', error);
@@ -34,19 +34,22 @@ const VistaEstadisticasSitios: React.FC = () => {
   };
 
   return (
-    <div className="p-4">
-      <Card>
-        <div className="p-4">
-          <h2 className="text-xl font-bold mb-2">Sitios Activos vs Inactivos</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Gráfica que muestra la cantidad de sitios activos e inactivos registrados.
-          </p>
-          <div className="max-w-md mx-auto">
-            <PieChart data={dataPieSitiosActivos} />
-          </div>
+    <DefaultLayout>
+      <div className="p-6 bg-[#0f172a] min-h-screen">
+        <h1 className="text-white text-3xl font-bold mb-6 text-center">Estadísticas de Sitios</h1>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+            <h2 className="text-xl font-bold mb-2 text-center">Sitios Activos vs Inactivos</h2>
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Gráfica que muestra la cantidad de sitios activos e inactivos registrados.
+            </p>
+            <div className="max-w-md mx-auto">
+              <PieChart data={dataPieSitiosActivos} />
+            </div>
+          </Card>
         </div>
-      </Card>
-    </div>
+      </div>
+    </DefaultLayout>
   );
 };
 
