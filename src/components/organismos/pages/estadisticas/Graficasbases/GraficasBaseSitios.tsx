@@ -21,39 +21,30 @@ ChartJS.register(
   Title
 );
 
-export const BarChart: React.FC<{ data: any }> = ({ data }) => {
-  return (
-    <div className="w-full h-[300px]">
-      <Bar
-        data={data}
-        options={{
-          responsive: true,
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-            },
-          },
-        }}
-      />
-    </div>
-  );
-};
+export const BarChart: React.FC<{ data: any }> = ({ data }) => (
+  <div className="w-full h-[300px]">
+    <Bar
+      data={data}
+      options={{
+        responsive: true,
+        plugins: {
+          legend: { display: true, position: 'top' },
+        },
+      }}
+    />
+  </div>
+);
 
-export const PieChart: React.FC<{ data: any }> = ({ data }) => {
-  return (
-    <div className="w-full h-[300px]">
-      <Pie
-        data={data}
-        options={{
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'bottom',
-            },
-          },
-        }}
-      />
-    </div>
-  );
-};
+export const PieChart: React.FC<{ data: any }> = ({ data }) => (
+  <div className="w-full h-[300px]">
+    <Pie
+      data={data}
+      options={{
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+        },
+      }}
+    />
+  </div>
+);

@@ -5,9 +5,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  PackagePlus,
   Users,
-  CalendarClock,
   BarChart2,
   PieChart,
   List,
@@ -116,30 +114,16 @@ const Sidebar = () => {
                 activePaths={["/VistaSolicitudesEntregas"]}
               />
               <SidebarButton
-                to="/VistaEstadisticasUsuarios"
-                label="Usuarios"
-                isOpen={isOpen}
-                activePaths={["/VistaEstadisticasUsuarios"]}
-              />
-              <SidebarButton
                 to="/VistaEstadisticasSitios"
                 label="Sitios"
                 isOpen={isOpen}
                 activePaths={["/VistaEstadisticasSitios"]}
 
               />
-               <SidebarButton
-                to="/VistaEstadisticasAccesos"
-                label="Accesos y opciones"
-                isOpen={isOpen}
-                activePaths={["/VistaEstadisticasAccesos"]}
-              />
-             
-              
             </div>
           )}
 
-          {/* InfoReports */}
+          {}
           <SidebarButton
             icon={<BarChart2 className="w-5 h-5" />}
             label="InfoReports"

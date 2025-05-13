@@ -1,44 +1,63 @@
-import React from "react";
-import { Bar, Line, Pie } from "react-chartjs-2";
+'use client';
+
+import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
+  BarElement,
   CategoryScale,
   LinearScale,
-  BarElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-} from "chart.js";
+} from 'chart.js';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement
-);
+// Registrar los componentes de Chart.js que necesitamos
+ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
-type Props = {
-  data: any;
-  options?: any;
+interface BarChartProps {
+  data: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor?: string;
+    }[];
+    title: string;
+  };
+}
+
+export const BarChart = ({ data }: BarChartProps) => {
+  return (
+    <div className="w-full h-full">
+      <Bar
+        data={{
+          labels: data.labels,
+          datasets: data.datasets,
+        }}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: data.title },
+          },
+          // Configuración de las escalas
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Productos',
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Cantidad',
+              },
+            },
+          },
+        }}
+      />
+    </div>
+  );
 };
-
-export const BarChart: React.FC<Props> = ({ data, options }) => (
-  <Bar data={data} options={options} />
-);
-
-export const LineChart: React.FC<Props> = ({ data, options }) => (
-  <Line data={data} options={options} />
-);
-
-export const PieChart: React.FC<Props> = ({ data, options }) => (
-  <Pie data={data} options={options} />
-);
-""
