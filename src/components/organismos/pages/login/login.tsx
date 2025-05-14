@@ -7,7 +7,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
-    // Validación real de credenciales debería ir aquí
+    
     navigate("/Home");
   };
 
@@ -15,7 +15,7 @@ const Login = () => {
     <div
       className="h-screen w-full bg-cover bg-center flex items-center justify-center"
       style={{
-        backgroundImage: `url('src/img/iniciosesion.jpeg')`, // Asegúrate de que la ruta sea válida
+        backgroundImage: `url('src/img/bodegas.jpeg')`, 
       }}
     >
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-10 rounded-xl shadow-2xl max-w-sm w-full text-gray-100">

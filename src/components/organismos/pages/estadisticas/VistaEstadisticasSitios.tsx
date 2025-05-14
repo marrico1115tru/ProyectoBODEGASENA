@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { PieChart } from '../estadisticas/Graficasbases/GraficasBaseSitios';
+import { PieChart } from './Graficasbases/GraficasBaseSitios';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 
@@ -28,7 +28,7 @@ const VistaEstadisticasSitios: React.FC = () => {
     datasets: [
       {
         data: [sitiosActivos, sitiosInactivos],
-        backgroundColor: ['#22C55E', '#EF4444'],
+          backgroundColor: 'rgba(99, 115, 255, 0.5)',
       },
     ],
   };

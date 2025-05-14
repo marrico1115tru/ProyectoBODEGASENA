@@ -1,5 +1,3 @@
-// src/components/estadisticas/Graficasbases/GraficasBaseSitios.tsx
-
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,14 +25,14 @@ interface Props {
   data: any;
 }
 
-// Gráfica de barras
+
 export const BarChart = ({ data }: Props) => {
   const options = {
     responsive: true,
     plugins: {
       legend: {
         labels: {
-          color: '#cbd5e1', // Texto claro
+          color: '#cbd5e1', 
         },
       },
       title: {
@@ -64,7 +62,7 @@ export const BarChart = ({ data }: Props) => {
   return <Bar data={data} options={options} />;
 };
 
-// Gráfica de pastel
+
 export const PieChart = ({ data }: Props) => {
   const options = {
     responsive: true,

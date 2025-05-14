@@ -11,7 +11,6 @@ import {
   Legend,
 } from 'chart.js';
 
-// Registrar los componentes de Chart.js que necesitamos
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 interface BarChartProps {
@@ -41,7 +40,7 @@ export const BarChart = ({ data }: BarChartProps) => {
             legend: { position: 'top' },
             title: { display: true, text: data.title },
           },
-          // Configuración de las escalas
+        
           scales: {
             x: {
               title: {

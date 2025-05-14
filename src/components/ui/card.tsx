@@ -1,14 +1,18 @@
-import React from 'react';
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-}
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("rounded-2xl border bg-white text-black shadow-sm", className)} {...props} />
+  )
+);
+Card.displayName = "Card";
 
-export const Card: React.FC<CardProps> = ({ className = '', children, ...props }) => {
-  return (
-    <div className={`bg-white shadow-xl rounded-2xl p-6 ${className}`} {...props}>
-      {children}
-    </div>
-  );
-};
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("px-6 py-4", className)} {...props} />
+  )
+);
+CardContent.displayName = "CardContent";
+
+export { Card, CardContent };

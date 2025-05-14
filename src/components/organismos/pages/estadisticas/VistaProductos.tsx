@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart } from '../estadisticas/Graficasbases/GraficasBaseProductos';
+import { BarChart } from './Graficasbases/GraficasBaseProductos';
 import axios from 'axios';
 import DefaultLayout from '@/layouts/default';
 
@@ -44,7 +44,7 @@ export default function VistaProductos() {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Productos Vencidos */}
+         
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Productos Vencidos</h3>
               {vencidos.length > 0 ? (
@@ -55,7 +55,7 @@ export default function VistaProductos() {
                       {
                         label: 'Cantidad',
                         data: vencidos.map((p) => p.cantidad),
-                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        backgroundColor: 'rgba(99, 115, 255, 0.5)',
                       },
                     ],
                     title: 'Productos Vencidos',

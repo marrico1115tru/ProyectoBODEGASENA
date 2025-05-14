@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+
 import { Link } from "@heroui/link";
 import DefaultLayout from "@/layouts/default";
 
@@ -50,11 +50,11 @@ const cards = [
 const InventoryLanding = () => {
   return (
     <DefaultLayout>
-      <div className="min-h-screen bg-slate-900 text-gray-100 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#004c2a] text-white flex flex-col font-sans">
         {/* Main content */}
         <main className="flex flex-col md:flex-row items-center justify-center gap-10 p-10 flex-grow">
           {/* Left image */}
-          <div className="w-full md:w-1/3 bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-700">
+          <div className="w-full md:w-1/3 bg-[#005f33] rounded-2xl shadow-lg p-6 border border-[#007147]">
             <img
               src="src/img/bodegas.jpeg"
               className="rounded-xl mx-auto max-h-60 object-cover"
@@ -63,10 +63,10 @@ const InventoryLanding = () => {
 
           {/* Right description */}
           <div className="md:w-2/3 space-y-5 text-center md:text-left">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-blue-400 leading-snug">
-              Bodegas : Espacios de Aprendizaje y Desarrollo
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#FFB400] leading-snug">
+              Bodegas: Espacios de Aprendizaje y Desarrollo
             </h2>
-            <p className="text-gray-300 text-lg leading-relaxed">
+            <p className="text-white text-lg leading-relaxed">
               Las bodegas del SENA están diseñadas como centros de almacenamiento especializados,
               adaptados para diversas áreas de formación y desarrollo profesional. Estos espacios no
               solo sirven como almacenes, sino también como lugares donde se promueve el aprendizaje
@@ -82,8 +82,8 @@ const InventoryLanding = () => {
         </main>
 
         {/* Cards Section */}
-        <section className="px-6 py-10 bg-slate-800">
-          <h3 className="text-center text-2xl font-bold text-blue-400 mb-6">
+        <section className="px-6 py-10 bg-[#005f33]">
+          <h3 className="text-center text-2xl font-bold text-[#FFB400] mb-6">
             Áreas de Almacenamiento
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
@@ -91,7 +91,7 @@ const InventoryLanding = () => {
               <Link
                 key={card.id}
                 href={card.link}
-                className="bg-slate-700 hover:bg-slate-600 transition-colors rounded-xl shadow-md border border-slate-600 flex flex-col h-full"
+                className="bg-[#004c2a] hover:bg-[#00663c] transition-colors rounded-xl shadow-md border border-[#007147] flex flex-col h-full"
               >
                 <img
                   src={card.image}
@@ -99,7 +99,7 @@ const InventoryLanding = () => {
                   className="w-full h-40 object-cover rounded-t-xl"
                 />
                 <div className="p-4 flex-grow flex items-center justify-center">
-                  <p className="text-gray-200 text-center text-sm">{card.description}</p>
+                  <p className="text-white text-center text-sm">{card.description}</p>
                 </div>
               </Link>
             ))}
@@ -107,8 +107,8 @@ const InventoryLanding = () => {
         </section>
 
         {/* Footer */}
-        <footer className="bg-slate-800 py-5 px-6 text-center text-gray-300 text-sm border-t border-slate-700">
-          <p className="font-bold text-blue-300 mb-2">ENCUÉNTRANOS EN:</p>
+        <footer className="bg-[#004c2a] py-5 px-6 text-center text-white text-sm border-t border-[#007147]">
+          <p className="font-bold text-[#FFB400] mb-2">ENCUÉNTRANOS EN:</p>
           <p>
             <span className="font-semibold">CELULAR:</span> 3123456789 <br />
             San Agustín - Huila.

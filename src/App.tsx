@@ -11,18 +11,19 @@ import Gastronomia from "./components/organismos/pages/Inicio/gastronomia";
 import EscuelaCafeView from "./components/organismos/pages/Inicio/EscuelaCafe";
 import ViasView from "./components/organismos/pages/Inicio/vias";
 import TicView from "./components/organismos/pages/Inicio/tic";
-import CentrosRep from "./components/organismos/pages/reportsInfo/centrosRep";
-import BodegasRep from "./components/organismos/pages/reportsInfo/bodegasRep";
-import AreasRepo from "./components/organismos/pages/reportsInfo/areasRepo";
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
 import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
 import CentrosFormaciones from "./components/organismos/pages/Admin/centrosformacion/CentrosFormacion.tsx";
 import MovimientosTable from "./components/organismos/pages/Admin/entradas_salidas/MovimientosTable.tsx";
 import VistaProductos from "./components/organismos/pages/estadisticas/VistaProductos.tsx"
-
+import UsuariosHistoria from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosHistorial.tsx"
+import UsuariosPorRol from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosPorRol.tsx";
 import VistaEstadisticasUsuarios from "./components/organismos/pages/estadisticas/VistaEstadisticasUsuarios.tsx";
+import ProductosPorArea from "./components/organismos/pages/Reportes/productosRep/ProductosPorArea.tsx";
 import VistaEstadisticasSitios from "./components/organismos/pages/estadisticas/VistaEstadisticasSitios.tsx";
+import ProductosVencidos from "./components/organismos/pages/Reportes/productosRep/ProductosVencidos.tsx";
+import ProductosVencimiento from "./components/organismos/pages/Reportes/productosRep/ProductosVencimiento.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -46,15 +47,20 @@ function App() {
           <Route path="/escuelacafe" element={<EscuelaCafeView />} />
           <Route path="usuarios" element={<UsersView />} />
           <Route path="/productos/listar" element={<ProductosTable />} />
-          <Route path="/centrosRep" element={<CentrosRep />} />
-          <Route path="/bodegasRep" element={<BodegasRep />} />
-          <Route path="/areasRep" element={<AreasRepo />} />
           <Route path="/Bodega" element={<Bodega/>}/>
           <Route path="/CentrosFormaciones" element={<CentrosFormaciones/>}/>
           <Route path="/MovimientosTable" element={<MovimientosTable/>}/>
           <Route path="/VistaProductos" element={<VistaProductos/>}/>    
           <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios/>}/>
-          <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios/>}/> 
+          <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios/>}/>   
+          <Route path="/report/productosRepo/ProductosPorArea" element={<ProductosPorArea />} />
+          <Route path="report/productosRep/ProductosVencidos" element={<ProductosVencidos />} />
+          <Route path="/report/productorRep/ProductosVencimiento" element={<ProductosVencimiento />} />
+          <Route path="/report/UsuariosRep/UsuariosHistoria" element={<UsuariosHistoria />} />
+          <Route path="/report/UsuariosRep/UsuariosPorRol" element={<UsuariosPorRol />} />
+
+
+
 
          
 

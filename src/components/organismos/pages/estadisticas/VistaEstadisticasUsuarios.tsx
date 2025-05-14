@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { BarChart, PieChart } from '../estadisticas/Graficasbases/GraficasBaseSitios';
+import { BarChart, PieChart } from './Graficasbases/GraficasBaseSitios';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 
