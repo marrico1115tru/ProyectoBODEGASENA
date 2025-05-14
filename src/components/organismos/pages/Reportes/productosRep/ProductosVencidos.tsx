@@ -46,7 +46,7 @@ export default function ProductosVencidos() {
 
         <div ref={containerRef} className="bg-white p-6 rounded-xl shadow-lg max-w-5xl mx-auto">
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-semibold text-blue-700">NATURVIDA</h2>
+            <h2 className="text-3xl font-semibold text-blue-700">INNOVASOFT</h2>
             <p className="text-sm text-gray-600">
               Reporte generado automáticamente — {new Date().toLocaleDateString()}
             </p>

@@ -1,24 +1,17 @@
-const API_URL = "http://localhost:3500/API/Usuarios";
+const API_URL = "http://localhost:300/api/usuarios"; // Ajusta la URL según tu backend
 
-// Obtener todos los usuarios
 export const getUsers = async () => {
   const response = await fetch(API_URL);
-  if (!response.ok) {
-    throw new Error("Error al obtener los usuarios");
-  }
-  return response.json();
+  if (!response.ok) throw new Error("Error al obtener usuarios");
+  return await response.json();
 };
 
-// Crear un nuevo usuario
 export const createUser = async (userData: {
-  apellidos: string;
   nombre: string;
   cedula: string;
   email: string;
   telefono: string;
   cargo: string;
-  id_area: number;
-  id_ficha: number;
 }) => {
   const response = await fetch(API_URL, {
     method: "POST",
@@ -27,35 +20,18 @@ export const createUser = async (userData: {
     },
     body: JSON.stringify(userData),
   });
-  if (!response.ok) {
-    throw new Error("Error al crear el usuario");
-  }
-  return response.json();
+  if (!response.ok) throw new Error("Error al crear usuario");
+  return await response.json();
 };
 
-// Eliminar usuario
-export const deleteUser = async (id: number) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-  });
-  if (!response.ok) {
-    throw new Error("Error al eliminar el usuario");
-  }
-  return response.json();
-};
-
-// Actualizar usuario
 export const updateUser = async (
   id: number,
-  updatedUserData: {
-    apellidos?: string;
-    nombre?: string;
-    cedula?: string;
-    email?: string;
-    telefono?: string;
-    cargo?: string;
-    id_area?: number;
-    id_ficha?: number;
+  userData: {
+    nombre: string;
+    cedula: string;
+    email: string;
+    telefono: string;
+    cargo: string;
   }
 ) => {
   const response = await fetch(`${API_URL}/${id}`, {
@@ -63,10 +39,16 @@ export const updateUser = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(updatedUserData),
+    body: JSON.stringify(userData),
   });
-  if (!response.ok) {
-    throw new Error("Error al actualizar el usuario");
-  }
-  return response.json();
+  if (!response.ok) throw new Error("Error al actualizar usuario");
+  return await response.json();
+};
+
+export const deleteUser = async (id: number) => {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Error al eliminar usuario");
+  return await response.json();
 };

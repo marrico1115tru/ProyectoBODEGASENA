@@ -3,7 +3,7 @@ import axios from "axios";
 import { useRef } from "react";
 import html2pdf from "html2pdf.js";
 import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default"; // Asegúrate de que esta ruta sea correcta
+import DefaultLayout from "@/layouts/default"; 
 
 export default function ProductosPorArea() {
   const containerRef = useRef(null);
@@ -46,7 +46,7 @@ export default function ProductosPorArea() {
 
         <div ref={containerRef} className="bg-white p-6 rounded-xl shadow-lg max-w-5xl mx-auto">
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-semibold text-blue-700">NATURVIDA</h2>
+            <h2 className="text-3xl font-semibold text-blue-700">INNOVASOFT</h2>
             <p className="text-sm text-gray-600">
               Reporte generado automáticamente — {new Date().toLocaleDateString()}
             </p>

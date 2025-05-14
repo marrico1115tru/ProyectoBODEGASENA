@@ -1,13 +1,12 @@
-// src/pages/UsuariosMayorUso.jsx
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef } from "react";
+import { Key, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default"; // Asegúrate de que esta ruta sea la correcta
+import DefaultLayout from "@/layouts/default";
 
 export default function UsuariosMayorUso() {
-  const containerRef = useRef(null);
+  const containerRef = useRef(null); // Ahora apuntamos al contenedor más grande que incluye toda la vista.
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-mayor-uso-productos"],
@@ -27,7 +26,7 @@ export default function UsuariosMayorUso() {
         html2canvas: { scale: 2 },
         jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
       })
-      .from(containerRef.current)
+      .from(containerRef.current) // Exportamos todo el contenedor
       .save();
   };
 
@@ -56,13 +55,11 @@ export default function UsuariosMayorUso() {
           </Button>
         </div>
 
-        <div
-          ref={containerRef}
-          className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl"
-        >
+        {/* Cambié el contenedor a este div para que incluya toda la vista */}
+        <div ref={containerRef} className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl">
           <table className="w-full text-center border-collapse">
-            <thead>
-              <tr className="bg-blue-100 text-blue-800 text-lg">
+            <thead className="bg-blue-200 text-blue-900 text-lg">
+              <tr>
                 <th className="p-4 border-b">#</th>
                 <th className="p-4 border-b">Nombre</th>
                 <th className="p-4 border-b">Apellido</th>
@@ -70,12 +67,12 @@ export default function UsuariosMayorUso() {
               </tr>
             </thead>
             <tbody>
-              {data.map((usuario, index) => (
+              {data.map((usuario: { id: Key | null | undefined; nombre: string; apellido: string; _count: { historial: any }; }, index: number) => (
                 <tr key={usuario.id} className="hover:bg-blue-50 text-base">
                   <td className="p-4 border-b font-bold text-blue-700">{index + 1}</td>
-                  <td className="p-4 border-b">{usuario.nombre}</td>
-                  <td className="p-4 border-b">{usuario.apellido}</td>
-                  <td className="p-4 border-b">{usuario._count?.historial || 0}</td>
+                  <td className="p-4 border-b text-blue-800">{usuario.nombre}</td>
+                  <td className="p-4 border-b text-blue-800">{usuario.apellido}</td>
+                  <td className="p-4 border-b text-blue-800">{usuario._count?.historial || 0}</td>
                 </tr>
               ))}
             </tbody>

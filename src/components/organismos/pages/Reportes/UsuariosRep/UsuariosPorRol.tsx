@@ -1,10 +1,9 @@
-// src/pages/UsuariosPorRolActividad.jsx
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef } from "react";
+import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useRef } from "react";
 import html2pdf from "html2pdf.js";
 import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default"; // Asegúrate de que esta ruta sea la correcta
+import DefaultLayout from "@/layouts/default";
 
 export default function UsuariosPorRolActividad() {
   const containerRef = useRef(null);
@@ -60,7 +59,7 @@ export default function UsuariosPorRolActividad() {
           ref={containerRef}
           className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-7xl space-y-10"
         >
-          {data.map((rol, i) => (
+          {data.map((rol: { nombreRol: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; usuarios: { id: Key | null | undefined; nombre: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; apellido: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; email: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; _count: { solicitudes: any; entregas: any; }; }[]; }, i: Key | null | undefined) => (
             <div key={i}>
               <h2 className="text-2xl font-semibold text-indigo-700 border-b border-indigo-200 pb-2 mb-6 text-center">
                 {rol.nombreRol}
@@ -80,7 +79,7 @@ export default function UsuariosPorRolActividad() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rol.usuarios.map((usuario) => (
+                      {rol.usuarios.map((usuario: { id: Key | null | undefined; nombre: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; apellido: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; email: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; _count: { solicitudes: any; entregas: any; }; }) => (
                         <tr key={usuario.id} className="hover:bg-blue-50 text-base">
                           <td className="p-4 border-b font-medium">
                             {usuario.nombre} {usuario.apellido}
