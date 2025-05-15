@@ -6,7 +6,7 @@ import {
   updateProducto,
   deleteProducto
 } from '@/Api/Productosform';
-import { Producto } from '@/types/types';
+import { Producto } from '@/types/types/typesProductos';
 
 const initialFormState: Producto = {
   codigoSena: '',

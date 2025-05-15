@@ -175,8 +175,15 @@ const Sidebar = () => {
           {showAdminSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1 border-l border-[#334155] pl-3">
               <SidebarButton to="/usuarios" icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/usuarios"]} />
-              <SidebarButton to="/Bodega" icon={<Users className="w-4 h-4" />} label="Bodegas" isOpen={isOpen} activePaths={["/Bodega"]} />
+              <SidebarButton to="/MunicipioPage" icon={<Users className="w-4 h-4" />} label="Municipios" isOpen={isOpen} activePaths={["/MunicipioPage"]} />
               <SidebarButton to="/CentrosFormaciones" icon={<Users className="w-4 h-4" />} label="Centros Formación" isOpen={isOpen} activePaths={["/CentrosFormaciones"]} />
+              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Titulados" isOpen={isOpen} activePaths={["/TituladosPage"]} />
+              <SidebarButton to="/AreasPage" icon={<Users className="w-4 h-4" />} label="Areas" isOpen={isOpen} activePaths={["/AreasPage"]} />
+              <SidebarButton to="/SedesPage" icon={<Users className="w-4 h-4" />} label="sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
+              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Fichas Formacion" isOpen={isOpen} activePaths={["/TituladosPage"]} />
+              <SidebarButton to="/RolesPage" icon={<Users className="w-4 h-4" />} label="roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
+              <SidebarButton to="/OpcionPage" icon={<Users className="w-4 h-4" />} label="opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
+              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/TituladosPage"]} />
             </div>
           )}
         </nav>
@@ -184,7 +191,7 @@ const Sidebar = () => {
 
       {/* Footer opcional */}
       <div className="p-4 border-t border-[#334155] text-xs text-center text-[#94a3b8]">
-        {isOpen && <span>INNOVASOFT © 2025</span>}
+        {isOpen && <span>INNOVASOFT</span>}
       </div>
     </aside>
   );

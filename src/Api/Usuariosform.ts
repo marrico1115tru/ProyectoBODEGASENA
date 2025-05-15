@@ -1,54 +1,23 @@
-const API_URL = "http://localhost:300/api/usuarios"; // Ajusta la URL según tu backend
+import axios from 'axios';
+import { Usuario } from '@/types/types/Usuario';
 
-export const getUsers = async () => {
-  const response = await fetch(API_URL);
-  if (!response.ok) throw new Error("Error al obtener usuarios");
-  return await response.json();
+const API_URL = 'http://localhost:3500/api/usuarios';
+
+export const getUsuarios = async (): Promise<Usuario[]> => {
+  const response = await axios.get(API_URL);
+  return response.data;
 };
 
-export const createUser = async (userData: {
-  nombre: string;
-  cedula: string;
-  email: string;
-  telefono: string;
-  cargo: string;
-}) => {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(userData),
-  });
-  if (!response.ok) throw new Error("Error al crear usuario");
-  return await response.json();
+export const createUsuario = async (usuario: Usuario): Promise<Usuario> => {
+  const response = await axios.post(API_URL, usuario);
+  return response.data;
 };
 
-export const updateUser = async (
-  id: number,
-  userData: {
-    nombre: string;
-    cedula: string;
-    email: string;
-    telefono: string;
-    cargo: string;
-  }
-) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(userData),
-  });
-  if (!response.ok) throw new Error("Error al actualizar usuario");
-  return await response.json();
+export const updateUsuario = async (id: number, usuario: Usuario): Promise<Usuario> => {
+  const response = await axios.put(`${API_URL}/${id}`, usuario);
+  return response.data;
 };
 
-export const deleteUser = async (id: number) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-  });
-  if (!response.ok) throw new Error("Error al eliminar usuario");
-  return await response.json();
+export const deleteUsuario = async (id: number): Promise<void> => {
+  await axios.delete(`${API_URL}/${id}`);
 };

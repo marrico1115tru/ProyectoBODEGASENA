@@ -1,186 +1,168 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import DefaultLayout from "@/layouts/default";
-import Swal from "sweetalert2";
-import {
-  getBodegas,
-  createBodega,
-  updateBodega,
-  deleteBodega,
-} from "@/Api/Bodegasform";
+import React, { useEffect, useState } from 'react';
+import { getSitios, createSitio, updateSitio, deleteSitio } from '@/Api/SitiosForm';
+import { Sitio } from '@/types/types/typesSitio';
+import { TipoSitio } from '@/types/types/typesSitio';
 
-interface Bodega {
-  id: number;
-  nombre: string;
-  ubicacion: string;
-  fecha_registro: string;
-}
+const initialFormState: Sitio = {
+  id: 0,
+  nombre: '',
+  ubicacion: '',
+  tipoSitioId: 1,
+  tipoSitio: { id: 1, nombre: 'Tipo Sitio 1' },
+  fechaInicial: new Date().toISOString(),
+  fechaFinal: new Date().toISOString(),
+  activo: true,
+};
 
-const BodegasView = () => {
-  const [bodegas, setBodegas] = useState<Bodega[]>([]);
+export default function SitiosPage() {
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [tiposSitio, setTiposSitio] = useState<TipoSitio[]>([]);
+  const [form, setForm] = useState<Sitio>(initialFormState);
+  const [editando, setEditando] = useState<boolean>(false);
+  const [idEditando, setIdEditando] = useState<number | null>(null);
 
   useEffect(() => {
-    cargarBodegas();
+    cargarSitios();
+    cargarTiposSitio();
   }, []);
 
-  const cargarBodegas = async () => {
+  const cargarSitios = async () => {
     try {
-      const data = await getBodegas();
-      setBodegas(data);
+      const data = await getSitios();
+      setSitios(data);
     } catch (error) {
-      console.error("Error cargando bodegas:", error);
+      console.error("❌ Error al cargar sitios:", error);
     }
+  };
+
+  const cargarTiposSitio = async () => {
+    // Lógica para cargar los tipos de sitio si es necesario
+    // Suponiendo que ya tienes una API configurada para esto, si no, podemos simularlo con datos estáticos
+    const tipos: TipoSitio[] = [
+      { id: 1, nombre: 'Tipo A' },
+      { id: 2, nombre: 'Tipo B' },
+    ];
+    setTiposSitio(tipos);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: name.includes("Id") ? Number(value) : value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editando && idEditando !== null) {
+        await updateSitio(idEditando, form);
+      } else {
+        await createSitio(form);
+      }
+      setForm(initialFormState);
+      setEditando(false);
+      setIdEditando(null);
+      cargarSitios();
+    } catch (error) {
+      console.error("❌ Error al guardar sitio:", error);
+    }
+  };
+
+  const handleEdit = (sitio: Sitio) => {
+    setForm(sitio);
+    setEditando(true);
+    setIdEditando(sitio.id || null);
   };
 
   const handleDelete = async (id: number) => {
-    const confirm = await Swal.fire({
-      title: "¿Estás seguro?",
-      text: "¡No podrás revertir esto!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (confirm.isConfirmed) {
+    if (confirm('¿Estás seguro de eliminar este sitio?')) {
       try {
-        await deleteBodega(id);
-        await cargarBodegas();
-        Swal.fire("¡Eliminado!", "La bodega ha sido eliminada.", "success");
+        await deleteSitio(id);
+        cargarSitios();
       } catch (error) {
-        console.error("Error eliminando bodega:", error);
-        Swal.fire("Error", "No se pudo eliminar la bodega.", "error");
-      }
-    }
-  };
-
-  const handleEdit = async (bodega: Bodega) => {
-    const { value: formValues } = await Swal.fire({
-      title: "Editar Bodega",
-      html:
-        `<input id="nombre" class="swal2-input" placeholder="Nombre" value="${bodega.nombre}">` +
-        `<input id="ubicacion" class="swal2-input" placeholder="Ubicación" value="${bodega.ubicacion}">`,
-      focusConfirm: false,
-      preConfirm: () => {
-        const nombre = (document.getElementById("nombre") as HTMLInputElement).value;
-        const ubicacion = (document.getElementById("ubicacion") as HTMLInputElement).value;
-
-        if (!nombre || !ubicacion) {
-          Swal.showValidationMessage("Por favor completa los campos.");
-          return;
-        }
-
-        return { nombre, ubicacion };
-      },
-    });
-
-    if (formValues) {
-      try {
-        await updateBodega(bodega.id, formValues);
-        await cargarBodegas();
-        Swal.fire("Actualizado", "La bodega ha sido actualizada.", "success");
-      } catch (error) {
-        console.error("Error actualizando bodega:", error);
-        Swal.fire("Error", "No se pudo actualizar la bodega.", "error");
-      }
-    }
-  };
-
-  const handleCreate = async () => {
-    const { value: formValues } = await Swal.fire({
-      title: "Crear Bodega",
-      html:
-        `<input id="nombre" class="swal2-input" placeholder="Nombre">` +
-        `<input id="ubicacion" class="swal2-input" placeholder="Ubicación">`,
-      focusConfirm: false,
-      preConfirm: () => {
-        const nombre = (document.getElementById("nombre") as HTMLInputElement).value;
-        const ubicacion = (document.getElementById("ubicacion") as HTMLInputElement).value;
-
-        if (!nombre || !ubicacion) {
-          Swal.showValidationMessage("Por favor completa los campos.");
-          return;
-        }
-
-        return { nombre, ubicacion };
-      },
-    });
-
-    if (formValues) {
-      try {
-        await createBodega(formValues);
-        await cargarBodegas();
-        Swal.fire("Creado", "Bodega creada exitosamente.", "success");
-      } catch (error) {
-        console.error("Error creando bodega:", error);
-        Swal.fire("Error", "No se pudo crear la bodega.", "error");
+        console.error("❌ Error al eliminar sitio:", error);
       }
     }
   };
 
   return (
-    <DefaultLayout>
-      <div className="bg-[#0f172a] min-h-screen p-8">
-        <Card className="bg-white rounded-2xl shadow-md p-6 mb-6 w-full">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-800">Gestión de Bodegas</h1>
-            <Button
-              onClick={handleCreate}
-              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg"
-            >
-              Crear Bodega
-            </Button>
-          </div>
-        </Card>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Gestión de Sitios</h1>
 
-        <Card className="bg-white rounded-2xl shadow-md p-6 w-full">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left text-gray-700">
-              <thead className="bg-slate-800 text-white">
-                <tr>
-                  <th className="px-6 py-3">Nombre</th>
-                  <th className="px-6 py-3">Ubicación</th>
-                  <th className="px-6 py-3">Fecha de Registro</th>
-                  <th className="px-6 py-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bodegas.map((bodega) => (
-                  <tr
-                    key={bodega.id}
-                    className="bg-white border-b hover:bg-blue-50 transition-colors"
-                  >
-                    <td className="px-6 py-4">{bodega.nombre}</td>
-                    <td className="px-6 py-4">{bodega.ubicacion}</td>
-                    <td className="px-6 py-4">
-                      {new Date(bodega.fecha_registro).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 flex gap-2">
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
-                        onClick={() => handleEdit(bodega)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
-                        onClick={() => handleDelete(bodega.id)}
-                      >
-                        Eliminar
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-    </DefaultLayout>
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
+        <input
+          type="text"
+          name="nombre"
+          placeholder="Nombre del sitio"
+          value={form.nombre}
+          onChange={handleChange}
+          required
+          className="input"
+        />
+        <input
+          type="text"
+          name="ubicacion"
+          placeholder="Ubicación"
+          value={form.ubicacion}
+          onChange={handleChange}
+          required
+          className="input"
+        />
+        <select
+          name="tipoSitioId"
+          value={form.tipoSitioId}
+          onChange={handleChange}
+          required
+          className="input"
+        >
+          {tiposSitio.map((tipo) => (
+            <option key={tipo.id} value={tipo.id}>
+              {tipo.nombre}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          {editando ? 'Actualizar Sitio' : 'Crear Sitio'}
+        </button>
+      </form>
+
+      <table className="w-full table-auto border-collapse">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border px-2 py-1">ID</th>
+            <th className="border px-2 py-1">Nombre</th>
+            <th className="border px-2 py-1">Ubicación</th>
+            <th className="border px-2 py-1">Tipo Sitio</th>
+            <th className="border px-2 py-1">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sitios.map((s) => (
+            <tr key={s.id}>
+              <td className="border px-2 py-1">{s.id}</td>
+              <td className="border px-2 py-1">{s.nombre}</td>
+              <td className="border px-2 py-1">{s.ubicacion}</td>
+              <td className="border px-2 py-1">{s.tipoSitio.nombre}</td>
+              <td className="border px-2 py-1">
+                <button
+                  onClick={() => handleEdit(s)}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => handleDelete(s.id)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                >
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
-};
-
-export default BodegasView;
+}

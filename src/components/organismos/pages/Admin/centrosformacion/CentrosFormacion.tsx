@@ -1,190 +1,172 @@
-import { useEffect, useState } from 'react';
-import Swal from 'sweetalert2';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import DefaultLayout from '@/layouts/default';
-import { fetchCentros, createCentro, updateCentro, deleteCentro, CentroFormacion } from '@/Api/centrosformacionTable';
+import React, { useEffect, useState } from 'react';
+import {
+  getCentrosFormacion,
+  createCentroFormacion,
+  updateCentroFormacion,
+  deleteCentroFormacion,
+} from '@/Api/centrosformacionTable';
+import { CentroFormacion } from '@/types/types/typesCentroFormacion';
 
-const CentrosFormaciones = () => {
-  const [centros, setCentros] = useState<CentroFormacion[]>([]);
-  const [openModal, setOpenModal] = useState(false);
-  const [editingCentro, setEditingCentro] = useState<CentroFormacion | null>(null);
-  const [formData, setFormData] = useState({ nombre: '', ubicacion: '', telefono: '' });
+const initialFormState: CentroFormacion = {
+  nombre: '',
+  ubicacion: '',
+  telefono: '',
+  email: '',
+  fechaInicial: '',
+  fechaFinal: '',
+};
+
+export default function CentroFormacionPage() {
+  const [centrosFormacion, setCentrosFormacion] = useState<CentroFormacion[]>([]);
+  const [form, setForm] = useState<CentroFormacion>(initialFormState);
+  const [editando, setEditando] = useState<boolean>(false);
+  const [idEditando, setIdEditando] = useState<number | null>(null);
 
   useEffect(() => {
-    cargarCentros();
+    cargarCentrosFormacion();
   }, []);
 
-  const cargarCentros = async () => {
+  const cargarCentrosFormacion = async () => {
+    const data = await getCentrosFormacion();
+    setCentrosFormacion(data);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const data = await fetchCentros();
-      setCentros(data);
+      if (editando && idEditando !== null) {
+        await updateCentroFormacion(idEditando, form);
+      } else {
+        await createCentroFormacion(form);
+      }
+      setForm(initialFormState);
+      setEditando(false);
+      setIdEditando(null);
+      cargarCentrosFormacion();
     } catch (error) {
-      console.error("Error cargando centros:", error);
+      console.error('❌ Error al guardar centro de formación:', error);
     }
   };
 
-  const openCreateModal = () => {
-    setEditingCentro(null);
-    setFormData({ nombre: '', ubicacion: '', telefono: '' });
-    setOpenModal(true);
-  };
-
-  const openEditModal = (centro: CentroFormacion) => {
-    setEditingCentro(centro);
-    setFormData({
-      nombre: centro.nombre,
-      ubicacion: centro.ubicacion,
-      telefono: centro.telefono ?? ''
-    });
-    setOpenModal(true);
+  const handleEdit = (centro: CentroFormacion) => {
+    setForm(centro);
+    setEditando(true);
+    setIdEditando(centro.id || null);
   };
 
   const handleDelete = async (id: number) => {
-    const result = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: "Esta acción no se puede deshacer.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, eliminarlo'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await deleteCentro(id);
-        await cargarCentros();
-        Swal.fire('¡Eliminado!', 'El centro ha sido eliminado.', 'success');
-      } catch (error) {
-        console.error("Error eliminando centro:", error);
-        Swal.fire('Error', 'Hubo un error al eliminar el centro.', 'error');
-      }
-    }
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (editingCentro) {
-        await updateCentro(editingCentro.id, formData);
-        Swal.fire('Actualizado', 'Centro actualizado correctamente.', 'success');
-      } else {
-        await createCentro(formData);
-        Swal.fire('Creado', 'Centro creado correctamente.', 'success');
-      }
-      await cargarCentros();
-      setOpenModal(false);
-    } catch (error) {
-      console.error("Error guardando centro:", error);
-      Swal.fire('Error', 'Hubo un error al guardar el centro.', 'error');
+    if (confirm('¿Estás seguro de eliminar este centro de formación?')) {
+      await deleteCentroFormacion(id);
+      cargarCentrosFormacion();
     }
   };
 
   return (
-    <DefaultLayout>
-      <div className="p-8">
-        <Card className="max-w-7xl mx-auto shadow-xl rounded-2xl p-6 border border-gray-200 bg-white">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Centros de Formación</h1>
-            <Button onClick={openCreateModal} className="bg-black hover:bg-gray-800 text-white" size="lg">
-              Nuevo Centro
-            </Button>
-          </div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Gestión de Centros de Formación</h1>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-center table-auto border border-gray-200 rounded-xl overflow-hidden">
-              <thead className="bg-gray-900 text-white text-base">
-                <tr>
-                  <th className="px-4 py-3">Nombre</th>
-                  <th className="px-4 py-3">Ubicación</th>
-                  <th className="px-4 py-3">Teléfono</th>
-                  <th className="px-4 py-3">Fecha Registro</th>
-                  <th className="px-4 py-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white text-gray-800">
-                {centros.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-500 text-lg">
-                      No hay centros registrados.
-                    </td>
-                  </tr>
-                ) : (
-                  centros.map((centro) => (
-                    <tr key={centro.id} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-4">{centro.nombre}</td>
-                      <td className="px-4 py-4">{centro.ubicacion}</td>
-                      <td className="px-4 py-4">{centro.telefono || 'N/A'}</td>
-                      <td className="px-4 py-4">{new Date(centro.fecha_registro).toLocaleDateString()}</td>
-                      <td className="px-4 py-4 flex justify-center gap-3">
-                        <Button
-                          onClick={() => openEditModal(centro)}
-                          size="sm"
-                          className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg px-4 py-1"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(centro.id)}
-                          size="sm"
-                          className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-1"
-                        >
-                          Eliminar
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
+      >
+        <input
+          type="text"
+          name="nombre"
+          placeholder="Nombre"
+          value={form.nombre}
+          onChange={handleChange}
+          required
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="text"
+          name="ubicacion"
+          placeholder="Ubicación"
+          value={form.ubicacion}
+          onChange={handleChange}
+          required
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="text"
+          name="telefono"
+          placeholder="Teléfono"
+          value={form.telefono}
+          onChange={handleChange}
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleChange}
+          required
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="date"
+          name="fechaInicial"
+          value={form.fechaInicial || ''}
+          onChange={handleChange}
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="date"
+          name="fechaFinal"
+          value={form.fechaFinal || ''}
+          onChange={handleChange}
+          className="border rounded px-2 py-1"
+        />
+        <button
+          type="submit"
+          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          {editando ? 'Actualizar Centro' : 'Crear Centro'}
+        </button>
+      </form>
 
-        {/* Modal */}
-        <Dialog open={openModal} onOpenChange={setOpenModal}>
-          <DialogContent className="sm:max-w-md rounded-xl shadow-lg">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">
-                {editingCentro ? "Editar Centro" : "Nuevo Centro"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="flex flex-col gap-4 py-4">
-              <Input
-                placeholder="Nombre"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              />
-              <Input
-                placeholder="Ubicación"
-                value={formData.ubicacion}
-                onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-              />
-              <Input
-                placeholder="Teléfono"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button onClick={() => setOpenModal(false)} variant="outline">
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {editingCentro ? "Actualizar" : "Crear"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </DefaultLayout>
+      <table className="w-full table-auto border-collapse">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border px-2 py-1">ID</th>
+            <th className="border px-2 py-1">Nombre</th>
+            <th className="border px-2 py-1">Ubicación</th>
+            <th className="border px-2 py-1">Teléfono</th>
+            <th className="border px-2 py-1">Email</th>
+            <th className="border px-2 py-1">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {centrosFormacion.map((centro) => (
+            <tr key={centro.id}>
+              <td className="border px-2 py-1">{centro.id}</td>
+              <td className="border px-2 py-1">{centro.nombre}</td>
+              <td className="border px-2 py-1">{centro.ubicacion}</td>
+              <td className="border px-2 py-1">{centro.telefono}</td>
+              <td className="border px-2 py-1">{centro.email}</td>
+              <td className="border px-2 py-1">
+                <button
+                  onClick={() => handleEdit(centro)}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => handleDelete(centro.id!)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                >
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
-};
-
-export default CentrosFormaciones;
+}
