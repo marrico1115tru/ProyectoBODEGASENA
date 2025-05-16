@@ -26,18 +26,26 @@ export default function CentroFormacionPage() {
 
   const cargarCentros = async () => {
     const data = await getCentrosFormacion();
+    console.log("[TEST] cargarCentros:", data);
     setCentros(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+  
+    let newValue = value;
+  
+    if (name === "fechaInicial" || name === "fechaFinal") {
+      const date = new Date(value);
+      newValue = date.toISOString(); // formato ISO: "2025-01-01T00:00:00.000Z"
+    }
+  
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: newValue,
     }));
   };
+  
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -119,14 +127,14 @@ export default function CentroFormacionPage() {
         <input
           type="datetime-local"
           name="fechaInicial"
-          value={form.fechaInicial.slice(0, 16)}
+          value={form.fechaInicial ? form.fechaInicial.slice(0, 16) : ''}
           onChange={handleChange}
           required
         />
         <input
           type="datetime-local"
           name="fechaFinal"
-          value={form.fechaFinal.slice(0, 16)}
+          value={form.fechaFinal ? form.fechaFinal.slice(0, 16) : ''}
           onChange={handleChange}
           required
         />
