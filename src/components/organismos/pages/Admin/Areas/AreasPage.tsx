@@ -31,9 +31,15 @@ export default function AreasPage() {
     setAreas(data);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+  
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value,
+    }));
   };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
