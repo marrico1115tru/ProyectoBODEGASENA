@@ -1,8 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import IndexPage from "@/components/organismos/pages/index";
-import Sidebar from "./components/organismos/Sidebar/Sidebar";
 import Login from "./components/organismos/pages/login/login";
 import Inicio from "./components/organismos/pages/Inicio/inicio";
 import Agropecuario from "./components/organismos/pages/Inicio/agropecuario";
@@ -35,54 +34,50 @@ import AccesosPage from "./components/organismos/pages/Admin/Accesos/AccesosPage
 import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/SolicitudesPage.tsx";
 import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
 import SitiosPage from "./components/organismos/pages/Admin/Sitios/SitiosPage.tsx";
+
 const queryClient = new QueryClient();
 
 function App() {
-  const location = useLocation();
-  const isLogin = location.pathname === "/login" || location.pathname === "/";
 
   return (
-    <div className="flex">
-      <QueryClientProvider client={queryClient}>
-        {!isLogin && <Sidebar />}
-        <Routes>
-          <Route path="/inicio" element={<Inicio />} />
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/home" element={<IndexPage />} />
-          <Route path="/agropecuario" element={<Agropecuario />} />
-          <Route path="/ambiental" element={<AmbientalView />} />
-          <Route path="/gastronomia" element={<Gastronomia />} />
-          <Route path="/vias" element={<ViasView />} />
-          <Route path="/tic" element={<TicView />} />
-          <Route path="/escuelacafe" element={<EscuelaCafeView />} />
-          <Route path="/usuarios" element={<UsersView />} />
-          <Route path="/productos/listar" element={<ProductosTable />} />
-          <Route path="/Bodega" element={<Bodega />} />
-          <Route path="/CentrosFormaciones" element={<CentrosFormaciones />} />
-          <Route path="/MovimientoInventarioPage" element={<MovimientoInventarioPage />} />
-          <Route path="/VistaProductos" element={<VistaProductos />} />
-          <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios />} />
-          <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios />} />
-          <Route path="/report/productosRepo/ProductosPorArea" element={<ProductosPorArea />} />
-          <Route path="/report/productosRep/ProductosVencidos" element={<ProductosVencidos />} />
-          <Route path="/report/productorRep/ProductosVencimiento" element={<ProductosVencimiento />} />
-          <Route path="/report/UsuariosRep/UsuariosHistoria" element={<UsuariosHistoria />} />
-          <Route path="/report/UsuariosRep/UsuariosPorRol" element={<UsuariosPorRol />} />
-          <Route path="/MunicipioPage" element={<MunicipioPage />} />
-          <Route path="/TituladosPage"element={<TituladosPage />}/>
-          <Route path="/AreasPage"element={<AreasPage />}/>
-           <Route path="/SedesPage"element={<SedesPage />}/>
-           <Route path="/RolesPage"element={<RolesPage />}/>
-           <Route path="/OpcionPage"element={<OpcionPage />}/>
-           <Route path="/FichaFormacionPage" element={<FichaFormacionPage/>}/>
-             <Route path="/AccesosPage" element={<AccesosPage/>}/>
-              <Route path="/SolicitudesPage" element={<SolicitudesPage/>}/>
-              <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage/>}/>
-              <Route path="/SitiosPage" element={<SitiosPage/>}/>
-        </Routes>
-      </QueryClientProvider>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <Routes>
+        <Route path="/inicio" element={<Inicio />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/home" element={<IndexPage />} />
+        <Route path="/agropecuario" element={<Agropecuario />} />
+        <Route path="/ambiental" element={<AmbientalView />} />
+        <Route path="/gastronomia" element={<Gastronomia />} />
+        <Route path="/vias" element={<ViasView />} />
+        <Route path="/tic" element={<TicView />} />
+        <Route path="/escuelacafe" element={<EscuelaCafeView />} />
+        <Route path="/usuarios" element={<UsersView />} />
+        <Route path="/productos/listar" element={<ProductosTable />} />
+        <Route path="/Bodega" element={<Bodega />} />
+        <Route path="/CentrosFormaciones" element={<CentrosFormaciones />} />
+        <Route path="/MovimientoInventarioPage" element={<MovimientoInventarioPage />} />
+        <Route path="/VistaProductos" element={<VistaProductos />} />
+        <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios />} />
+        <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios />} />
+        <Route path="/report/productosRepo/ProductosPorArea" element={<ProductosPorArea />} />
+        <Route path="/report/productosRep/ProductosVencidos" element={<ProductosVencidos />} />
+        <Route path="/report/productorRep/ProductosVencimiento" element={<ProductosVencimiento />} />
+        <Route path="/report/UsuariosRep/UsuariosHistoria" element={<UsuariosHistoria />} />
+        <Route path="/report/UsuariosRep/UsuariosPorRol" element={<UsuariosPorRol />} />
+        <Route path="/MunicipioPage" element={<MunicipioPage />} />
+        <Route path="/TituladosPage" element={<TituladosPage />} />
+        <Route path="/AreasPage" element={<AreasPage />} />
+        <Route path="/SedesPage" element={<SedesPage />} />
+        <Route path="/RolesPage" element={<RolesPage />} />
+        <Route path="/OpcionPage" element={<OpcionPage />} />
+        <Route path="/FichaFormacionPage" element={<FichaFormacionPage />} />
+        <Route path="/AccesosPage" element={<AccesosPage />} />
+        <Route path="/SolicitudesPage" element={<SolicitudesPage />} />
+        <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage />} />
+        <Route path="/SitiosPage" element={<SitiosPage />} />
+      </Routes>
+    </QueryClientProvider>
   );
 }
 

@@ -6,6 +6,7 @@ import {
   updateSitio,
   deleteSitio,
 } from '@/Api/SitioService';
+import DefaultLayout from '@/layouts/default'; // Asegúrate de tener este layout correctamente creado
 
 const initialForm: Sitio = {
   nombre: '',
@@ -91,119 +92,130 @@ export default function SitiosPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Sitios</h1>
+    <DefaultLayout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-blue-800">Gestión de Sitios</h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
-      >
-        <input
-          type="text"
-          name="nombre"
-          placeholder="Nombre del Sitio"
-          value={form.nombre}
-          onChange={handleChange}
-          required
-          className="input"
-        />
-        <input
-          type="text"
-          name="ubicacion"
-          placeholder="Ubicación"
-          value={form.ubicacion}
-          onChange={handleChange}
-          required
-          className="input"
-        />
-        <input
-          type="number"
-          name="tipoSitioId"
-          placeholder="ID Tipo de Sitio"
-          value={form.tipoSitioId || ''}
-          onChange={handleChange}
-          required
-          className="input"
-          min={1}
-        />
-        <input
-          type="date"
-          name="fechaInicial"
-          value={form.fechaInicial.split('T')[0] || ''}
-          onChange={handleChange}
-          className="input"
-          required
-        />
-        <input
-          type="date"
-          name="fechaFinal"
-          value={form.fechaFinal.split('T')[0] || ''}
-          onChange={handleChange}
-          className="input"
-          required
-        />
-        <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            name="activo"
-            checked={form.activo}
-            onChange={handleChange}
-            className="checkbox"
-          />
-          <span>Activo</span>
-        </label>
-
-        <button
-          type="submit"
-          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-white p-6 rounded-2xl shadow"
         >
-          {editando ? 'Actualizar Sitio' : 'Crear Sitio'}
-        </button>
-      </form>
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre del Sitio"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+          <input
+            type="text"
+            name="ubicacion"
+            placeholder="Ubicación"
+            value={form.ubicacion}
+            onChange={handleChange}
+            required
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+          <input
+            type="number"
+            name="tipoSitioId"
+            placeholder="ID Tipo de Sitio"
+            value={form.tipoSitioId || ''}
+            onChange={handleChange}
+            required
+            min={1}
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+          <input
+            type="date"
+            name="fechaInicial"
+            value={form.fechaInicial.split('T')[0] || ''}
+            onChange={handleChange}
+            required
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+          <input
+            type="date"
+            name="fechaFinal"
+            value={form.fechaFinal.split('T')[0] || ''}
+            onChange={handleChange}
+            required
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+          <label className="flex items-center space-x-2 col-span-1 md:col-span-2">
+            <input
+              type="checkbox"
+              name="activo"
+              checked={form.activo}
+              onChange={handleChange}
+              className="form-checkbox h-5 w-5 text-blue-600"
+            />
+            <span className="text-sm text-gray-700">Activo</span>
+          </label>
 
-      <table className="w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Nombre</th>
-            <th className="border px-2 py-1">Ubicación</th>
-            <th className="border px-2 py-1">Tipo Sitio ID</th>
-            <th className="border px-2 py-1">Fecha Inicial</th>
-            <th className="border px-2 py-1">Fecha Final</th>
-            <th className="border px-2 py-1">Activo</th>
-            <th className="border px-2 py-1">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sitios.map((sitio) => (
-            <tr key={sitio.id}>
-              <td className="border px-2 py-1">{sitio.id}</td>
-              <td className="border px-2 py-1">{sitio.nombre}</td>
-              <td className="border px-2 py-1">{sitio.ubicacion}</td>
-              <td className="border px-2 py-1">{sitio.tipoSitioId}</td>
-              <td className="border px-2 py-1">
-                {sitio.fechaInicial.split('T')[0]}
-              </td>
-              <td className="border px-2 py-1">{sitio.fechaFinal.split('T')[0]}</td>
-              <td className="border px-2 py-1">{sitio.activo ? 'Sí' : 'No'}</td>
-              <td className="border px-2 py-1">
-                <button
-                  onClick={() => handleEdit(sitio)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => sitio.id && handleDelete(sitio.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          <button
+            type="submit"
+            className="md:col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          >
+            {editando ? 'Actualizar Sitio' : 'Crear Sitio'}
+          </button>
+        </form>
+
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <table className="w-full table-auto border-collapse text-sm">
+            <thead className="bg-blue-100 text-blue-800">
+              <tr>
+                <th className="border px-2 py-2">ID</th>
+                <th className="border px-2 py-2">Nombre</th>
+                <th className="border px-2 py-2">Ubicación</th>
+                <th className="border px-2 py-2">Tipo Sitio ID</th>
+                <th className="border px-2 py-2">Fecha Inicial</th>
+                <th className="border px-2 py-2">Fecha Final</th>
+                <th className="border px-2 py-2">Activo</th>
+                <th className="border px-2 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sitios.map((sitio) => (
+                <tr key={sitio.id} className="hover:bg-slate-50">
+                  <td className="border px-2 py-1">{sitio.id}</td>
+                  <td className="border px-2 py-1">{sitio.nombre}</td>
+                  <td className="border px-2 py-1">{sitio.ubicacion}</td>
+                  <td className="border px-2 py-1">{sitio.tipoSitioId}</td>
+                  <td className="border px-2 py-1">
+                    {sitio.fechaInicial.split('T')[0]}
+                  </td>
+                  <td className="border px-2 py-1">{sitio.fechaFinal.split('T')[0]}</td>
+                  <td className="border px-2 py-1">{sitio.activo ? 'Sí' : 'No'}</td>
+                  <td className="border px-2 py-1">
+                    <button
+                      onClick={() => handleEdit(sitio)}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => sitio.id && handleDelete(sitio.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {sitios.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center py-4 text-gray-500">
+                    No hay sitios registrados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </DefaultLayout>
   );
 }

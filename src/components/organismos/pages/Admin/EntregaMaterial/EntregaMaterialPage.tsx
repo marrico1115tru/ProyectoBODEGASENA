@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import DefaultLayout from '@/layouts/default';
 
 interface EntregaMaterial {
   id: number;
   solicitudId: number;
   usuarioResponsableId: number;
-  fechaEntrega: string; // ISO string
+  fechaEntrega: string;
   observaciones?: string | null;
   fechaInicial?: string;
   fechaFinal?: string;
@@ -23,7 +24,6 @@ export default function EntregaMaterialPage() {
   const [entregas, setEntregas] = useState<EntregaMaterial[]>([]);
   const [form, setForm] = useState(initialForm);
   const [editando, setEditando] = useState(false);
-  // Aquí el cambio clave: permito null, no undefined
   const [idEditando, setIdEditando] = useState<number | null>(null);
 
   useEffect(() => {
@@ -45,10 +45,8 @@ export default function EntregaMaterialPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-
     setForm((prev) => ({
       ...prev,
-      // Si es número, parsea, sino asigna valor directo
       [name]:
         name === 'solicitudId' || name === 'usuarioResponsableId'
           ? Number(value)
@@ -58,47 +56,26 @@ export default function EntregaMaterialPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validar campos mínimos
-    if (
-      !form.solicitudId ||
-      !form.usuarioResponsableId ||
-      !form.fechaEntrega
-    ) {
+    if (!form.solicitudId || !form.usuarioResponsableId || !form.fechaEntrega) {
       alert('Por favor completa todos los campos obligatorios');
       return;
     }
 
     try {
       if (editando && idEditando !== null) {
-        // Actualizar
-        const res = await fetch(`${API_URL}/${idEditando}`, {
+        await fetch(`${API_URL}/${idEditando}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            solicitudId: form.solicitudId,
-            usuarioResponsableId: form.usuarioResponsableId,
-            fechaEntrega: form.fechaEntrega,
-            observaciones: form.observaciones,
-          }),
+          body: JSON.stringify(form),
         });
-        if (!res.ok) throw new Error('Error al actualizar entrega');
       } else {
-        // Crear
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            solicitudId: form.solicitudId,
-            usuarioResponsableId: form.usuarioResponsableId,
-            fechaEntrega: form.fechaEntrega,
-            observaciones: form.observaciones,
-          }),
+          body: JSON.stringify(form),
         });
-        if (!res.ok) throw new Error('Error al crear entrega');
       }
 
-      // Limpiar formulario y estado edición
       setForm(initialForm);
       setEditando(false);
       setIdEditando(null);
@@ -113,12 +90,10 @@ export default function EntregaMaterialPage() {
     setForm({
       solicitudId: entrega.solicitudId,
       usuarioResponsableId: entrega.usuarioResponsableId,
-      fechaEntrega: entrega.fechaEntrega.split('T')[0], // fecha solo yyyy-mm-dd
+      fechaEntrega: entrega.fechaEntrega.split('T')[0],
       observaciones: entrega.observaciones ?? '',
     });
-
     setEditando(true);
-    // Cambio clave para evitar undefined:
     setIdEditando(entrega.id ?? null);
   };
 
@@ -126,10 +101,7 @@ export default function EntregaMaterialPage() {
     if (!window.confirm('¿Seguro que quieres eliminar esta entrega?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Error al eliminar entrega');
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
       await cargarEntregas();
     } catch (error) {
       console.error(error);
@@ -138,104 +110,106 @@ export default function EntregaMaterialPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Entregas de Material</h1>
+    <DefaultLayout>
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Gestión de Entregas de Material</h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
-      >
-        <input
-          type="number"
-          name="solicitudId"
-          placeholder="ID Solicitud"
-          value={form.solicitudId || ''}
-          onChange={handleChange}
-          required
-          min={1}
-          className="border rounded px-2 py-1"
-        />
-        <input
-          type="number"
-          name="usuarioResponsableId"
-          placeholder="ID Usuario Responsable"
-          value={form.usuarioResponsableId || ''}
-          onChange={handleChange}
-          required
-          min={1}
-          className="border rounded px-2 py-1"
-        />
-        <input
-          type="date"
-          name="fechaEntrega"
-          value={form.fechaEntrega || ''}
-          onChange={handleChange}
-          required
-          className="border rounded px-2 py-1"
-        />
-        <textarea
-          name="observaciones"
-          placeholder="Observaciones"
-          value={form.observaciones || ''}
-          onChange={handleChange}
-          className="border rounded px-2 py-1 col-span-2"
-          rows={3}
-        />
-        <button
-          type="submit"
-          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
         >
-          {editando ? 'Actualizar Entrega' : 'Crear Entrega'}
-        </button>
-      </form>
+          <input
+            type="number"
+            name="solicitudId"
+            placeholder="ID Solicitud"
+            value={form.solicitudId || ''}
+            onChange={handleChange}
+            required
+            min={1}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            type="number"
+            name="usuarioResponsableId"
+            placeholder="ID Usuario Responsable"
+            value={form.usuarioResponsableId || ''}
+            onChange={handleChange}
+            required
+            min={1}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            type="date"
+            name="fechaEntrega"
+            value={form.fechaEntrega || ''}
+            onChange={handleChange}
+            required
+            className="border rounded px-2 py-1"
+          />
+          <textarea
+            name="observaciones"
+            placeholder="Observaciones"
+            value={form.observaciones || ''}
+            onChange={handleChange}
+            className="border rounded px-2 py-1 col-span-2"
+            rows={3}
+          />
+          <button
+            type="submit"
+            className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          >
+            {editando ? 'Actualizar Entrega' : 'Crear Entrega'}
+          </button>
+        </form>
 
-      <table className="w-full border-collapse table-auto">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Solicitud ID</th>
-            <th className="border px-2 py-1">Usuario Responsable ID</th>
-            <th className="border px-2 py-1">Fecha Entrega</th>
-            <th className="border px-2 py-1">Observaciones</th>
-            <th className="border px-2 py-1">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entregas.map((entrega) => (
-            <tr key={entrega.id}>
-              <td className="border px-2 py-1">{entrega.id}</td>
-              <td className="border px-2 py-1">{entrega.solicitudId}</td>
-              <td className="border px-2 py-1">{entrega.usuarioResponsableId}</td>
-              <td className="border px-2 py-1">
-                {entrega.fechaEntrega.split('T')[0]}
-              </td>
-              <td className="border px-2 py-1">{entrega.observaciones || '-'}</td>
-              <td className="border px-2 py-1 space-x-2">
-                <button
-                  onClick={() => handleEdit(entrega)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(entrega.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                >
-                  Eliminar
-                </button>
-              </td>
+        <table className="w-full border-collapse table-auto">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border px-2 py-1">ID</th>
+              <th className="border px-2 py-1">Solicitud ID</th>
+              <th className="border px-2 py-1">Usuario Responsable ID</th>
+              <th className="border px-2 py-1">Fecha Entrega</th>
+              <th className="border px-2 py-1">Observaciones</th>
+              <th className="border px-2 py-1">Acciones</th>
             </tr>
-          ))}
+          </thead>
+          <tbody>
+            {entregas.map((entrega) => (
+              <tr key={entrega.id}>
+                <td className="border px-2 py-1">{entrega.id}</td>
+                <td className="border px-2 py-1">{entrega.solicitudId}</td>
+                <td className="border px-2 py-1">{entrega.usuarioResponsableId}</td>
+                <td className="border px-2 py-1">
+                  {entrega.fechaEntrega.split('T')[0]}
+                </td>
+                <td className="border px-2 py-1">{entrega.observaciones || '-'}</td>
+                <td className="border px-2 py-1 space-x-2">
+                  <button
+                    onClick={() => handleEdit(entrega)}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(entrega.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
 
-          {entregas.length === 0 && (
-            <tr>
-              <td colSpan={6} className="text-center py-4">
-                No hay entregas registradas.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+            {entregas.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-4">
+                  No hay entregas registradas.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </DefaultLayout>
   );
 }

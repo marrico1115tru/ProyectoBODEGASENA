@@ -7,6 +7,7 @@ import {
   updateArea,
   deleteArea
 } from '@/Api/AreasService';
+import DefaultLayout from '@/layouts/default'; 
 
 const initialFormState: Area = {
   nombre: '',
@@ -43,7 +44,6 @@ export default function AreasPage() {
     e.preventDefault();
 
     try {
-      // Validar campos obligatorios básicos
       if (!form.nombre || form.centroFormacionId === 0 || form.sitioId === 0) {
         alert('Debe completar nombre, centroFormacionId y sitioId');
         return;
@@ -84,100 +84,102 @@ export default function AreasPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Áreas</h1>
+    <DefaultLayout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Gestión de Áreas</h1>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
-        <input
-          type="text"
-          name="nombre"
-          placeholder="Nombre"
-          value={form.nombre}
-          onChange={handleChange}
-          required
-          className="input"
-        />
-        <input
-          type="number"
-          name="centroFormacionId"
-          placeholder="ID Centro Formación"
-          value={form.centroFormacionId}
-          onChange={handleChange}
-          required
-          className="input"
-          min={1}
-        />
-        <input
-          type="number"
-          name="sitioId"
-          placeholder="ID Sitio"
-          value={form.sitioId}
-          onChange={handleChange}
-          required
-          className="input"
-          min={1}
-        />
-        <input
-          type="date"
-          name="fechaInicial"
-          value={form.fechaInicial || ''}
-          onChange={handleChange}
-          className="input"
-        />
-        <input
-          type="date"
-          name="fechaFinal"
-          value={form.fechaFinal || ''}
-          onChange={handleChange}
-          className="input"
-        />
-        <button
-          type="submit"
-          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          {editando ? 'Actualizar Área' : 'Crear Área'}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+            className="input"
+          />
+          <input
+            type="number"
+            name="centroFormacionId"
+            placeholder="ID Centro Formación"
+            value={form.centroFormacionId}
+            onChange={handleChange}
+            required
+            className="input"
+            min={1}
+          />
+          <input
+            type="number"
+            name="sitioId"
+            placeholder="ID Sitio"
+            value={form.sitioId}
+            onChange={handleChange}
+            required
+            className="input"
+            min={1}
+          />
+          <input
+            type="date"
+            name="fechaInicial"
+            value={form.fechaInicial || ''}
+            onChange={handleChange}
+            className="input"
+          />
+          <input
+            type="date"
+            name="fechaFinal"
+            value={form.fechaFinal || ''}
+            onChange={handleChange}
+            className="input"
+          />
+          <button
+            type="submit"
+            className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          >
+            {editando ? 'Actualizar Área' : 'Crear Área'}
+          </button>
+        </form>
 
-      <table className="w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Nombre</th>
-            <th className="border px-2 py-1">Centro Formación ID</th>
-            <th className="border px-2 py-1">Sitio ID</th>
-            <th className="border px-2 py-1">Fecha Inicial</th>
-            <th className="border px-2 py-1">Fecha Final</th>
-            <th className="border px-2 py-1">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {areas.map((area) => (
-            <tr key={area.id}>
-              <td className="border px-2 py-1">{area.id}</td>
-              <td className="border px-2 py-1">{area.nombre}</td>
-              <td className="border px-2 py-1">{area.centroFormacionId}</td>
-              <td className="border px-2 py-1">{area.sitioId}</td>
-              <td className="border px-2 py-1">{area.fechaInicial?.slice(0, 10)}</td>
-              <td className="border px-2 py-1">{area.fechaFinal?.slice(0, 10)}</td>
-              <td className="border px-2 py-1">
-                <button
-                  onClick={() => handleEdit(area)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(area.id!)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
-                >
-                  Eliminar
-                </button>
-              </td>
+        <table className="w-full table-auto border-collapse">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border px-2 py-1">ID</th>
+              <th className="border px-2 py-1">Nombre</th>
+              <th className="border px-2 py-1">Centro Formación ID</th>
+              <th className="border px-2 py-1">Sitio ID</th>
+              <th className="border px-2 py-1">Fecha Inicial</th>
+              <th className="border px-2 py-1">Fecha Final</th>
+              <th className="border px-2 py-1">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {areas.map((area) => (
+              <tr key={area.id}>
+                <td className="border px-2 py-1">{area.id}</td>
+                <td className="border px-2 py-1">{area.nombre}</td>
+                <td className="border px-2 py-1">{area.centroFormacionId}</td>
+                <td className="border px-2 py-1">{area.sitioId}</td>
+                <td className="border px-2 py-1">{area.fechaInicial?.slice(0, 10)}</td>
+                <td className="border px-2 py-1">{area.fechaFinal?.slice(0, 10)}</td>
+                <td className="border px-2 py-1">
+                  <button
+                    onClick={() => handleEdit(area)}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(area.id!)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </DefaultLayout>
   );
 }

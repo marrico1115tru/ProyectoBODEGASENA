@@ -26,20 +26,27 @@ const SidebarButton = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive = activePaths.includes(location.pathname);
+  // Detecta si la ruta actual empieza con alguna de las rutas activas
+  const isActive = activePaths.some((path) => location.pathname.startsWith(path));
 
   const handleClick = () => {
-    if (to) navigate(to);
-    if (onClick) onClick();
+    if (to) {
+      navigate(to);
+    }
+    if (onClick) {
+      onClick();
+    }
   };
 
   return (
     <Button
       variant="ghost"
       onClick={handleClick}
-      className={`flex items-center justify-between w-full gap-2 text-left hover:bg-slate-700 ${
+      className={`flex items-center justify-between w-full gap-2 text-left hover:bg-slate-700 transition-colors duration-200 ${
         isActive ? "text-blue-400" : "text-slate-300"
       } ${className}`}
+      aria-current={isActive ? "page" : undefined}
+      type="button"
     >
       <div className="flex items-center gap-2">
         {icon}
