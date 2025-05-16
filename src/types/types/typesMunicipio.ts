@@ -1,8 +1,9 @@
+// src/types/municipio.ts
 export interface Municipio {
-  id?: number;
+  id: number;
   nombre: string;
   departamento: string;
   centroFormacionId: number;
-  fechaInicial: string;
-  fechaFinal: string;
+  fechaInicial: string;  // ISO string
+  fechaFinal: string;    // ISO string
 }

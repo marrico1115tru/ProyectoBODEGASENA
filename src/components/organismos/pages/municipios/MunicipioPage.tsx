@@ -1,109 +1,219 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/MunicipioPage.tsx
+import React, { useEffect, useState } from "react";
+import { Municipio } from "@/types/types/typesMunicipio";
 import {
   getMunicipios,
   createMunicipio,
   updateMunicipio,
-  deleteMunicipio
-} from '@/Api/MunicipiosForm';
-import { Municipio } from '@/types/types/typesMunicipio';
-
-const initialFormState: Municipio = {
-  nombre: '',
-  departamento: '',
-  centroFormacionId: 1,
-  fechaInicial: '',
-  fechaFinal: ''
-};
+  deleteMunicipio,
+} from "@/Api/MunicipiosForm";
 
 export default function MunicipioPage() {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
-  const [form, setForm] = useState<Municipio>(initialFormState);
-  const [editando, setEditando] = useState(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [form, setForm] = useState<Omit<Municipio, "id">>({
+    nombre: "",
+    departamento: "",
+    centroFormacionId: 0,
+    fechaInicial: "",
+    fechaFinal: "",
+  });
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
     cargarMunicipios();
   }, []);
 
   const cargarMunicipios = async () => {
-    const data = await getMunicipios();
-    setMunicipios(data);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    setCargando(true);
     try {
-      if (editando && idEditando !== null) {
-        await updateMunicipio(idEditando, form);
-      } else {
-        await createMunicipio(form);
-      }
-      setForm(initialFormState);
-      setEditando(false);
-      setIdEditando(null);
-      cargarMunicipios();
+      const data = await getMunicipios();
+      setMunicipios(data);
     } catch (error) {
-      console.error("❌ Error al guardar municipio:", error);
+      alert("Error cargando municipios");
+    } finally {
+      setCargando(false);
     }
   };
 
-  const handleEdit = (municipio: Municipio) => {
-    setForm(municipio);
-    setEditando(true);
-    setIdEditando(municipio.id || null);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "centroFormacionId" ? Number(value) : value,
+    }));
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este municipio?')) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!form.nombre || !form.departamento || !form.fechaInicial || !form.fechaFinal || !form.centroFormacionId) {
+      alert("Completa todos los campos");
+      return;
+    }
+
+    try {
+      if (editandoId !== null) {
+        // Editar municipio
+        const municipioActualizado = await updateMunicipio(editandoId, form);
+        setMunicipios((prev) =>
+          prev.map((m) => (m.id === editandoId ? municipioActualizado : m))
+        );
+        setEditandoId(null);
+      } else {
+        // Crear municipio
+        const nuevoMunicipio = await createMunicipio(form);
+        setMunicipios((prev) => [...prev, nuevoMunicipio]);
+      }
+      // Resetear formulario
+      setForm({
+        nombre: "",
+        departamento: "",
+        centroFormacionId: 0,
+        fechaInicial: "",
+        fechaFinal: "",
+      });
+    } catch (error) {
+      alert("Error al guardar municipio");
+    }
+  };
+
+  const handleEditarClick = (municipio: Municipio) => {
+    setEditandoId(municipio.id);
+    setForm({
+      nombre: municipio.nombre,
+      departamento: municipio.departamento,
+      centroFormacionId: municipio.centroFormacionId,
+      fechaInicial: municipio.fechaInicial.slice(0, 16),
+      fechaFinal: municipio.fechaFinal.slice(0, 16),
+    });
+  };
+
+  const handleEliminarClick = async (id: number) => {
+    if (!confirm("¿Seguro que quieres eliminar este municipio?")) return;
+    try {
       await deleteMunicipio(id);
-      cargarMunicipios();
+      setMunicipios((prev) => prev.filter((m) => m.id !== id));
+      if (editandoId === id) {
+        setEditandoId(null);
+        setForm({
+          nombre: "",
+          departamento: "",
+          centroFormacionId: 0,
+          fechaInicial: "",
+          fechaFinal: "",
+        });
+      }
+    } catch (error) {
+      alert("Error al eliminar municipio");
     }
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Municipios</h1>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Gestión de Municipios</h1>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-100 p-4 rounded shadow">
-        <input type="text" name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} required className="input" />
-        <input type="text" name="departamento" placeholder="Departamento" value={form.departamento} onChange={handleChange} required className="input" />
-        <input type="number" name="centroFormacionId" placeholder="Centro Formación ID" value={form.centroFormacionId} onChange={handleChange} required className="input" />
-        <input type="date" name="fechaInicial" value={form.fechaInicial} onChange={handleChange} className="input" />
-        <input type="date" name="fechaFinal" value={form.fechaFinal} onChange={handleChange} className="input" />
-        <button type="submit" className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
-          {editando ? 'Actualizar Municipio' : 'Crear Municipio'}
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-8 bg-gray-50 p-6 rounded shadow">
+        <input
+          type="text"
+          name="nombre"
+          placeholder="Nombre"
+          value={form.nombre}
+          onChange={handleChange}
+          required
+          className="border px-3 py-2 rounded"
+        />
+        <input
+          type="text"
+          name="departamento"
+          placeholder="Departamento"
+          value={form.departamento}
+          onChange={handleChange}
+          required
+          className="border px-3 py-2 rounded"
+        />
+        <input
+          type="number"
+          name="centroFormacionId"
+          placeholder="Centro Formación ID"
+          value={form.centroFormacionId || ""}
+          onChange={handleChange}
+          required
+          min={1}
+          className="border px-3 py-2 rounded"
+        />
+        <input
+          type="datetime-local"
+          name="fechaInicial"
+          value={form.fechaInicial}
+          onChange={handleChange}
+          required
+          className="border px-3 py-2 rounded"
+        />
+        <input
+          type="datetime-local"
+          name="fechaFinal"
+          value={form.fechaFinal}
+          onChange={handleChange}
+          required
+          className="border px-3 py-2 rounded"
+        />
+        <button
+          type="submit"
+          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          {editandoId !== null ? "Actualizar Municipio" : "Crear Municipio"}
         </button>
       </form>
 
-      <table className="w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Nombre</th>
-            <th className="border px-2 py-1">Departamento</th>
-            <th className="border px-2 py-1">Centro Formación ID</th>
-            <th className="border px-2 py-1">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {municipios.map((m) => (
-            <tr key={m.id}>
-              <td className="border px-2 py-1">{m.id}</td>
-              <td className="border px-2 py-1">{m.nombre}</td>
-              <td className="border px-2 py-1">{m.departamento}</td>
-              <td className="border px-2 py-1">{m.centroFormacionId}</td>
-              <td className="border px-2 py-1">
-                <button onClick={() => handleEdit(m)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 mr-2 rounded">Editar</button>
-                <button onClick={() => handleDelete(m.id!)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Eliminar</button>
-              </td>
+      {cargando ? (
+        <p>Cargando municipios...</p>
+      ) : (
+        <table className="w-full table-auto border-collapse text-left">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="px-4 py-2 border">Nombre</th>
+              <th className="px-4 py-2 border">Departamento</th>
+              <th className="px-4 py-2 border">Centro Formación ID</th>
+              <th className="px-4 py-2 border">Fecha Inicial</th>
+              <th className="px-4 py-2 border">Fecha Final</th>
+              <th className="px-4 py-2 border">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {municipios.map((m) => (
+              <tr key={m.id} className="hover:bg-gray-100">
+                <td className="px-4 py-2 border">{m.nombre}</td>
+                <td className="px-4 py-2 border">{m.departamento}</td>
+                <td className="px-4 py-2 border">{m.centroFormacionId}</td>
+                <td className="px-4 py-2 border">{new Date(m.fechaInicial).toLocaleString()}</td>
+                <td className="px-4 py-2 border">{new Date(m.fechaFinal).toLocaleString()}</td>
+                <td className="px-4 py-2 border">
+                  <button
+                    onClick={() => handleEditarClick(m)}
+                    className="mr-3 text-blue-600 hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleEliminarClick(m.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {municipios.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-4 text-gray-500">
+                  No hay municipios registrados.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

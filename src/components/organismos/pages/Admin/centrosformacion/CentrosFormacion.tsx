@@ -1,68 +1,79 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
+  CentroFormacion,
   getCentrosFormacion,
   createCentroFormacion,
   updateCentroFormacion,
   deleteCentroFormacion,
-} from '@/Api/centrosformacionTable';
-import { CentroFormacion } from '@/types/types/typesCentroFormacion';
-
-const initialFormState: CentroFormacion = {
-  nombre: '',
-  ubicacion: '',
-  telefono: '',
-  email: '',
-  fechaInicial: '',
-  fechaFinal: '',
-};
+} from "@/Api/centrosformacionTable";
 
 export default function CentroFormacionPage() {
-  const [centrosFormacion, setCentrosFormacion] = useState<CentroFormacion[]>([]);
-  const [form, setForm] = useState<CentroFormacion>(initialFormState);
-  const [editando, setEditando] = useState<boolean>(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [form, setForm] = useState<CentroFormacion>({
+    nombre: "",
+    ubicacion: "",
+    telefono: "",
+    email: "",
+    fechaInicial: "",
+    fechaFinal: "",
+  });
+
+  const [centros, setCentros] = useState<CentroFormacion[]>([]);
+  const [editando, setEditando] = useState(false);
 
   useEffect(() => {
-    cargarCentrosFormacion();
+    cargarCentros();
   }, []);
 
-  const cargarCentrosFormacion = async () => {
+  const cargarCentros = async () => {
     const data = await getCentrosFormacion();
-    setCentrosFormacion(data);
+    setCentros(data);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     try {
-      if (editando && idEditando !== null) {
-        await updateCentroFormacion(idEditando, form);
+      if (editando && form.id) {
+        await updateCentroFormacion(form.id, form);
       } else {
         await createCentroFormacion(form);
       }
-      setForm(initialFormState);
+
+      await cargarCentros();
+
+      setForm({
+        nombre: "",
+        ubicacion: "",
+        telefono: "",
+        email: "",
+        fechaInicial: "",
+        fechaFinal: "",
+      });
       setEditando(false);
-      setIdEditando(null);
-      cargarCentrosFormacion();
     } catch (error) {
-      console.error('❌ Error al guardar centro de formación:', error);
+      console.error("Error al guardar centro:", error);
     }
   };
 
   const handleEdit = (centro: CentroFormacion) => {
     setForm(centro);
     setEditando(true);
-    setIdEditando(centro.id || null);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este centro de formación?')) {
-      await deleteCentroFormacion(id);
-      cargarCentrosFormacion();
-    }
+  const handleDelete = async (id?: number) => {
+    if (!id) return;
+    await deleteCentroFormacion(id);
+    await cargarCentros();
   };
 
   return (
@@ -71,7 +82,7 @@ export default function CentroFormacionPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
+        className="grid grid-cols-2 gap-4 mb-6 bg-gray-100 p-4 rounded shadow"
       >
         <input
           type="text"
@@ -80,7 +91,6 @@ export default function CentroFormacionPage() {
           value={form.nombre}
           onChange={handleChange}
           required
-          className="border rounded px-2 py-1"
         />
         <input
           type="text"
@@ -89,7 +99,6 @@ export default function CentroFormacionPage() {
           value={form.ubicacion}
           onChange={handleChange}
           required
-          className="border rounded px-2 py-1"
         />
         <input
           type="text"
@@ -97,68 +106,70 @@ export default function CentroFormacionPage() {
           placeholder="Teléfono"
           value={form.telefono}
           onChange={handleChange}
-          className="border rounded px-2 py-1"
+          required
         />
         <input
           type="email"
           name="email"
-          placeholder="Email"
+          placeholder="Correo Electrónico"
           value={form.email}
           onChange={handleChange}
           required
-          className="border rounded px-2 py-1"
         />
         <input
-          type="date"
+          type="datetime-local"
           name="fechaInicial"
-          value={form.fechaInicial || ''}
+          value={form.fechaInicial.slice(0, 16)}
           onChange={handleChange}
-          className="border rounded px-2 py-1"
+          required
         />
         <input
-          type="date"
+          type="datetime-local"
           name="fechaFinal"
-          value={form.fechaFinal || ''}
+          value={form.fechaFinal.slice(0, 16)}
           onChange={handleChange}
-          className="border rounded px-2 py-1"
+          required
         />
+
         <button
           type="submit"
           className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
         >
-          {editando ? 'Actualizar Centro' : 'Crear Centro'}
+          {editando ? "Actualizar Centro" : "Crear Centro"}
         </button>
       </form>
 
       <table className="w-full table-auto border-collapse">
         <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Nombre</th>
-            <th className="border px-2 py-1">Ubicación</th>
-            <th className="border px-2 py-1">Teléfono</th>
-            <th className="border px-2 py-1">Email</th>
-            <th className="border px-2 py-1">Acciones</th>
+          <tr className="bg-gray-300">
+            <th className="px-4 py-2 border">Nombre</th>
+            <th className="px-4 py-2 border">Ubicación</th>
+            <th className="px-4 py-2 border">Teléfono</th>
+            <th className="px-4 py-2 border">Correo</th>
+            <th className="px-4 py-2 border">Fecha Inicial</th>
+            <th className="px-4 py-2 border">Fecha Final</th>
+            <th className="px-4 py-2 border">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {centrosFormacion.map((centro) => (
+          {centros.map((centro) => (
             <tr key={centro.id}>
-              <td className="border px-2 py-1">{centro.id}</td>
-              <td className="border px-2 py-1">{centro.nombre}</td>
-              <td className="border px-2 py-1">{centro.ubicacion}</td>
-              <td className="border px-2 py-1">{centro.telefono}</td>
-              <td className="border px-2 py-1">{centro.email}</td>
-              <td className="border px-2 py-1">
+              <td className="px-4 py-2 border">{centro.nombre}</td>
+              <td className="px-4 py-2 border">{centro.ubicacion}</td>
+              <td className="px-4 py-2 border">{centro.telefono}</td>
+              <td className="px-4 py-2 border">{centro.email}</td>
+              <td className="px-4 py-2 border">{centro.fechaInicial}</td>
+              <td className="px-4 py-2 border">{centro.fechaFinal}</td>
+              <td className="px-4 py-2 border">
                 <button
                   onClick={() => handleEdit(centro)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
+                  className="mr-2 text-blue-600 hover:underline"
                 >
                   Editar
                 </button>
                 <button
-                  onClick={() => handleDelete(centro.id!)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                  onClick={() => handleDelete(centro.id)}
+                  className="text-red-600 hover:underline"
                 >
                   Eliminar
                 </button>

@@ -73,11 +73,11 @@ const Sidebar = () => {
 
           {/* Entradas y Salidas */}
           <SidebarButton
-            to="/MovimientosTable"
+            to="/MovimientoInventarioPage"
             icon={<Warehouse className="w-5 h-5" />}
             label="Entradas y Salidas"
             isOpen={isOpen}
-            activePaths={["/MovimientosTable"]}
+            activePaths={["/MovimientoInventarioPage"]}
           />
 
           {/* Estadísticas */}
@@ -180,10 +180,14 @@ const Sidebar = () => {
               <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Titulados" isOpen={isOpen} activePaths={["/TituladosPage"]} />
               <SidebarButton to="/AreasPage" icon={<Users className="w-4 h-4" />} label="Areas" isOpen={isOpen} activePaths={["/AreasPage"]} />
               <SidebarButton to="/SedesPage" icon={<Users className="w-4 h-4" />} label="sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
-              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Fichas Formacion" isOpen={isOpen} activePaths={["/TituladosPage"]} />
+              <SidebarButton to="/FichaFormacionPage" icon={<Users className="w-4 h-4" />} label="Fichas Formacion" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
               <SidebarButton to="/RolesPage" icon={<Users className="w-4 h-4" />} label="roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
               <SidebarButton to="/OpcionPage" icon={<Users className="w-4 h-4" />} label="opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
-              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/TituladosPage"]} />
+              <SidebarButton to="/AccesosPage" icon={<Users className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
+              <SidebarButton to="/SolicitudesPage" icon={<Users className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
+              <SidebarButton to="/EntregaMaterialPage" icon={<Users className="w-4 h-4" />} label="Entrega" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
+              <SidebarButton to="/RolesPage" icon={<Users className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/RolesPage"]} />
+        
             </div>
           )}
         </nav>

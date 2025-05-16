@@ -1,109 +1,221 @@
-import React, { useEffect, useState } from 'react';
-import { getSedes, createSede, updateSede, deleteSede } from '@/Api/SedesService';
-import { Sede } from '@/types/types/Sede';
+import React, { useEffect, useState } from "react";
+import { Sede } from "@/types/types/Sede";
+import {
+  getSedes,
+  createSede,
+  updateSede,
+  deleteSede,
+} from "@/Api/SedesService";
 
-const initialForm: Sede = {
-  nombre: '',
-  ubicacion: '',
-  areaId: 1,
-  centroId: 1,
-  fechaInicial: '',
-  fechaFinal: ''
+const initialFormState: Omit<Sede, "id"> = {
+  nombre: "",
+  ubicacion: "",
+  areaId: 0,
+  centroId: 0,
+  fechaInicial: new Date().toISOString().slice(0, 16),
+  fechaFinal: new Date().toISOString().slice(0, 16),
 };
 
 export default function SedesPage() {
   const [sedes, setSedes] = useState<Sede[]>([]);
-  const [form, setForm] = useState<Sede>(initialForm);
-  const [editando, setEditando] = useState(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [form, setForm] = useState<Omit<Sede, "id">>(initialFormState);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  // Cargar sedes al iniciar
   useEffect(() => {
-    cargarSedes();
+    loadSedes();
   }, []);
 
-  const cargarSedes = async () => {
-    const data = await getSedes();
-    setSedes(data);
+  const loadSedes = async () => {
+    setLoading(true);
+    try {
+      const data = await getSedes();
+      setSedes(data);
+    } catch (error) {
+      alert("Error cargando sedes");
+    }
+    setLoading(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  // Manejar inputs del formulario
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "areaId" || name === "centroId" ? Number(value) : value,
+    }));
   };
 
+  // Enviar formulario (crear o actualizar)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editando && idEditando !== null) {
-        await updateSede(idEditando, form);
+      if (editandoId !== null) {
+        // actualizar
+        await updateSede(editandoId, form);
+        setSedes((prev) =>
+          prev.map((s) => (s.id === editandoId ? { ...form, id: editandoId } : s))
+        );
       } else {
-        await createSede(form);
+        // crear
+        const nueva = await createSede(form);
+        setSedes((prev) => [...prev, nueva]);
       }
-      setForm(initialForm);
-      setEditando(false);
-      setIdEditando(null);
-      cargarSedes();
+      setForm(initialFormState);
+      setEditandoId(null);
     } catch (error) {
-      console.error("❌ Error al guardar sede:", error);
+      alert("Error guardando sede");
     }
   };
 
+  // Editar
   const handleEdit = (sede: Sede) => {
-    setForm(sede);
-    setEditando(true);
-    setIdEditando(sede.id || null);
+    setForm({
+      nombre: sede.nombre,
+      ubicacion: sede.ubicacion,
+      areaId: sede.areaId,
+      centroId: sede.centroId,
+      fechaInicial: sede.fechaInicial.slice(0, 16),
+      fechaFinal: sede.fechaFinal.slice(0, 16),
+    });
+    setEditandoId(sede.id);
   };
 
+  // Eliminar
   const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar esta sede?')) {
+    if (!window.confirm("¿Eliminar esta sede?")) return;
+    try {
       await deleteSede(id);
-      cargarSedes();
+      setSedes((prev) => prev.filter((s) => s.id !== id));
+    } catch {
+      alert("Error eliminando sede");
     }
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Gestión de Sedes</h1>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Gestión de Sedes</h1>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded shadow mb-6">
-        <input type="text" name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} required className="input" />
-        <input type="text" name="ubicacion" placeholder="Ubicación" value={form.ubicacion} onChange={handleChange} required className="input" />
-        <input type="number" name="areaId" placeholder="Área ID" value={form.areaId} onChange={handleChange} required className="input" />
-        <input type="number" name="centroId" placeholder="Centro ID" value={form.centroId} onChange={handleChange} required className="input" />
-        <input type="date" name="fechaInicial" placeholder="Fecha Inicial" value={form.fechaInicial} onChange={handleChange} required className="input" />
-        <input type="date" name="fechaFinal" placeholder="Fecha Final" value={form.fechaFinal} onChange={handleChange} required className="input" />
-
-        <button type="submit" className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
-          {editando ? 'Actualizar Sede' : 'Crear Sede'}
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-8 bg-gray-100 p-6 rounded shadow">
+        <input
+          type="text"
+          name="nombre"
+          placeholder="Nombre"
+          value={form.nombre}
+          onChange={handleChange}
+          required
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          name="ubicacion"
+          placeholder="Ubicación"
+          value={form.ubicacion}
+          onChange={handleChange}
+          required
+          className="border p-2 rounded"
+        />
+        <input
+          type="number"
+          name="areaId"
+          placeholder="ID Área"
+          value={form.areaId}
+          onChange={handleChange}
+          required
+          min={1}
+          className="border p-2 rounded"
+        />
+        <input
+          type="number"
+          name="centroId"
+          placeholder="ID Centro Formación"
+          value={form.centroId}
+          onChange={handleChange}
+          required
+          min={1}
+          className="border p-2 rounded"
+        />
+        <label>
+          Fecha Inicial:
+          <input
+            type="datetime-local"
+            name="fechaInicial"
+            value={form.fechaInicial}
+            onChange={handleChange}
+            required
+            className="border p-2 rounded mt-1 block"
+          />
+        </label>
+        <label>
+          Fecha Final:
+          <input
+            type="datetime-local"
+            name="fechaFinal"
+            value={form.fechaFinal}
+            onChange={handleChange}
+            required
+            className="border p-2 rounded mt-1 block"
+          />
+        </label>
+        <button
+          type="submit"
+          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          {editandoId ? "Actualizar Sede" : "Crear Sede"}
         </button>
       </form>
 
-      <table className="w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Nombre</th>
-            <th className="border px-2 py-1">Ubicación</th>
-            <th className="border px-2 py-1">Área</th>
-            <th className="border px-2 py-1">Centro</th>
-            <th className="border px-2 py-1">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sedes.map((sede) => (
-            <tr key={sede.id}>
-              <td className="border px-2 py-1">{sede.id}</td>
-              <td className="border px-2 py-1">{sede.nombre}</td>
-              <td className="border px-2 py-1">{sede.ubicacion}</td>
-              <td className="border px-2 py-1">{sede.areaId}</td>
-              <td className="border px-2 py-1">{sede.centroId}</td>
-              <td className="border px-2 py-1">
-                <button onClick={() => handleEdit(sede)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded">Editar</button>
-                <button onClick={() => handleDelete(sede.id!)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Eliminar</button>
-              </td>
+      {loading ? (
+        <p>Cargando sedes...</p>
+      ) : (
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border px-4 py-2">Nombre</th>
+              <th className="border px-4 py-2">Ubicación</th>
+              <th className="border px-4 py-2">ID Área</th>
+              <th className="border px-4 py-2">ID Centro</th>
+              <th className="border px-4 py-2">Fecha Inicial</th>
+              <th className="border px-4 py-2">Fecha Final</th>
+              <th className="border px-4 py-2">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sedes.map((sede) => (
+              <tr key={sede.id}>
+                <td className="border px-4 py-2">{sede.nombre}</td>
+                <td className="border px-4 py-2">{sede.ubicacion}</td>
+                <td className="border px-4 py-2">{sede.areaId}</td>
+                <td className="border px-4 py-2">{sede.centroId}</td>
+                <td className="border px-4 py-2">{new Date(sede.fechaInicial).toLocaleString()}</td>
+                <td className="border px-4 py-2">{new Date(sede.fechaFinal).toLocaleString()}</td>
+                <td className="border px-4 py-2">
+                  <button
+                    onClick={() => handleEdit(sede)}
+                    className="mr-2 text-blue-600 hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(sede.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {sedes.length === 0 && (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  No hay sedes registradas
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

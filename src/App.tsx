@@ -15,7 +15,7 @@ import ProductosTable from "./components/organismos/pages/productos/productosTab
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
 import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
 import CentrosFormaciones from "./components/organismos/pages/Admin/centrosformacion/CentrosFormacion.tsx";
-import MovimientosTable from "./components/organismos/pages/Admin/entradas_salidas/MovimientosTable.tsx";
+import MovimientoInventarioPage from "./components/organismos/pages/Admin/Movimientoinventario/MovimientoInventarioPage.tsx";
 import VistaProductos from "./components/organismos/pages/estadisticas/VistaProductos.tsx";
 import UsuariosHistoria from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosHistorial.tsx";
 import UsuariosPorRol from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosPorRol.tsx";
@@ -30,6 +30,10 @@ import AreasPage from "./components/organismos/pages/Admin/Areas/AreasPage.tsx";
 import SedesPage from "./components/organismos/pages/Admin/Sedes/SedesPage.tsx";
 import RolesPage from "./components/organismos/pages/Admin/Roles/RolesPage.tsx";
 import OpcionPage from "./components/organismos/pages/Admin/opciones/OpcionPage.tsx";
+import FichaFormacionPage from "./components/organismos/pages/Admin/FichasFormacion/FichaFormacionPage.tsx";
+import AccesosPage from "./components/organismos/pages/Admin/Accesos/AccesosPage.tsx";
+import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/SolicitudesPage.tsx";
+import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -55,7 +59,7 @@ function App() {
           <Route path="/productos/listar" element={<ProductosTable />} />
           <Route path="/Bodega" element={<Bodega />} />
           <Route path="/CentrosFormaciones" element={<CentrosFormaciones />} />
-          <Route path="/MovimientosTable" element={<MovimientosTable />} />
+          <Route path="/MovimientoInventarioPage" element={<MovimientoInventarioPage />} />
           <Route path="/VistaProductos" element={<VistaProductos />} />
           <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios />} />
           <Route path="/VistaEstadisticasSitios" element={<VistaEstadisticasSitios />} />
@@ -70,7 +74,10 @@ function App() {
            <Route path="/SedesPage"element={<SedesPage />}/>
            <Route path="/RolesPage"element={<RolesPage />}/>
            <Route path="/OpcionPage"element={<OpcionPage />}/>
-
+           <Route path="/FichaFormacionPage" element={<FichaFormacionPage/>}/>
+             <Route path="/AccesosPage" element={<AccesosPage/>}/>
+              <Route path="/SolicitudesPage" element={<SolicitudesPage/>}/>
+              <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage/>}/>
         </Routes>
       </QueryClientProvider>
     </div>

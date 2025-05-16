@@ -1,13 +1,14 @@
 import axios from 'axios';
 
 export interface CentroFormacion {
-  id?: number;
+  id?: number;               // id opcional para crear
   nombre: string;
   ubicacion: string;
   telefono: string;
   email: string;
-  fechaInicial: string; // formato ISO
-  fechaFinal: string;   // formato ISO
+  fechaInicial: string;      // ISO string para fecha
+  fechaFinal: string;        // ISO string para fecha
+  // Puedes agregar más campos si los necesitas
 }
 
 const API_URL = 'http://localhost:3500/api/centros-formacion';
