@@ -1,92 +1,150 @@
-// pages/EntregaMaterialPage.tsx
 import React, { useEffect, useState } from 'react';
-import { EntregaMaterial } from '@/types/types/EntregaMaterial';
-import { getEntregas, createEntrega, updateEntrega, deleteEntrega } from '@/Api/entregaMaterial';
+
+interface EntregaMaterial {
+  id: number;
+  solicitudId: number;
+  usuarioResponsableId: number;
+  fechaEntrega: string; // ISO string
+  observaciones?: string | null;
+  fechaInicial?: string;
+  fechaFinal?: string;
+}
+
+const initialForm: Omit<EntregaMaterial, 'id' | 'fechaInicial' | 'fechaFinal'> = {
+  solicitudId: 0,
+  usuarioResponsableId: 0,
+  fechaEntrega: '',
+  observaciones: '',
+};
+
+const API_URL = 'http://localhost:3500/api/entrega-material';
 
 export default function EntregaMaterialPage() {
   const [entregas, setEntregas] = useState<EntregaMaterial[]>([]);
-  const [form, setForm] = useState<EntregaMaterial>({
-    solicitudId: 0,
-    usuarioResponsableId: 0,
-    fechaEntrega: '',
-    observaciones: '',
-    fechaInicial: '',
-    fechaFinal: '',
-  });
+  const [form, setForm] = useState(initialForm);
   const [editando, setEditando] = useState(false);
+  // Aquí el cambio clave: permito null, no undefined
+  const [idEditando, setIdEditando] = useState<number | null>(null);
 
   useEffect(() => {
-    loadEntregas();
+    cargarEntregas();
   }, []);
 
-  const loadEntregas = async () => {
+  async function cargarEntregas() {
     try {
-      const data = await getEntregas();
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error('Error al cargar entregas');
+      const data: EntregaMaterial[] = await res.json();
       setEntregas(data);
     } catch (error) {
-      console.error('Error cargando entregas:', error);
+      console.error(error);
     }
-  };
+  }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setForm(prev => ({
+
+    setForm((prev) => ({
       ...prev,
-      [name]: value,
+      // Si es número, parsea, sino asigna valor directo
+      [name]:
+        name === 'solicitudId' || name === 'usuarioResponsableId'
+          ? Number(value)
+          : value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar campos mínimos
+    if (
+      !form.solicitudId ||
+      !form.usuarioResponsableId ||
+      !form.fechaEntrega
+    ) {
+      alert('Por favor completa todos los campos obligatorios');
+      return;
+    }
+
     try {
-      if (editando && form.id) {
-        await updateEntrega(form.id, form);
-        setEditando(false);
+      if (editando && idEditando !== null) {
+        // Actualizar
+        const res = await fetch(`${API_URL}/${idEditando}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            solicitudId: form.solicitudId,
+            usuarioResponsableId: form.usuarioResponsableId,
+            fechaEntrega: form.fechaEntrega,
+            observaciones: form.observaciones,
+          }),
+        });
+        if (!res.ok) throw new Error('Error al actualizar entrega');
       } else {
-        await createEntrega(form);
+        // Crear
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            solicitudId: form.solicitudId,
+            usuarioResponsableId: form.usuarioResponsableId,
+            fechaEntrega: form.fechaEntrega,
+            observaciones: form.observaciones,
+          }),
+        });
+        if (!res.ok) throw new Error('Error al crear entrega');
       }
-      setForm({
-        solicitudId: 0,
-        usuarioResponsableId: 0,
-        fechaEntrega: '',
-        observaciones: '',
-        fechaInicial: '',
-        fechaFinal: '',
-      });
-      loadEntregas();
+
+      // Limpiar formulario y estado edición
+      setForm(initialForm);
+      setEditando(false);
+      setIdEditando(null);
+      await cargarEntregas();
     } catch (error) {
-      console.error('Error guardando entrega:', error);
+      console.error(error);
+      alert('Error al guardar la entrega');
     }
   };
 
   const handleEdit = (entrega: EntregaMaterial) => {
     setForm({
-      id: entrega.id,
       solicitudId: entrega.solicitudId,
       usuarioResponsableId: entrega.usuarioResponsableId,
-      fechaEntrega: entrega.fechaEntrega.slice(0, 16),
-      observaciones: entrega.observaciones || '',
-      fechaInicial: entrega.fechaInicial ? entrega.fechaInicial.slice(0, 16) : '',
-      fechaFinal: entrega.fechaFinal ? entrega.fechaFinal.slice(0, 16) : '',
+      fechaEntrega: entrega.fechaEntrega.split('T')[0], // fecha solo yyyy-mm-dd
+      observaciones: entrega.observaciones ?? '',
     });
+
     setEditando(true);
+    // Cambio clave para evitar undefined:
+    setIdEditando(entrega.id ?? null);
   };
 
-  const handleDelete = async (id?: number) => {
-    if (!id) return;
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('¿Seguro que quieres eliminar esta entrega?')) return;
+
     try {
-      await deleteEntrega(id);
-      setEntregas(entregas.filter(e => e.id !== id));
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Error al eliminar entrega');
+      await cargarEntregas();
     } catch (error) {
-      console.error('Error eliminando entrega:', error);
+      console.error(error);
+      alert('Error al eliminar entrega');
     }
   };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Entregas de Material</h1>
+      <h1 className="text-2xl font-bold mb-4">Gestión de Entregas de Material</h1>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-8 p-4 bg-gray-100 rounded shadow">
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
+      >
         <input
           type="number"
           name="solicitudId"
@@ -94,6 +152,8 @@ export default function EntregaMaterialPage() {
           value={form.solicitudId || ''}
           onChange={handleChange}
           required
+          min={1}
+          className="border rounded px-2 py-1"
         />
         <input
           type="number"
@@ -102,35 +162,25 @@ export default function EntregaMaterialPage() {
           value={form.usuarioResponsableId || ''}
           onChange={handleChange}
           required
+          min={1}
+          className="border rounded px-2 py-1"
         />
         <input
-          type="datetime-local"
+          type="date"
           name="fechaEntrega"
           value={form.fechaEntrega || ''}
           onChange={handleChange}
           required
+          className="border rounded px-2 py-1"
         />
         <textarea
           name="observaciones"
-          placeholder="Observaciones (opcional)"
+          placeholder="Observaciones"
           value={form.observaciones || ''}
           onChange={handleChange}
-          rows={2}
-          className="resize-none"
+          className="border rounded px-2 py-1 col-span-2"
+          rows={3}
         />
-        <input
-          type="datetime-local"
-          name="fechaInicial"
-          value={form.fechaInicial || ''}
-          onChange={handleChange}
-        />
-        <input
-          type="datetime-local"
-          name="fechaFinal"
-          value={form.fechaFinal || ''}
-          onChange={handleChange}
-        />
-
         <button
           type="submit"
           className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
@@ -139,48 +189,49 @@ export default function EntregaMaterialPage() {
         </button>
       </form>
 
-      <table className="w-full border-collapse border">
-        <thead className="bg-gray-300">
-          <tr>
-            <th className="border px-3 py-1">ID</th>
-            <th className="border px-3 py-1">Solicitud ID</th>
-            <th className="border px-3 py-1">Usuario Responsable ID</th>
-            <th className="border px-3 py-1">Fecha Entrega</th>
-            <th className="border px-3 py-1">Observaciones</th>
-            <th className="border px-3 py-1">Fecha Inicial</th>
-            <th className="border px-3 py-1">Fecha Final</th>
-            <th className="border px-3 py-1">Acciones</th>
+      <table className="w-full border-collapse table-auto">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border px-2 py-1">ID</th>
+            <th className="border px-2 py-1">Solicitud ID</th>
+            <th className="border px-2 py-1">Usuario Responsable ID</th>
+            <th className="border px-2 py-1">Fecha Entrega</th>
+            <th className="border px-2 py-1">Observaciones</th>
+            <th className="border px-2 py-1">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {entregas.map((e) => (
-            <tr key={e.id}>
-              <td className="border px-3 py-1">{e.id}</td>
-              <td className="border px-3 py-1">{e.solicitudId}</td>
-              <td className="border px-3 py-1">{e.usuarioResponsableId}</td>
-              <td className="border px-3 py-1">{new Date(e.fechaEntrega).toLocaleString()}</td>
-              <td className="border px-3 py-1">{e.observaciones || '-'}</td>
-              <td className="border px-3 py-1">{e.fechaInicial ? new Date(e.fechaInicial).toLocaleString() : '-'}</td>
-              <td className="border px-3 py-1">{e.fechaFinal ? new Date(e.fechaFinal).toLocaleString() : '-'}</td>
-              <td className="border px-3 py-1">
+          {entregas.map((entrega) => (
+            <tr key={entrega.id}>
+              <td className="border px-2 py-1">{entrega.id}</td>
+              <td className="border px-2 py-1">{entrega.solicitudId}</td>
+              <td className="border px-2 py-1">{entrega.usuarioResponsableId}</td>
+              <td className="border px-2 py-1">
+                {entrega.fechaEntrega.split('T')[0]}
+              </td>
+              <td className="border px-2 py-1">{entrega.observaciones || '-'}</td>
+              <td className="border px-2 py-1 space-x-2">
                 <button
-                  onClick={() => handleEdit(e)}
-                  className="text-blue-600 hover:underline mr-2"
+                  onClick={() => handleEdit(entrega)}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded"
                 >
                   Editar
                 </button>
                 <button
-                  onClick={() => e.id && handleDelete(e.id)}
-                  className="text-red-600 hover:underline"
+                  onClick={() => handleDelete(entrega.id)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
                 >
                   Eliminar
                 </button>
               </td>
             </tr>
           ))}
+
           {entregas.length === 0 && (
             <tr>
-              <td colSpan={8} className="text-center py-4">No hay entregas registradas.</td>
+              <td colSpan={6} className="text-center py-4">
+                No hay entregas registradas.
+              </td>
             </tr>
           )}
         </tbody>

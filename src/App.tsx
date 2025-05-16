@@ -34,6 +34,7 @@ import FichaFormacionPage from "./components/organismos/pages/Admin/FichasFormac
 import AccesosPage from "./components/organismos/pages/Admin/Accesos/AccesosPage.tsx";
 import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/SolicitudesPage.tsx";
 import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
+import SitiosPage from "./components/organismos/pages/Admin/Sitios/SitiosPage.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -78,6 +79,7 @@ function App() {
              <Route path="/AccesosPage" element={<AccesosPage/>}/>
               <Route path="/SolicitudesPage" element={<SolicitudesPage/>}/>
               <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage/>}/>
+              <Route path="/SitiosPage" element={<SitiosPage/>}/>
         </Routes>
       </QueryClientProvider>
     </div>

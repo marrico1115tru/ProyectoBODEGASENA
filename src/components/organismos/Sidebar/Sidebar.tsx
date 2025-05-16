@@ -185,8 +185,8 @@ const Sidebar = () => {
               <SidebarButton to="/OpcionPage" icon={<Users className="w-4 h-4" />} label="opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
               <SidebarButton to="/AccesosPage" icon={<Users className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
               <SidebarButton to="/SolicitudesPage" icon={<Users className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
-              <SidebarButton to="/EntregaMaterialPage" icon={<Users className="w-4 h-4" />} label="Entrega" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
-              <SidebarButton to="/RolesPage" icon={<Users className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/RolesPage"]} />
+              <SidebarButton to="/EntregaMaterialPage" icon={<Users className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
+              <SidebarButton to="/SitiosPage" icon={<Users className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
         
             </div>
           )}

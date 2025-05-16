@@ -1,24 +1,26 @@
-import axios from "axios";
-import { Acceso, AccesoInput } from "@/types/types/acceso";
+import axios from 'axios';
+import { Acceso } from '@/types/types/acceso';
 
-const API_URL = "http://localhost:3500/api/accesos";
+const API_URL = 'http://localhost:3500/api/accesos';
 
 export const getAccesos = async (): Promise<Acceso[]> => {
-  const res = await axios.get(API_URL);
-  return res.data;
+  const response = await axios.get(API_URL);
+  return response.data;
 };
 
-export const createAcceso = async (acceso: AccesoInput): Promise<Acceso> => {
-  const res = await axios.post(API_URL, acceso);
-  return res.data;
+export const getAccesoById = async (id: number): Promise<Acceso> => {
+  const response = await axios.get(`${API_URL}/${id}`);
+  return response.data;
 };
 
-export const updateAcceso = async (
-  id: number,
-  acceso: AccesoInput
-): Promise<Acceso> => {
-  const res = await axios.put(`${API_URL}/${id}`, acceso);
-  return res.data;
+export const createAcceso = async (acceso: Omit<Acceso, 'id'>): Promise<Acceso> => {
+  const response = await axios.post(API_URL, acceso);
+  return response.data;
+};
+
+export const updateAcceso = async (id: number, acceso: Omit<Acceso, 'id'>): Promise<Acceso> => {
+  const response = await axios.put(`${API_URL}/${id}`, acceso);
+  return response.data;
 };
 
 export const deleteAcceso = async (id: number): Promise<void> => {

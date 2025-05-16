@@ -1,29 +1,34 @@
-// api/entregaMaterial.ts
-import axios from 'axios';
 import { EntregaMaterial } from '@/types/types/EntregaMaterial';
 
-const API_URL = 'http://localhost:3500/api/entregaMaterial';
+const API_URL = 'http://localhost:3500/api/entrega-material';
 
 export const getEntregas = async (): Promise<EntregaMaterial[]> => {
-  const response = await axios.get(API_URL);
-  return response.data;
-};
-
-export const getEntrega = async (id: number): Promise<EntregaMaterial> => {
-  const response = await axios.get(`${API_URL}/${id}`);
-  return response.data;
+  const res = await fetch(API_URL);
+  if (!res.ok) throw new Error('Error al obtener entregas');
+  return res.json();
 };
 
 export const createEntrega = async (entrega: EntregaMaterial): Promise<EntregaMaterial> => {
-  const response = await axios.post(API_URL, entrega);
-  return response.data;
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entrega),
+  });
+  if (!res.ok) throw new Error('Error al crear entrega');
+  return res.json();
 };
 
 export const updateEntrega = async (id: number, entrega: EntregaMaterial): Promise<EntregaMaterial> => {
-  const response = await axios.put(`${API_URL}/${id}`, entrega);
-  return response.data;
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entrega),
+  });
+  if (!res.ok) throw new Error('Error al actualizar entrega');
+  return res.json();
 };
 
 export const deleteEntrega = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/${id}`);
+  const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Error al eliminar entrega');
 };
