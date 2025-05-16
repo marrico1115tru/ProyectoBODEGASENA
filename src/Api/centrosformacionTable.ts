@@ -10,7 +10,7 @@ export interface CentroFormacion {
   fechaFinal: string;   // formato ISO
 }
 
-const API_URL = 'http://localhost:3500/api/centros-formacion';
+const API_URL = 'http://localhost:3500/API/CentroFormacion';
 
 export const getCentrosFormacion = async (): Promise<CentroFormacion[]> => {
   const response = await axios.get(API_URL);
