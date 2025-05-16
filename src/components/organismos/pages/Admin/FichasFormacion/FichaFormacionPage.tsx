@@ -1,77 +1,73 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
+import {
+  getFichasFormacion,
+  createFichaFormacion,
+  updateFichaFormacion,
+  deleteFichaFormacion
+} from '@/Api/fichasFormacion';
+import { FichaFormacion } from '@/types/types/FichaFormacion';
 
-interface Ficha {
-  id: number;
-  nombre: string;
-  tituloId: number;
-  fechaInicial: string;
-  fechaFinal: string;
-}
+const initialFormState: FichaFormacion = {
+  nombre: '',
+  tituloId: 1,
+  fechaInicial: '',
+  fechaFinal: '',
+};
 
-export default function FichaFormacionPage() {
-  const [form, setForm] = useState<Ficha>({
-    id: 0,
-    nombre: "",
-    tituloId: 0,
-    fechaInicial: "",
-    fechaFinal: "",
-  });
-
-  const [fichas, setFichas] = useState<Ficha[]>([]);
-  const [editando, setEditando] = useState(false);
+export default function FichasFormacionPage() {
+  const [fichas, setFichas] = useState<FichaFormacion[]>([]);
+  const [form, setForm] = useState<FichaFormacion>(initialFormState);
+  const [editando, setEditando] = useState<boolean>(false);
+  const [idEditando, setIdEditando] = useState<number | null>(null);
 
   useEffect(() => {
-    // Aquí puedes cargar las fichas desde tu API si la tienes
-    // Por ahora lo dejamos vacío
+    cargarFichas();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: name === "tituloId" ? parseInt(value) : value,
-    }));
+  const cargarFichas = async () => {
+    const data = await getFichasFormacion();
+    setFichas(data);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editando) {
-      // Actualizar ficha
-      setFichas((prev) =>
-        prev.map((f) => (f.id === form.id ? form : f))
-      );
-    } else {
-      // Crear nueva ficha
-      const nuevaFicha = { ...form, id: Date.now() };
-      setFichas((prev) => [...prev, nuevaFicha]);
+    try {
+      if (editando && idEditando !== null) {
+        await updateFichaFormacion(idEditando, form);
+      } else {
+        await createFichaFormacion(form);
+      }
+      setForm(initialFormState);
+      setEditando(false);
+      setIdEditando(null);
+      cargarFichas();
+    } catch (error) {
+      console.error("❌ Error al guardar ficha:", error);
     }
-    setForm({
-      id: 0,
-      nombre: "",
-      tituloId: 0,
-      fechaInicial: "",
-      fechaFinal: "",
-    });
-    setEditando(false);
   };
 
-  const handleEdit = (ficha: Ficha) => {
+  const handleEdit = (ficha: FichaFormacion) => {
     setForm(ficha);
     setEditando(true);
+    setIdEditando(ficha.id || null);
   };
 
   const handleDelete = async (id: number) => {
-    setFichas((prev) => prev.filter((f) => f.id !== id));
+    if (confirm('¿Estás seguro de eliminar esta ficha?')) {
+      await deleteFichaFormacion(id);
+      cargarFichas();
+    }
   };
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Gestión de Fichas de Formación</h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
-      >
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
         <input
           type="text"
           name="nombre"
@@ -79,6 +75,7 @@ export default function FichaFormacionPage() {
           value={form.nombre}
           onChange={handleChange}
           required
+          className="input"
         />
         <input
           type="number"
@@ -87,57 +84,49 @@ export default function FichaFormacionPage() {
           value={form.tituloId}
           onChange={handleChange}
           required
+          className="input"
         />
         <input
-          type="datetime-local"
+          type="date"
           name="fechaInicial"
-          value={form.fechaInicial.slice(0, 16)}
+          value={form.fechaInicial}
           onChange={handleChange}
           required
+          className="input"
         />
         <input
-          type="datetime-local"
+          type="date"
           name="fechaFinal"
-          value={form.fechaFinal.slice(0, 16)}
+          value={form.fechaFinal}
           onChange={handleChange}
           required
+          className="input"
         />
-        <button
-          type="submit"
-          className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          {editando ? "Actualizar Ficha" : "Crear Ficha"}
+        <button type="submit" className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+          {editando ? 'Actualizar Ficha' : 'Crear Ficha'}
         </button>
       </form>
 
       <table className="w-full table-auto border-collapse">
         <thead>
           <tr className="bg-gray-200">
-            <th className="px-4 py-2 border">Nombre</th>
-            <th className="px-4 py-2 border">Título ID</th>
-            <th className="px-4 py-2 border">Fecha Inicial</th>
-            <th className="px-4 py-2 border">Fecha Final</th>
-            <th className="px-4 py-2 border">Acciones</th>
+            <th className="border px-2 py-1">ID</th>
+            <th className="border px-2 py-1">Nombre</th>
+            <th className="border px-2 py-1">Título ID</th>
+            <th className="border px-2 py-1">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {fichas.map((ficha) => (
             <tr key={ficha.id}>
-              <td className="px-4 py-2 border">{ficha.nombre}</td>
-              <td className="px-4 py-2 border">{ficha.tituloId}</td>
-              <td className="px-4 py-2 border">{ficha.fechaInicial}</td>
-              <td className="px-4 py-2 border">{ficha.fechaFinal}</td>
-              <td className="px-4 py-2 border">
-                <button
-                  onClick={() => handleEdit(ficha)}
-                  className="mr-2 text-blue-600 hover:underline"
-                >
+              <td className="border px-2 py-1">{ficha.id}</td>
+              <td className="border px-2 py-1">{ficha.nombre}</td>
+              <td className="border px-2 py-1">{ficha.tituloId}</td>
+              <td className="border px-2 py-1">
+                <button onClick={() => handleEdit(ficha)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded">
                   Editar
                 </button>
-                <button
-                  onClick={() => handleDelete(ficha.id)}
-                  className="text-red-600 hover:underline"
-                >
+                <button onClick={() => handleDelete(ficha.id!)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">
                   Eliminar
                 </button>
               </td>
