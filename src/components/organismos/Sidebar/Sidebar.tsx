@@ -10,6 +10,17 @@ import {
   List,
   Table,
   Warehouse,
+  Building2,
+  GraduationCap,
+  FolderGit2,
+  MapPin,
+  BookOpen,
+  ShieldCheck,
+  LayoutGrid,
+  KeySquare,
+  ClipboardList,
+  Send,
+  Landmark,
 } from "lucide-react";
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
@@ -29,7 +40,6 @@ const Sidebar = () => {
         isOpen ? "w-64" : "w-20"
       } min-h-screen bg-[#1e293b] text-[#f8fafc] transition-all duration-300 flex flex-col shadow-xl border-r border-[#334155]`}
     >
-      {/* Header Branding */}
       <div className="flex items-center justify-between p-4 border-b border-[#334155]">
         {isOpen && (
           <h1 className="text-xl font-bold tracking-wide text-[#22d3ee] transition-colors duration-200">
@@ -45,13 +55,11 @@ const Sidebar = () => {
         </Button>
       </div>
 
-      {/* Nav Items */}
       <div className="flex-1 overflow-y-auto px-2 py-4 custom-scrollbar">
         <nav className="flex flex-col gap-1 text-sm font-medium">
           <SidebarButton to="/" icon={<Home className="w-5 h-5" />} label="Home" isOpen={isOpen} activePaths={["/"]} />
           <SidebarButton to="/inicio" icon={<FileText className="w-5 h-5" />} label="Inicio" isOpen={isOpen} activePaths={["/inicio"]} />
 
-          {/* Productos */}
           <SidebarButton
             icon={<FileText className="w-5 h-5" />}
             label="Productos"
@@ -71,7 +79,6 @@ const Sidebar = () => {
             </div>
           )}
 
-          {/* Entradas y Salidas */}
           <SidebarButton
             to="/MovimientoInventarioPage"
             icon={<Warehouse className="w-5 h-5" />}
@@ -80,7 +87,6 @@ const Sidebar = () => {
             activePaths={["/MovimientoInventarioPage"]}
           />
 
-          {/* Estadísticas */}
           <SidebarButton
             icon={<BarChart2 className="w-5 h-5" />}
             label="Estadísticas"
@@ -96,7 +102,6 @@ const Sidebar = () => {
             </div>
           )}
 
-          {/* Reportes */}
           <SidebarButton
             icon={<FileText className="w-5 h-5" />}
             label="Reportes"
@@ -106,7 +111,6 @@ const Sidebar = () => {
           />
           {showInfoReportsSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1 border-l border-[#334155] pl-3">
-              {/* Reportes de Productos */}
               <SidebarButton
                 icon={<List className="w-4 h-4" />}
                 label="Productos"
@@ -136,8 +140,6 @@ const Sidebar = () => {
                   />
                 </div>
               )}
-
-              {/* Reportes de Usuarios */}
               <SidebarButton
                 icon={<Users className="w-4 h-4" />}
                 label="Usuarios"
@@ -164,9 +166,8 @@ const Sidebar = () => {
             </div>
           )}
 
-          {/* Admin */}
           <SidebarButton
-            icon={<Users className="w-5 h-5" />}
+            icon={<ShieldCheck className="w-5 h-5" />}
             label="Admin"
             isOpen={isOpen}
             onClick={() => setShowAdminSubmenu(!showAdminSubmenu)}
@@ -175,25 +176,23 @@ const Sidebar = () => {
           {showAdminSubmenu && isOpen && (
             <div className="ml-6 mt-1 flex flex-col gap-1 border-l border-[#334155] pl-3">
               <SidebarButton to="/usuarios" icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/usuarios"]} />
-              <SidebarButton to="/MunicipioPage" icon={<Users className="w-4 h-4" />} label="Municipios" isOpen={isOpen} activePaths={["/MunicipioPage"]} />
-              <SidebarButton to="/CentrosFormaciones" icon={<Users className="w-4 h-4" />} label="Centros Formación" isOpen={isOpen} activePaths={["/CentrosFormaciones"]} />
-              <SidebarButton to="/TituladosPage" icon={<Users className="w-4 h-4" />} label="Titulados" isOpen={isOpen} activePaths={["/TituladosPage"]} />
-              <SidebarButton to="/AreasPage" icon={<Users className="w-4 h-4" />} label="Areas" isOpen={isOpen} activePaths={["/AreasPage"]} />
-              <SidebarButton to="/SedesPage" icon={<Users className="w-4 h-4" />} label="sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
-              <SidebarButton to="/FichaFormacionPage" icon={<Users className="w-4 h-4" />} label="Fichas Formacion" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
-              <SidebarButton to="/RolesPage" icon={<Users className="w-4 h-4" />} label="roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
-              <SidebarButton to="/OpcionPage" icon={<Users className="w-4 h-4" />} label="opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
-              <SidebarButton to="/AccesosPage" icon={<Users className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
-              <SidebarButton to="/SolicitudesPage" icon={<Users className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
-              <SidebarButton to="/EntregaMaterialPage" icon={<Users className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
-              <SidebarButton to="/SitiosPage" icon={<Users className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
-        
+              <SidebarButton to="/MunicipioPage" icon={<MapPin className="w-4 h-4" />} label="Municipios" isOpen={isOpen} activePaths={["/MunicipioPage"]} />
+              <SidebarButton to="/CentrosFormaciones" icon={<Building2 className="w-4 h-4" />} label="Centros Formación" isOpen={isOpen} activePaths={["/CentrosFormaciones"]} />
+              <SidebarButton to="/TituladosPage" icon={<GraduationCap className="w-4 h-4" />} label="Titulados" isOpen={isOpen} activePaths={["/TituladosPage"]} />
+              <SidebarButton to="/AreasPage" icon={<FolderGit2 className="w-4 h-4" />} label="Áreas" isOpen={isOpen} activePaths={["/AreasPage"]} />
+              <SidebarButton to="/SedesPage" icon={<Landmark className="w-4 h-4" />} label="Sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
+              <SidebarButton to="/FichaFormacionPage" icon={<BookOpen className="w-4 h-4" />} label="Fichas Formación" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
+              <SidebarButton to="/RolesPage" icon={<ShieldCheck className="w-4 h-4" />} label="Roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
+              <SidebarButton to="/OpcionPage" icon={<LayoutGrid className="w-4 h-4" />} label="Opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
+              <SidebarButton to="/AccesosPage" icon={<KeySquare className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
+              <SidebarButton to="/SolicitudesPage" icon={<ClipboardList className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
+              <SidebarButton to="/EntregaMaterialPage" icon={<Send className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
+              <SidebarButton to="/SitiosPage" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
             </div>
           )}
         </nav>
       </div>
 
-      {/* Footer opcional */}
       <div className="p-4 border-t border-[#334155] text-xs text-center text-[#94a3b8]">
         {isOpen && <span>INNOVASOFT</span>}
       </div>
