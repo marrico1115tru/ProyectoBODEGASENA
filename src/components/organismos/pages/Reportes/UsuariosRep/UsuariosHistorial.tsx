@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { Key, useRef } from "react";
-import html2pdf from "html2pdf.js";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
+import Modal from "@/components/ui/Modal";
 
 export default function UsuariosMayorUso() {
-  const containerRef = useRef(null); // Ahora apuntamos al contenedor más grande que incluye toda la vista.
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-mayor-uso-productos"],
@@ -16,68 +19,119 @@ export default function UsuariosMayorUso() {
     },
   });
 
-  const exportarPDF = () => {
+  const exportarPDF = async () => {
     if (!containerRef.current) return;
-    html2pdf()
-      .set({
-        margin: 0.3,
-        filename: "usuarios_mayor_uso_productos.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-      })
-      .from(containerRef.current) // Exportamos todo el contenedor
-      .save();
+
+    const canvas = await html2canvas(containerRef.current, {
+      scale: 2,
+      useCORS: true,
+    });
+
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+    let position = 0;
+    if (pdfHeight > pageHeight) {
+      while (position < pdfHeight) {
+        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        position += pageHeight;
+        if (position < pdfHeight) pdf.addPage();
+      }
+    } else {
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+    }
+
+    pdf.save("usuarios_mayor_uso_productos.pdf");
   };
 
   if (isLoading) return <p className="p-6 text-lg text-center">Cargando...</p>;
   if (error) return <p className="p-6 text-lg text-red-600 text-center">Error al cargar datos.</p>;
 
+  const ReportContent = () => (
+    <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl mx-auto border border-gray-200">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
+        <p className="text-sm text-gray-500">
+          Reporte generado automáticamente —{" "}
+          {new Date().toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+        <p className="mt-2 text-gray-700">
+          Usuarios que más han utilizado productos según su historial.
+        </p>
+      </div>
+
+      <table className="w-full text-center border-collapse border border-gray-300">
+        <thead className="bg-blue-200 text-blue-900 text-md">
+          <tr>
+            <th className="p-3 border">#</th>
+            <th className="p-3 border">Nombre</th>
+            <th className="p-3 border">Apellido</th>
+            <th className="p-3 border">Historial de Productos</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm text-blue-800">
+          {data.map((usuario: any, index: number) => (
+            <tr key={usuario.id} className="hover:bg-blue-50">
+              <td className="p-3 border font-bold text-blue-700">{index + 1}</td>
+              <td className="p-3 border">{usuario.nombre}</td>
+              <td className="p-3 border">{usuario.apellido}</td>
+              <td className="p-3 border">{usuario._count?.historial ?? 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <DefaultLayout>
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-white px-6 py-12">
-        <div className="w-full max-w-5xl text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-blue-800 mb-3">
-            Usuarios con Mayor Uso de Productos
-          </h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-6">
-            Este reporte muestra los usuarios que más han utilizado productos, clasificados por su historial
-            de uso. Puedes exportar esta información en formato PDF.
-          </p>
+      <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-blue-900">Usuarios con Mayor Uso de Productos</h1>
+          <div className="flex gap-4">
+            <Button
+              onClick={() => setShowPreview(true)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow"
+            >
+              Previsualizar
+            </Button>
+            <Button
+              onClick={exportarPDF}
+              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg shadow"
+            >
+              Exportar PDF
+            </Button>
+          </div>
         </div>
 
-        <div className="mb-6 flex justify-center">
-          <Button
-            onClick={exportarPDF}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md"
-          >
-            Exportar PDF
-          </Button>
+        <div ref={containerRef}>
+          <ReportContent />
         </div>
 
-        {/* Cambié el contenedor a este div para que incluya toda la vista */}
-        <div ref={containerRef} className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl">
-          <table className="w-full text-center border-collapse">
-            <thead className="bg-blue-200 text-blue-900 text-lg">
-              <tr>
-                <th className="p-4 border-b">#</th>
-                <th className="p-4 border-b">Nombre</th>
-                <th className="p-4 border-b">Apellido</th>
-                <th className="p-4 border-b">Historial de Productos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((usuario: { id: Key | null | undefined; nombre: string; apellido: string; _count: { historial: any }; }, index: number) => (
-                <tr key={usuario.id} className="hover:bg-blue-50 text-base">
-                  <td className="p-4 border-b font-bold text-blue-700">{index + 1}</td>
-                  <td className="p-4 border-b text-blue-800">{usuario.nombre}</td>
-                  <td className="p-4 border-b text-blue-800">{usuario.apellido}</td>
-                  <td className="p-4 border-b text-blue-800">{usuario._count?.historial || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {showPreview && (
+          <Modal onClose={() => setShowPreview(false)}>
+            <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold text-blue-700">Previsualización del Reporte</h2>
+              </div>
+              <hr className="my-2 border-gray-200" />
+              <ReportContent />
+            </div>
+          </Modal>
+        )}
       </div>
     </DefaultLayout>
   );

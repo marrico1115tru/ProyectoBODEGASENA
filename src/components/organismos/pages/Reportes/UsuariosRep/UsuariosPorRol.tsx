@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useRef } from "react";
-import html2pdf from "html2pdf.js";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
+import Modal from "@/components/ui/Modal";
 
 export default function UsuariosPorRolActividad() {
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-por-rol-actividad"],
@@ -18,84 +21,132 @@ export default function UsuariosPorRolActividad() {
     },
   });
 
-  const exportarPDF = () => {
+  const exportarPDF = async () => {
     if (!containerRef.current) return;
-    html2pdf()
-      .set({
-        margin: 0.3,
-        filename: "usuarios_por_rol_actividad.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-      })
-      .from(containerRef.current)
-      .save();
+
+    const canvas = await html2canvas(containerRef.current, {
+      scale: 2,
+      useCORS: true,
+    });
+
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+    let position = 0;
+    if (pdfHeight > pageHeight) {
+      while (position < pdfHeight) {
+        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        position += pageHeight;
+        if (position < pdfHeight) pdf.addPage();
+      }
+    } else {
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+    }
+
+    pdf.save("usuarios_por_rol_actividad.pdf");
   };
 
   if (isLoading) return <p className="p-6 text-lg text-center">Cargando...</p>;
   if (error) return <p className="p-6 text-lg text-red-600 text-center">Error al cargar datos.</p>;
 
+  const ReportContent = () => (
+    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-6xl mx-auto space-y-10 border border-gray-200">
+      {data.map((rol: any, i: number) => (
+        <div key={i}>
+          <h2 className="text-xl font-semibold text-indigo-700 border-b border-indigo-200 pb-2 mb-4 text-center">
+            {rol.nombreRol}
+          </h2>
+
+          {rol.usuarios.length === 0 ? (
+            <p className="text-gray-500 italic text-sm text-center">No hay usuarios en este rol.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-center text-sm border border-gray-300 rounded">
+                <thead className="bg-indigo-100 text-indigo-900 uppercase">
+                  <tr>
+                    <th className="px-2 py-2 border">Nombre</th>
+                    <th className="px-2 py-2 border">Correo</th>
+                    <th className="px-2 py-2 border">Solicitudes</th>
+                    <th className="px-2 py-2 border">Entregas</th>
+                  </tr>
+                </thead>
+                <tbody className="text-indigo-800 divide-y divide-gray-200">
+                  {rol.usuarios.map((usuario: any) => (
+                    <tr
+                      key={usuario.id}
+                      className="hover:bg-indigo-50 text-xs"
+                    >
+                      <td className="px-2 py-1 font-medium">
+                        {usuario.nombre} {usuario.apellido}
+                      </td>
+                      <td className="px-2 py-1 text-gray-700">{usuario.email}</td>
+                      <td className="px-2 py-1">{usuario._count?.solicitudes || 0}</td>
+                      <td className="px-2 py-1">{usuario._count?.entregas || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <DefaultLayout>
-      <div className="p-10 bg-gradient-to-br from-blue-50 to-white min-h-screen flex flex-col items-center">
-        <div className="w-full max-w-7xl text-center mb-10 relative px-4">
-          <h1 className="text-4xl font-extrabold text-blue-800 mb-3">
-            Usuarios por Rol y Actividad
-          </h1>
-          <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-            Este informe presenta los usuarios agrupados por su rol en el sistema, junto con su actividad en solicitudes y entregas. Puedes exportar esta información como PDF.
-          </p>
-          <div className="absolute right-10 top-0">
+      <div className="p-10 bg-gradient-to-br from-blue-50 to-white min-h-screen">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-900 mb-2">
+              Usuarios por Rol y Actividad
+            </h1>
+            <p className="text-gray-600 text-sm max-w-2xl">
+              Este informe presenta los usuarios agrupados por su rol en el sistema,
+              junto con su actividad en solicitudes y entregas.
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <Button
+              onClick={() => setShowPreview(true)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow"
+            >
+              Previsualizar
+            </Button>
             <Button
               onClick={exportarPDF}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow-md"
+              className="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-lg shadow"
             >
               Exportar PDF
             </Button>
           </div>
         </div>
 
-        <div
-          ref={containerRef}
-          className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-7xl space-y-10"
-        >
-          {data.map((rol: { nombreRol: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; usuarios: { id: Key | null | undefined; nombre: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; apellido: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; email: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; _count: { solicitudes: any; entregas: any; }; }[]; }, i: Key | null | undefined) => (
-            <div key={i}>
-              <h2 className="text-2xl font-semibold text-indigo-700 border-b border-indigo-200 pb-2 mb-6 text-center">
-                {rol.nombreRol}
-              </h2>
-
-              {rol.usuarios.length === 0 ? (
-                <p className="text-gray-500 italic text-lg text-center">No hay usuarios en este rol.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-center border-collapse">
-                    <thead>
-                      <tr className="bg-indigo-100 text-indigo-800 text-lg">
-                        <th className="p-4 border-b">Nombre</th>
-                        <th className="p-4 border-b">Correo</th>
-                        <th className="p-4 border-b">Solicitudes</th>
-                        <th className="p-4 border-b">Entregas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rol.usuarios.map((usuario: { id: Key | null | undefined; nombre: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; apellido: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; email: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; _count: { solicitudes: any; entregas: any; }; }) => (
-                        <tr key={usuario.id} className="hover:bg-blue-50 text-base">
-                          <td className="p-4 border-b font-medium">
-                            {usuario.nombre} {usuario.apellido}
-                          </td>
-                          <td className="p-4 border-b text-gray-700">{usuario.email}</td>
-                          <td className="p-4 border-b">{usuario._count?.solicitudes || 0}</td>
-                          <td className="p-4 border-b">{usuario._count?.entregas || 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))}
+        <div ref={containerRef}>
+          <ReportContent />
         </div>
+
+        {showPreview && (
+          <Modal onClose={() => setShowPreview(false)}>
+            <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">
+              <div className="text-center mb-4">
+                <h2 className="text-xl font-bold text-indigo-700">Previsualización del Reporte</h2>
+              </div>
+              <hr className="my-2 border-gray-200" />
+              <ReportContent />
+            </div>
+          </Modal>
+        )}
       </div>
     </DefaultLayout>
   );

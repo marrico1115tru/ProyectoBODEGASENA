@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef } from "react";
-import html2pdf from "html2pdf.js";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
+import Modal from "@/components/ui/Modal";
 
 export default function ProductosVencidos() {
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["productos-vencidos"],
@@ -16,72 +19,130 @@ export default function ProductosVencidos() {
     },
   });
 
-  const exportarPDF = () => {
+  const exportarPDF = async () => {
     if (!containerRef.current) return;
 
-    const options = {
-      margin: 0.3,
-      filename: "reporte_productos_vencidos.pdf",
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-    };
+    const canvas = await html2canvas(containerRef.current, {
+      scale: 2,
+      useCORS: true,
+    });
 
-    html2pdf().set(options).from(containerRef.current).save();
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+    let position = 0;
+    if (pdfHeight > pageHeight) {
+      while (position < pdfHeight) {
+        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        position += pageHeight;
+        if (position < pdfHeight) pdf.addPage();
+      }
+    } else {
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+    }
+
+    pdf.save("reporte_productos_vencidos.pdf");
   };
 
   if (isLoading) return <p className="p-6">Cargando...</p>;
   if (error) return <p className="p-6 text-red-500">Error al cargar productos vencidos.</p>;
   if (!Array.isArray(data)) return <p className="p-6">No se encontraron datos.</p>;
 
+  const ReportContent = () => (
+    <div className="bg-white p-6 rounded-xl shadow-lg max-w-6xl mx-auto border border-gray-200">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
+        <p className="text-sm text-gray-500">
+          Reporte generado automáticamente —{" "}
+          {new Date().toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
+        <p className="mt-2 text-gray-700">
+          Detalle de productos que han superado su fecha de vencimiento registrada.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full table-auto border-collapse border border-gray-300">
+          <thead className="bg-blue-100 text-blue-900 text-left text-sm font-semibold">
+            <tr>
+              <th className="border border-gray-300 px-4 py-2">#</th>
+              <th className="border border-gray-300 px-4 py-2">Nombre del Producto</th>
+              <th className="border border-gray-300 px-4 py-2">Fecha de Vencimiento</th>
+              <th className="border border-gray-300 px-4 py-2">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm text-gray-700">
+            {data.map((prod: any, index: number) => (
+              <tr key={prod?.id} className="hover:bg-blue-50 transition-colors">
+                <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {prod?.nombre || "Producto sin nombre"}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {prod?.fechaVencimiento
+                    ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
+                    : "Sin fecha"}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">{prod?.cantidad ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   return (
     <DefaultLayout>
-      <div className="p-8 bg-blue-50 min-h-screen">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-blue-800">Productos Vencidos</h1>
-          <Button onClick={exportarPDF} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300">
-            Exportar PDF
-          </Button>
-        </div>
-
-        <div ref={containerRef} className="bg-white p-6 rounded-xl shadow-lg max-w-5xl mx-auto">
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-semibold text-blue-700">INNOVASOFT</h2>
-            <p className="text-sm text-gray-600">
-              Reporte generado automáticamente — {new Date().toLocaleDateString()}
-            </p>
-            <p className="mt-2 text-gray-700">
-              Este reporte detalla los productos que han superado su fecha de vencimiento registrada.
-            </p>
+      <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-blue-900">Productos Vencidos</h1>
+          <div className="flex gap-4">
+            <Button
+              onClick={() => setShowPreview(true)}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg shadow"
+            >
+              Previsualizar
+            </Button>
+            <Button
+              onClick={exportarPDF}
+              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-lg shadow"
+            >
+              Exportar PDF
+            </Button>
           </div>
-
-          <ul className="space-y-4">
-            {data.map((prod: any) => (
-              <li
-                key={prod?.id}
-                className="p-5 border border-blue-300 rounded-lg bg-blue-50 shadow-md hover:shadow-xl transition transform hover:scale-105"
-              >
-                <h3 className="text-lg font-semibold text-blue-800">
-                  {prod?.nombre || "Producto sin nombre"}
-                </h3>
-                <p className="text-sm text-gray-700">
-                  Fecha de vencimiento:{" "}
-                  <span className="font-medium text-gray-900">
-                    {prod?.fechaVencimiento
-                      ? new Date(prod.fechaVencimiento).toLocaleDateString()
-                      : "Sin fecha"}
-                  </span>
-                </p>
-                <p className="text-sm text-gray-700">
-                  Cantidad:{" "}
-                  <span className="font-medium text-gray-900">
-                    {prod?.cantidad ?? 0}
-                  </span>
-                </p>
-              </li>
-            ))}
-          </ul>
         </div>
+
+        {/* Contenedor a exportar */}
+        <div ref={containerRef}>
+          <ReportContent />
+        </div>
+
+        {/* Modal para previsualización */}
+        {showPreview && (
+          <Modal onClose={() => setShowPreview(false)}>
+            <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold text-blue-700">Previsualización del Reporte</h2>
+              </div>
+              <hr className="my-2 border-gray-200" />
+              <ReportContent />
+            </div>
+          </Modal>
+        )}
       </div>
     </DefaultLayout>
   );
