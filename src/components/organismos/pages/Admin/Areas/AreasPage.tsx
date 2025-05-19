@@ -7,7 +7,19 @@ import {
   updateArea,
   deleteArea
 } from '@/Api/AreasService';
-import DefaultLayout from '@/layouts/default'; 
+import { getCentrosFormacion } from '@/Api/centrosformacionTable';
+import { getSitios } from '@/Api/SitioService';
+import DefaultLayout from '@/layouts/default';
+
+interface CentroFormacion {
+  id: number;
+  nombre: string;
+}
+
+interface Sitio {
+  id: number;
+  nombre: string;
+}
 
 const initialFormState: Area = {
   nombre: '',
@@ -23,8 +35,13 @@ export default function AreasPage() {
   const [editando, setEditando] = useState(false);
   const [idEditando, setIdEditando] = useState<number | null>(null);
 
+  const [centrosFormacion, setCentrosFormacion] = useState<CentroFormacion[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+
   useEffect(() => {
     cargarAreas();
+    cargarCentrosFormacion();
+    cargarSitios();
   }, []);
 
   const cargarAreas = async () => {
@@ -32,11 +49,21 @@ export default function AreasPage() {
     setAreas(data);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const cargarCentrosFormacion = async () => {
+    const data = await getCentrosFormacion();
+    setCentrosFormacion(data);
+  };
+
+  const cargarSitios = async () => {
+    const data = await getSitios();
+    setSitios(data);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value,
+      [name]: type === 'number' || name.includes('Id') ? Number(value) : value,
     }));
   };
 
@@ -98,26 +125,39 @@ export default function AreasPage() {
             required
             className="input"
           />
-          <input
-            type="number"
+
+          {/* Select de Centro de Formación */}
+          <select
             name="centroFormacionId"
-            placeholder="ID Centro Formación"
             value={form.centroFormacionId}
             onChange={handleChange}
             required
             className="input"
-            min={1}
-          />
-          <input
-            type="number"
+          >
+            <option value="">Seleccione Centro de Formación</option>
+            {centrosFormacion.map((cf) => (
+              <option key={cf.id} value={cf.id}>
+                {cf.nombre}
+              </option>
+            ))}
+          </select>
+
+          {/* Select de Sitio */}
+          <select
             name="sitioId"
-            placeholder="ID Sitio"
             value={form.sitioId}
             onChange={handleChange}
             required
             className="input"
-            min={1}
-          />
+          >
+            <option value="">Seleccione Sitio</option>
+            {sitios.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
+
           <input
             type="date"
             name="fechaInicial"
@@ -132,6 +172,7 @@ export default function AreasPage() {
             onChange={handleChange}
             className="input"
           />
+
           <button
             type="submit"
             className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"

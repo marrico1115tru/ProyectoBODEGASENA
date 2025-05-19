@@ -20,9 +20,9 @@ const initialFormState: Usuario = {
   telefono: '',
   email: '',
   cargo: '',
-  areaId: 1,
-  fichaId: 1,
-  rolId: 1,
+  areaId: 0,
+  fichaId: 0,
+  rolId: 0,
   fechaInicial: '',
   fechaFinal: '',
 };
@@ -35,10 +35,9 @@ type SimpleItem = {
 export default function UsuarioPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [form, setForm] = useState<Usuario>(initialFormState);
-  const [editando, setEditando] = useState<boolean>(false);
+  const [editando, setEditando] = useState(false);
   const [idEditando, setIdEditando] = useState<number | null>(null);
 
-  // Cambié el tipo a SimpleItem[], que asegura id:number y nombre:string
   const [areas, setAreas] = useState<SimpleItem[]>([]);
   const [roles, setRoles] = useState<SimpleItem[]>([]);
   const [fichas, setFichas] = useState<SimpleItem[]>([]);
@@ -61,25 +60,9 @@ export default function UsuarioPage() {
         getFichasFormacion(),
       ]);
 
-      // Mapear para asegurar id:number (sin undefined)
-      const areasLimpias = areasData.map((a: any) => ({
-        id: a.id ?? 0,
-        nombre: a.nombre ?? '',
-      }));
-
-      const rolesLimpios = rolesData.map((r: any) => ({
-        id: r.id ?? 0,
-        nombre: r.nombre ?? '',
-      }));
-
-      const fichasLimpias = fichasData.map((f: any) => ({
-        id: f.id ?? 0,
-        nombre: f.nombre ?? '',
-      }));
-
-      setAreas(areasLimpias);
-      setRoles(rolesLimpios);
-      setFichas(fichasLimpias);
+      setAreas(areasData.map((a: any) => ({ id: a.id ?? 0, nombre: a.nombre ?? '' })));
+      setRoles(rolesData.map((r: any) => ({ id: r.id ?? 0, nombre: r.nombre ?? '' })));
+      setFichas(fichasData.map((f: any) => ({ id: f.id ?? 0, nombre: f.nombre ?? '' })));
     } catch (error) {
       console.error('Error cargando datos del formulario:', error);
     }
@@ -88,7 +71,11 @@ export default function UsuarioPage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({
+      ...form,
+      [name]: name.includes('Id') ? parseInt(value) : value,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,7 +96,7 @@ export default function UsuarioPage() {
   };
 
   const handleEdit = (usuario: Usuario) => {
-    setForm(usuario);
+    setForm({ ...usuario });
     setEditando(true);
     setIdEditando(usuario.id || null);
   };
@@ -143,7 +130,7 @@ export default function UsuarioPage() {
               type={type}
               name={name}
               placeholder={placeholder}
-              value={form[name as keyof Usuario] as string | number}
+              value={form[name as keyof Usuario] as string}
               onChange={handleChange}
               required
               className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -157,7 +144,7 @@ export default function UsuarioPage() {
             required
             className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Seleccione Área</option>
+            <option value={0}>Seleccione Área</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.nombre}
@@ -172,7 +159,7 @@ export default function UsuarioPage() {
             required
             className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Seleccione Ficha</option>
+            <option value={0}>Seleccione Ficha</option>
             {fichas.map((ficha) => (
               <option key={ficha.id} value={ficha.id}>
                 {ficha.nombre}
@@ -187,13 +174,31 @@ export default function UsuarioPage() {
             required
             className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Seleccione Rol</option>
+            <option value={0}>Seleccione Rol</option>
             {roles.map((rol) => (
               <option key={rol.id} value={rol.id}>
                 {rol.nombre}
               </option>
             ))}
           </select>
+
+          <input
+            type="date"
+            name="fechaInicial"
+            value={form.fechaInicial || ''}
+            onChange={handleChange}
+            required
+            className="px-4 py-2 border border-slate-300 rounded-md"
+          />
+
+          <input
+            type="date"
+            name="fechaFinal"
+            value={form.fechaFinal || ''}
+            onChange={handleChange}
+            required
+            className="px-4 py-2 border border-slate-300 rounded-md"
+          />
 
           <div className="md:col-span-2">
             <button
@@ -224,7 +229,9 @@ export default function UsuarioPage() {
                   <td className="px-4 py-2 border">{u.nombre} {u.apellido}</td>
                   <td className="px-4 py-2 border">{u.cedula}</td>
                   <td className="px-4 py-2 border">{u.email}</td>
-                  <td className="px-4 py-2 border">{roles.find(r => r.id === u.rolId)?.nombre || u.rolId}</td>
+                  <td className="px-4 py-2 border">
+                    {roles.find((r) => r.id === u.rolId)?.nombre || u.rolId}
+                  </td>
                   <td className="px-4 py-2 border text-center">
                     <div className="flex justify-center space-x-2">
                       <button
