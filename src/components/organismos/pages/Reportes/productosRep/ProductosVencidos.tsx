@@ -126,12 +126,12 @@ export default function ProductosVencidos() {
           </div>
         </div>
 
-        {/* Contenedor a exportar */}
+     
         <div ref={containerRef}>
           <ReportContent />
         </div>
 
-        {/* Modal para previsualización */}
+    
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
             <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">

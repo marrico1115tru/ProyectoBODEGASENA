@@ -1,4 +1,3 @@
-// src/api/areas.ts
 export interface AreaEstadistica {
   nombreCentroFormacion: string;
   cantidadAreas: number;

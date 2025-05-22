@@ -1,4 +1,4 @@
-// src/pages/AreasPage.tsx
+
 import React, { useEffect, useState } from 'react';
 import { Area } from '@/types/types/typesArea';
 import {
@@ -126,7 +126,7 @@ export default function AreasPage() {
             className="input"
           />
 
-          {/* Select de Centro de Formación */}
+         
           <select
             name="centroFormacionId"
             value={form.centroFormacionId}
@@ -142,7 +142,6 @@ export default function AreasPage() {
             ))}
           </select>
 
-          {/* Select de Sitio */}
           <select
             name="sitioId"
             value={form.sitioId}

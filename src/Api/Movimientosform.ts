@@ -1,13 +1,13 @@
 export interface MovimientoMaterial {
     id: number;
-    tipo: string; // Entrada o Salida
+    tipo: string; 
     cantidad: number;
     fecha: string;
     id_producto: number;
     id_usuario: number;
   }
   
-  const API_URL = 'http://localhost:3500/API/movimientosmateriales'; // Ajusta tu endpoint
+  const API_URL = 'http://localhost:3500/API/movimientosmateriales';
   
   export const fetchMovimientos = async (): Promise<MovimientoMaterial[]> => {
     const response = await fetch(API_URL);

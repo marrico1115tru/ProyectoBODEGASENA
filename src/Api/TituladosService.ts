@@ -1,4 +1,3 @@
-// src/api/TituladosService.ts
 import axios from 'axios';
 import { Titulado } from '@/types/types/typesTitulados';
 

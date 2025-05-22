@@ -31,13 +31,12 @@ export default function SitiosPage() {
       const data = await getSitios();
       setSitios(data);
     } catch (error) {
-      console.error("❌ Error al cargar sitios:", error);
+      console.error(" Error al cargar sitios:", error);
     }
   };
 
   const cargarTiposSitio = async () => {
-    // Lógica para cargar los tipos de sitio si es necesario
-    // Suponiendo que ya tienes una API configurada para esto, si no, podemos simularlo con datos estáticos
+
     const tipos: TipoSitio[] = [
       { id: 1, nombre: 'Tipo A' },
       { id: 2, nombre: 'Tipo B' },
@@ -63,7 +62,7 @@ export default function SitiosPage() {
       setIdEditando(null);
       cargarSitios();
     } catch (error) {
-      console.error("❌ Error al guardar sitio:", error);
+      console.error(" Error al guardar sitio:", error);
     }
   };
 
@@ -79,7 +78,7 @@ export default function SitiosPage() {
         await deleteSitio(id);
         cargarSitios();
       } catch (error) {
-        console.error("❌ Error al eliminar sitio:", error);
+        console.error(" Error al eliminar sitio:", error);
       }
     }
   };

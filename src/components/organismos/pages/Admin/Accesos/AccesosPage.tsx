@@ -84,7 +84,7 @@ export default function AccesoView() {
       setIdEditando(null);
       cargarAccesos();
     } catch (error) {
-      console.error('❌ Error al guardar acceso:', error);
+      console.error('Error al guardar acceso:', error);
     }
   };
 

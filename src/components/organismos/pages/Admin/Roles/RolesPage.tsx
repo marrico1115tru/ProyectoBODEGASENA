@@ -49,7 +49,7 @@ export default function RolesPage() {
       setIdEditando(null);
       cargarRoles();
     } catch (error) {
-      console.error('❌ Error al guardar rol:', error);
+      console.error(' Error al guardar rol:', error);
     }
   };
 

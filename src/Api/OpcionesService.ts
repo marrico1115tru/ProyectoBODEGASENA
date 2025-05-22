@@ -1,4 +1,3 @@
-// src/api/OpcionesService.ts
 import axios from 'axios';
 import { Opcion } from '@/types/types/Opcion';
 

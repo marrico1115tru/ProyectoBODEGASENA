@@ -6,7 +6,18 @@ import {
   deleteProducto
 } from '@/Api/Productosform';
 import { Producto } from '@/types/types/typesProductos';
-import DefaultLayout from '@/layouts/default'; 
+import DefaultLayout from '@/layouts/default';
+
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+
+import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/solid';
+import { Button } from '@/components/ui/button';
 
 const initialFormState: Producto = {
   codigoSena: '',
@@ -25,8 +36,9 @@ const initialFormState: Producto = {
 export default function ProductoPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [form, setForm] = useState<Producto>(initialFormState);
-  const [editando, setEditando] = useState<boolean>(false);
+  const [editando, setEditando] = useState(false);
   const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     cargarProductos();
@@ -52,9 +64,10 @@ export default function ProductoPage() {
       setForm(initialFormState);
       setEditando(false);
       setIdEditando(null);
+      setModalOpen(false);
       cargarProductos();
     } catch (error) {
-      console.error("❌ Error al guardar producto:", error);
+      console.error('Error al guardar producto:', error);
     }
   };
 
@@ -62,6 +75,7 @@ export default function ProductoPage() {
     setForm(producto);
     setEditando(true);
     setIdEditando(producto.id || null);
+    setModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
@@ -74,52 +88,108 @@ export default function ProductoPage() {
   return (
     <DefaultLayout>
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Gestión de Productos</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Gestión de Productos</h1>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+                <PlusIcon className="w-5 h-5" />
+                Crear
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>{editando ? 'Editar Producto' : 'Crear Producto'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mt-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium">Código SENA</label>
+                  <input type="text" name="codigoSena" value={form.codigoSena} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">UNSPC</label>
+                  <input type="text" name="unspc" value={form.unspc} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Nombre</label>
+                  <input type="text" name="nombre" value={form.nombre} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium">Descripción</label>
+                  <input type="text" name="descripcion" value={form.descripcion} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Cantidad</label>
+                  <input type="number" name="cantidad" value={form.cantidad} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Categoría</label>
+                  <input type="text" name="categoria" value={form.categoria} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Tipo de Materia</label>
+                  <input type="text" name="tipoMateria" value={form.tipoMateria} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Área ID</label>
+                  <input type="number" name="areaId" value={form.areaId} onChange={handleChange} required className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium">Fecha de Vencimiento</label>
+                  <input type="date" name="fechaVencimiento" value={form.fechaVencimiento || ''} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="col-span-2">
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2">
+                    {editando ? 'Actualizar Producto' : 'Crear Producto'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
-          <input type="text" name="codigoSena" placeholder="Código SENA" value={form.codigoSena} onChange={handleChange} required className="input" />
-          <input type="text" name="unspc" placeholder="UNSPC" value={form.unspc} onChange={handleChange} className="input" />
-          <input type="text" name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} required className="input" />
-          <input type="text" name="descripcion" placeholder="Descripción" value={form.descripcion} onChange={handleChange} className="input" />
-          <input type="number" name="cantidad" placeholder="Cantidad" value={form.cantidad} onChange={handleChange} required className="input" />
-          <input type="text" name="categoria" placeholder="Categoría" value={form.categoria} onChange={handleChange} required className="input" />
-          <input type="text" name="tipoMateria" placeholder="Tipo Materia" value={form.tipoMateria} onChange={handleChange} required className="input" />
-          <input type="number" name="areaId" placeholder="Área ID" value={form.areaId} onChange={handleChange} required className="input" />
-          <input type="date" name="fechaVencimiento" value={form.fechaVencimiento || ''} onChange={handleChange} className="input" />
-          <button type="submit" className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
-            {editando ? 'Actualizar Producto' : 'Crear Producto'}
-          </button>
-        </form>
-
-        <table className="w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border px-2 py-1">ID</th>
-              <th className="border px-2 py-1">Código SENA</th>
-              <th className="border px-2 py-1">Nombre</th>
-              <th className="border px-2 py-1">Cantidad</th>
-              <th className="border px-2 py-1">Categoría</th>
-              <th className="border px-2 py-1">Área</th>
-              <th className="border px-2 py-1">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {productos.map((prod) => (
-              <tr key={prod.id}>
-                <td className="border px-2 py-1">{prod.id}</td>
-                <td className="border px-2 py-1">{prod.codigoSena}</td>
-                <td className="border px-2 py-1">{prod.nombre}</td>
-                <td className="border px-2 py-1">{prod.cantidad}</td>
-                <td className="border px-2 py-1">{prod.categoria}</td>
-                <td className="border px-2 py-1">{prod.areaId}</td>
-                <td className="border px-2 py-1">
-                  <button onClick={() => handleEdit(prod)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded">Editar</button>
-                  <button onClick={() => handleDelete(prod.id!)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">Eliminar</button>
-                </td>
+        <div className="overflow-x-auto rounded-xl shadow-md">
+          <table className="min-w-full bg-white border border-gray-200 text-sm text-gray-700">
+            <thead>
+              <tr className="bg-blue-100 text-left">
+                <th className="p-3 border-b">ID</th>
+                <th className="p-3 border-b">Código SENA</th>
+                <th className="p-3 border-b">Nombre</th>
+                <th className="p-3 border-b">Cantidad</th>
+                <th className="p-3 border-b">Categoría</th>
+                <th className="p-3 border-b">Área</th>
+                <th className="p-3 border-b text-center">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {productos.map((prod, idx) => (
+                <tr key={prod.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="p-3 border-b">{prod.id}</td>
+                  <td className="p-3 border-b">{prod.codigoSena}</td>
+                  <td className="p-3 border-b">{prod.nombre}</td>
+                  <td className="p-3 border-b">{prod.cantidad}</td>
+                  <td className="p-3 border-b">{prod.categoria}</td>
+                  <td className="p-3 border-b">{prod.areaId}</td>
+                  <td className="p-3 border-b flex justify-center gap-2">
+                    <Button onClick={() => handleEdit(prod)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm">
+                      <PencilIcon className="w-4 h-4" />
+                    </Button>
+                    <Button onClick={() => handleDelete(prod.id!)} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md shadow-sm">
+                      <TrashIcon className="w-4 h-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {productos.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                    No hay productos registrados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </DefaultLayout>
   );

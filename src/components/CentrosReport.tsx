@@ -14,7 +14,7 @@ import html2canvas from "html2canvas";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
-// Registrar chart.js
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 type Centro = {
@@ -53,7 +53,7 @@ export default function ReporteCentrosFormacion() {
     pdf.save("reporte_centros.pdf");
   };
 
-  // Agrupar por ubicación
+
   const ubicacionesMap: Record<string, number> = {};
   centros.forEach((centro) => {
     ubicacionesMap[centro.ubicacion] = (ubicacionesMap[centro.ubicacion] || 0) + 1;
@@ -90,10 +90,10 @@ export default function ReporteCentrosFormacion() {
       <h2 className="text-2xl font-bold mb-4 text-center">Centros de Formación Registrados</h2>
 
       <div ref={chartRef} className="bg-gray-100 p-4 rounded-lg space-y-6">
-        {/* Gráfico */}
+     
         <Bar data={chartData} options={chartOptions} />
 
-        {/* Tabla */}
+   
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
             <thead className="bg-blue-100 text-gray-700">
@@ -120,7 +120,7 @@ export default function ReporteCentrosFormacion() {
         </div>
       </div>
 
-      {/* Botón de exportar */}
+ 
       <div className="mt-6 flex justify-center">
         <Button onClick={handleDownloadPDF} className="flex gap-2">
           <Download size={16} />

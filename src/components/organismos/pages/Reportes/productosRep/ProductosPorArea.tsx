@@ -110,12 +110,12 @@ export default function ProductosPorArea() {
           </div>
         </div>
 
-        {/* Contenedor que será exportado */}
+      
         <div ref={containerRef}>
           <ReportContent />
         </div>
 
-        {/* Modal para previsualización */}
+      
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
             <div className="p-6 max-h-[80vh] overflow-auto bg-white rounded-lg shadow-lg">

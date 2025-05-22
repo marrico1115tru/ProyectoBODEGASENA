@@ -6,7 +6,7 @@ import {
   deleteMovimiento,
 } from '@/Api/MovimientoInventarioApi';
 import { MovimientoInventario } from '@/types/types/movimientoInventario';
-import DefaultLayout from '@/layouts/default'; // Ajusta esta ruta si es necesaria
+import DefaultLayout from '@/layouts/default';
 
 const initialFormState: MovimientoInventario = {
   productoId: 0,
@@ -57,7 +57,7 @@ export default function MovimientoInventarioPage() {
       setIdEditando(null);
       cargarMovimientos();
     } catch (error) {
-      console.error('❌ Error al guardar movimiento:', error);
+      console.error(' Error al guardar movimiento:', error);
     }
   };
 

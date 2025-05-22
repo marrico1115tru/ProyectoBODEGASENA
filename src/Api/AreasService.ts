@@ -1,4 +1,3 @@
-// src/api/AreasService.ts
 import axios from 'axios';
 import { Area } from '@/types/types/typesArea';
 

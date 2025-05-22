@@ -1,5 +1,3 @@
-// src/pages/FichasFormacionPage.tsx
-
 import React, { useEffect, useState } from 'react';
 import {
   getFichasFormacion,
@@ -49,7 +47,7 @@ export default function FichasFormacionPage() {
       setIdEditando(null);
       cargarFichas();
     } catch (error) {
-      console.error("❌ Error al guardar ficha:", error);
+      console.error(" Error al guardar ficha:", error);
     }
   };
 

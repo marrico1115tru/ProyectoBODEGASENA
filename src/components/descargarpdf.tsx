@@ -1,15 +1,15 @@
 import { jsPDF } from "jspdf"; 
 
-export default function DownloadPdf() {  // DownloadPdf=>función que retorna  un JSX
-  const handleDownload = () => { //   handleDownload=> función que se ejecuta al dar clic en descargar
+export default function DownloadPdf() { 
+  const handleDownload = () => { 
     const doc = new jsPDF();
     doc.text("¡Hola, este es un PDF generado en React!", 10, 10); 
-    doc.save("documento.pdf"); // guarda el archivo generado y al ejecutarse pide al usuario que lo descargue 
+    doc.save("documento.pdf"); 
   };
-// Boton de descarga
+
   return (
     <button 
-      onClick={handleDownload} // cuando el usuario haga clic en el boton se genere y descargue el PDF
+      onClick={handleDownload} 
       className="bg-blue-500 text-white px-4 py-2 rounded">
       Descargar PDF
     </button>

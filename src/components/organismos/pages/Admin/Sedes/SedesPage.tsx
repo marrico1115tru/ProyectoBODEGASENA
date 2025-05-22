@@ -1,5 +1,3 @@
-// src/pages/SedesPage.tsx
-
 import React, { useEffect, useState } from "react";
 import { Sede } from "@/types/types/Sede";
 import {

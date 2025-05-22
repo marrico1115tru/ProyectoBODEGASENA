@@ -91,7 +91,7 @@ export default function UsuarioPage() {
       setIdEditando(null);
       cargarUsuarios();
     } catch (error) {
-      console.error('❌ Error al guardar usuario:', error);
+      console.error(' Error al guardar usuario:', error);
     }
   };
 

@@ -46,7 +46,7 @@ export default function TituladosPage() {
       setIdEditando(null);
       cargarTitulados();
     } catch (error) {
-      console.error("❌ Error al guardar titulado:", error);
+      console.error(" Error al guardar titulado:", error);
     }
   };
 

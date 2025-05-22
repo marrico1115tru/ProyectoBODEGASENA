@@ -6,7 +6,7 @@ import {
   updateSitio,
   deleteSitio,
 } from '@/Api/SitioService';
-import DefaultLayout from '@/layouts/default'; // Asegúrate de tener este layout correctamente creado
+import DefaultLayout from '@/layouts/default'; 
 
 const initialForm: Sitio = {
   nombre: '',
@@ -32,7 +32,7 @@ export default function SitiosPage() {
       const data = await getSitios();
       setSitios(data);
     } catch (error) {
-      console.error('❌ Error al cargar sitios:', error);
+      console.error('Error al cargar sitios:', error);
     }
   };
 
@@ -70,7 +70,7 @@ export default function SitiosPage() {
       setIdEditando(null);
       cargarSitios();
     } catch (error) {
-      console.error('❌ Error al guardar sitio:', error);
+      console.error(' Error al guardar sitio:', error);
     }
   };
 
@@ -86,7 +86,7 @@ export default function SitiosPage() {
         await deleteSitio(id);
         cargarSitios();
       } catch (error) {
-        console.error('❌ Error al eliminar sitio:', error);
+        console.error('Error al eliminar sitio:', error);
       }
     }
   };

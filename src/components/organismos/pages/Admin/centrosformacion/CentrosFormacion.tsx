@@ -38,7 +38,7 @@ export default function CentroFormacionPage() {
 
     if (name === "fechaInicial" || name === "fechaFinal") {
       const date = new Date(value);
-      newValue = date.toISOString(); // formato ISO: "2025-01-01T00:00:00.000Z"
+      newValue = date.toISOString(); 
     }
 
     setForm((prev) => ({

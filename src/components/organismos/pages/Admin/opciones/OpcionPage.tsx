@@ -46,7 +46,7 @@ export default function OpcionPage() {
       setIdEditando(null);
       cargarOpciones();
     } catch (error) {
-      console.error("❌ Error al guardar opción:", error);
+      console.error(" Error al guardar opción:", error);
     }
   };
 

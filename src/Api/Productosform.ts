@@ -1,6 +1,5 @@
-// src/api.ts
 import axios from 'axios';
-import { Producto } from '@/types/types/typesProductos'; // Ajusta la ruta si está en otro lugar
+import { Producto } from '@/types/types/typesProductos'; 
 
 const API_URL = 'http://localhost:3500/api/productos';
 

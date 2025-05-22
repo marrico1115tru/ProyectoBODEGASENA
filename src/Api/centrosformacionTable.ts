@@ -6,8 +6,8 @@ export interface CentroFormacion {
   ubicacion: string;
   telefono: string;
   email: string;
-  fechaInicial: string; // formato ISO
-  fechaFinal: string;   // formato ISO
+  fechaInicial: string; 
+  fechaFinal: string;  
 }
 
 const API_URL = 'http://localhost:3500/API/CentroFormacion';
