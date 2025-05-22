@@ -14,6 +14,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/solid";
+import { Dialog } from "@headlessui/react";
 
 const ALL_COLUMNS = [
   { id: "id", label: "ID" },
@@ -56,6 +57,8 @@ export default function MunicipioPage() {
   }, [searchTerm, municipios]);
 
   const handleSubmit = async () => {
+    if (!form.nombre || !form.departamento) return alert("Campos requeridos");
+
     if (editingId) {
       await updateMunicipio(editingId, form);
     } else {
@@ -125,7 +128,7 @@ export default function MunicipioPage() {
         </div>
       </div>
 
-      {/* Filtros de columnas */}
+      {/* Columnas */}
       <div className="flex flex-wrap gap-2 mb-4">
         {ALL_COLUMNS.map((col) => (
           <button
@@ -152,6 +155,7 @@ export default function MunicipioPage() {
         Total municipios: {filteredMunicipios.length}
       </div>
 
+      {/* Tabla */}
       <div className="overflow-x-auto rounded-lg shadow ring-1 ring-black ring-opacity-5 bg-white">
         <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-700">
           <thead className="bg-blue-100">
@@ -219,7 +223,7 @@ export default function MunicipioPage() {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Paginación */}
       <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
         <span>
           Página {currentPage} de {totalPages || 1}
@@ -249,6 +253,50 @@ export default function MunicipioPage() {
           </button>
         </div>
       </div>
+
+      {/* MODAL */}
+      <Dialog open={open} onClose={() => setOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="w-full max-w-md bg-white p-6 rounded shadow-lg space-y-4">
+            <Dialog.Title className="text-lg font-bold">
+              {editingId ? "Editar Municipio" : "Crear Municipio"}
+            </Dialog.Title>
+
+            <input
+              type="text"
+              placeholder="Nombre del municipio"
+              value={form.nombre || ""}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              className="w-full border p-2 rounded"
+            />
+            <input
+              type="text"
+              placeholder="Departamento"
+              value={form.departamento || ""}
+              onChange={(e) =>
+                setForm({ ...form, departamento: e.target.value })
+              }
+              className="w-full border p-2 rounded"
+            />
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Guardar
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </DefaultLayout>
   );
 }

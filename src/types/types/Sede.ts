@@ -2,8 +2,16 @@ export interface Sede {
   id: number;
   nombre: string;
   ubicacion: string;
-  areaId: number;
-  centroId: number;
-  fechaInicial: string; // ISO string
-  fechaFinal: string;   // ISO string
+  fechaCreacion: string;
+  fechaFinalizacion?: string | null;
+  idCentroFormacion: number;
+  centroFormacion?: {
+    id: number;
+    nombre: string;
+    ubicacion: string;
+    telefono: string;
+    email: string;
+    fechaCreacion: string;
+    fechaFinalizacion: string | null;
+  };
 }

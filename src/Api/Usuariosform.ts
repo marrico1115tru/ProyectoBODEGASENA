@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Usuario } from '@/types/types/Usuario';
 
-const API_URL = 'http://localhost:3500/api/usuarios';
+const API_URL = 'http://localhost:3000/usuarios';
 
 export const getUsuarios = async (): Promise<Usuario[]> => {
   const response = await axios.get(API_URL);
