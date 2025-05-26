@@ -18,15 +18,15 @@ import { Dialog } from "@headlessui/react";
 
 const ALL_COLUMNS = [
   { id: "id", label: "ID" },
-  { id: "nombre", label: "Nombre" },
-  { id: "descripcion", label: "Descripción" },
+  { id: "nombreArea", label: "Nombre Área" },
   { id: "fechaCreacion", label: "Fecha Creación" },
+  { id: "fkSitio", label: "ID Sitio" },
+  { id: "idCentroFormacion", label: "ID Centro Formación" },
   { id: "acciones", label: "Acciones" },
 ];
 
-export default function AreasPage() {
+export default function AreaPage() {
   const [areas, setAreas] = useState<Area[]>([]);
-  const [filteredAreas, setFilteredAreas] = useState<Area[]>([]);
   const [form, setForm] = useState<Partial<Area>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -34,7 +34,7 @@ export default function AreasPage() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
     ALL_COLUMNS.map((c) => c.id)
   );
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage] = useState(1);
   const rowsPerPage = 5;
 
   useEffect(() => {
@@ -46,16 +46,14 @@ export default function AreasPage() {
     setAreas(data);
   };
 
-  useEffect(() => {
-    const filtered = areas.filter((a) =>
-      `${a.nombre} ${a.descripcion}`.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredAreas(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, areas]);
+  const filteredAreas = areas.filter((a) =>
+    a.nombreArea.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSubmit = async () => {
-    if (!form.nombre || !form.descripcion) return alert("Campos requeridos");
+    if (!form.nombreArea || !form.fkSitio?.id || !form.idCentroFormacion?.id) {
+      return alert("Todos los campos son requeridos");
+    }
 
     if (editingId) {
       await updateArea(editingId, form);
@@ -63,11 +61,13 @@ export default function AreasPage() {
       await createArea({
         ...form,
         fechaCreacion: new Date().toISOString(),
-      });
+        fechaFinalizacion: null,
+      } as Area);
     }
-    setOpen(false);
+
     setForm({});
     setEditingId(null);
+    setOpen(false);
     fetchData();
   };
 
@@ -92,20 +92,18 @@ export default function AreasPage() {
 
   const startIndex = (currentPage - 1) * rowsPerPage;
   const paginated = filteredAreas.slice(startIndex, startIndex + rowsPerPage);
-  const totalPages = Math.ceil(filteredAreas.length / rowsPerPage);
 
   return (
     <DefaultLayout>
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">🏢 Gestión de Áreas</h1>
-
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">📋 Gestión de Áreas</h1>
+        <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Buscar por nombre o descripción..."
+            placeholder="Buscar por nombre de área..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded"
           />
           <button
             onClick={() => {
@@ -113,15 +111,13 @@ export default function AreasPage() {
               setEditingId(null);
               setOpen(true);
             }}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded"
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Crear
+            <PlusIcon className="h-5 w-5 mr-2" /> Crear
           </button>
         </div>
       </div>
 
-      {/* Columnas dinámicas */}
       <div className="flex flex-wrap gap-2 mb-4">
         {ALL_COLUMNS.map((col) => (
           <button
@@ -143,48 +139,39 @@ export default function AreasPage() {
         ))}
       </div>
 
-      {/* Contador */}
-      <div className="text-sm text-gray-600 mb-2">
-        Total áreas: {filteredAreas.length}
-      </div>
-
-      {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg shadow ring-1 ring-black ring-opacity-5 bg-white">
-        <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-700">
+      <div className="overflow-x-auto bg-white shadow rounded">
+        <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-800">
           <thead className="bg-blue-100">
             <tr>
               {ALL_COLUMNS.map(
                 (col) =>
                   visibleColumns.includes(col.id) && (
-                    <th key={col.id} className="px-6 py-3 text-left font-semibold">
+                    <th key={col.id} className="px-4 py-2 text-left">
                       {col.label}
                     </th>
                   )
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {paginated.length > 0 ? (
               paginated.map((a) => (
-                <tr key={a.id} className="hover:bg-gray-50 transition">
-                  {visibleColumns.includes("id") && <td className="px-6 py-3">{a.id}</td>}
-                  {visibleColumns.includes("nombre") && <td className="px-6 py-3">{a.nombre}</td>}
-                  {visibleColumns.includes("descripcion") && <td className="px-6 py-3">{a.descripcion}</td>}
+                <tr key={a.id} className="hover:bg-gray-50">
+                  {visibleColumns.includes("id") && <td className="px-4 py-2">{a.id}</td>}
+                  {visibleColumns.includes("nombreArea") && <td className="px-4 py-2">{a.nombreArea}</td>}
                   {visibleColumns.includes("fechaCreacion") && (
-                    <td className="px-6 py-3">{new Date(a.fechaCreacion).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">{new Date(a.fechaCreacion).toLocaleDateString()}</td>
+                  )}
+                  {visibleColumns.includes("fkSitio") && <td className="px-4 py-2">{a.fkSitio.id}</td>}
+                  {visibleColumns.includes("idCentroFormacion") && (
+                    <td className="px-4 py-2">{a.idCentroFormacion.id}</td>
                   )}
                   {visibleColumns.includes("acciones") && (
-                    <td className="px-6 py-3 space-x-2">
-                      <button
-                        onClick={() => handleEdit(a)}
-                        className="text-blue-600 hover:text-blue-800 transition"
-                      >
+                    <td className="px-4 py-2 space-x-2">
+                      <button onClick={() => handleEdit(a)} className="text-blue-600">
                         <PencilIcon className="h-5 w-5" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(a.id)}
-                        className="text-red-600 hover:text-red-800 transition"
-                      >
+                      <button onClick={() => handleDelete(a.id)} className="text-red-600">
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </td>
@@ -193,7 +180,7 @@ export default function AreasPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={visibleColumns.length} className="text-center py-6 text-gray-500">
+                <td colSpan={ALL_COLUMNS.length} className="text-center py-4 text-gray-500">
                   No se encontraron áreas.
                 </td>
               </tr>
@@ -202,60 +189,39 @@ export default function AreasPage() {
         </table>
       </div>
 
-      {/* Paginación */}
-      <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-        <span>Página {currentPage} de {totalPages || 1}</span>
-        <div className="space-x-2">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded border ${
-              currentPage === 1
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            Anterior
-          </button>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className={`px-3 py-1 rounded border ${
-              currentPage === totalPages || totalPages === 0
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            Siguiente
-          </button>
-        </div>
-      </div>
-
-      {/* Modal */}
+      {/* Modal para Crear / Editar */}
       <Dialog open={open} onClose={() => setOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md bg-white p-6 rounded shadow-lg space-y-4">
+          <Dialog.Panel className="w-full max-w-md bg-white p-6 rounded shadow space-y-4">
             <Dialog.Title className="text-lg font-bold">
               {editingId ? "Editar Área" : "Crear Área"}
             </Dialog.Title>
-
             <input
               type="text"
               placeholder="Nombre del área"
-              value={form.nombre || ""}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              value={form.nombreArea || ""}
+              onChange={(e) => setForm({ ...form, nombreArea: e.target.value })}
               className="w-full border p-2 rounded"
             />
             <input
-              type="text"
-              placeholder="Descripción"
-              value={form.descripcion || ""}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+              type="number"
+              placeholder="ID Sitio"
+              value={form.fkSitio?.id || ""}
+              onChange={(e) => setForm({ ...form, fkSitio: { id: parseInt(e.target.value) } })}
+              className="w-full border p-2 rounded"
+            />
+            <input
+              type="number"
+              placeholder="ID Centro Formación"
+              value={form.idCentroFormacion?.id || ""}
+              onChange={(e) =>
+                setForm({ ...form, idCentroFormacion: { id: parseInt(e.target.value) } })
+              }
               className="w-full border p-2 rounded"
             />
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4">
               <button
                 onClick={() => setOpen(false)}
                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"

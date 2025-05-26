@@ -1,8 +1,8 @@
 export interface Area {
   id: number;
-  nombre: string;
-  descripcion: string;
-  fechaCreacion: string; // formato ISO
+  nombreArea: string;
+  fechaCreacion: string;           
+  fechaFinalizacion: string | null;
+  fkSitio: { id: number };
+  idCentroFormacion: { id: number };
 }
-
-export type AreaForm = Partial<Omit<Area, "id">>;

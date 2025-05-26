@@ -34,7 +34,7 @@ import AccesosPage from "./components/organismos/pages/Admin/Accesos/AccesosPage
 import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/SolicitudesPage.tsx";
 import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
 import SitiosPage from "./components/organismos/pages/Admin/Sitios/SitiosPage.tsx";
-
+import Tipo_sitiosPage from "./components/organismos/pages/Admin/Tipo_sitios/Tipo_sitiosPage.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -76,6 +76,7 @@ function App() {
         <Route path="/SolicitudesPage" element={<SolicitudesPage />} />
         <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage />} />
         <Route path="/SitiosPage" element={<SitiosPage />} />
+        <Route path="/Tipo_sitiosPage" element={<Tipo_sitiosPage />} />
       </Routes>
     </QueryClientProvider>
   );

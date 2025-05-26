@@ -188,6 +188,7 @@ const Sidebar = () => {
               <SidebarButton to="/SolicitudesPage" icon={<ClipboardList className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
               <SidebarButton to="/EntregaMaterialPage" icon={<Send className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
               <SidebarButton to="/SitiosPage" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
+               <SidebarButton to="/Tipo_sitiosPage" icon={<MapPin className="w-4 h-4" />} label="Tipo Sitios" isOpen={isOpen} activePaths={["/Tipo_sitiosPage"]} />
             </div>
           )}
         </nav>

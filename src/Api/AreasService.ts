@@ -1,55 +1,80 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Area } from "@/types/types/typesArea";
 
-const API_URL = "http://localhost:3000/areas";
+/* ------------------------------------------------------------------ */
+/* Axios instance con baseURL configurable por variable de entorno    */
+/* ------------------------------------------------------------------ */
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3000",
+  headers: { "Content-Type": "application/json" },
+});
 
-// ✅ Obtener todas las áreas
+/* ------------------------------------------------------------------ */
+/* Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/** 
+ * Algunos endpoints devuelven { data: [...] } y otros simplemente [...]
+ * Esto lo normaliza para que SIEMPRE obtengamos el array u objeto directo.
+ */
+const unwrap = <T>(raw: any): T => {
+  if (Array.isArray(raw)) return raw as T;
+  if (raw && "data" in raw) return raw.data as T;
+  return raw as T;
+};
+
+/**
+ * Elimina claves internas de React (ej. id local) y vacías antes de enviar.
+ */
+const toBackendPayload = (area: Partial<Area>) => {
+  const { id, ...rest } = area; // Nunca mandamos el id dentro del body
+  // Quita propiedades undefined o vacías
+  return Object.fromEntries(
+    Object.entries(rest).filter(
+      ([, value]) =>
+        value !== undefined &&
+        value !== null &&
+        (typeof value !== "string" || value.trim() !== "")
+    )
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* CRUD                                                               */
+/* ------------------------------------------------------------------ */
+
 export const getAreas = async (): Promise<Area[]> => {
-  try {
-    const res = await axios.get(API_URL);
-    const data = res.data?.data;
+  const res = await api.get("/areas");
+  return unwrap<Area[]>(res.data);
+};
 
-    if (Array.isArray(data)) {
-      return data;
-    } else {
-      console.error("⚠️ La respuesta no es un arreglo:", res.data);
-      return [];
-    }
-  } catch (error) {
-    console.error("❌ Error al obtener áreas:", error);
-    return [];
+export const createArea = async (
+  area: Omit<Area, "id">
+): Promise<Area> => {
+  const res = await api.post("/areas", toBackendPayload(area));
+  return unwrap<Area>(res.data);
+};
+
+export const updateArea = async (
+  id: number,
+  area: Partial<Area>
+): Promise<Area> => {
+  try {
+    const res = await api.patch(`/areas/${id}`, toBackendPayload(area));
+    return unwrap<Area>(res.data);
+  } catch (err) {
+    const axiosErr = err as AxiosError<any>;
+    // Reenvía mensaje de Nest si existe
+    const msg =
+      axiosErr.response?.data?.message ??
+      axiosErr.response?.data ??
+      axiosErr.message;
+    throw new Error(
+      `No se pudo actualizar el área (id ${id}): ${msg}`
+    );
   }
 };
 
-// ✅ Crear nueva área
-export const createArea = async (data: Partial<Area>): Promise<Area | null> => {
-  try {
-    const res = await axios.post(API_URL, data);
-    return res.data?.data ?? null;
-  } catch (error) {
-    console.error("❌ Error al crear área:", error);
-    return null;
-  }
-};
-
-// ✅ Actualizar área existente
-export const updateArea = async (id: number, data: Partial<Area>): Promise<Area | null> => {
-  try {
-    const res = await axios.put(`${API_URL}/${id}`, data);
-    return res.data?.data ?? null;
-  } catch (error) {
-    console.error(`❌ Error al actualizar área con ID ${id}:`, error);
-    return null;
-  }
-};
-
-// ✅ Eliminar un área
-export const deleteArea = async (id: number): Promise<boolean> => {
-  try {
-    await axios.delete(`${API_URL}/${id}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ Error al eliminar área con ID ${id}:`, error);
-    return false;
-  }
+export const deleteArea = async (id: number): Promise<void> => {
+  await api.delete(`/areas/${id}`);
 };
