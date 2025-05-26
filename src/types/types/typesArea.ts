@@ -1,9 +1,8 @@
-// src/types/typesArea.ts
 export interface Area {
-  id?: number;  // Opcional al crear
+  id: number;
   nombre: string;
-  centroFormacionId: number;
-  sitioId: number;
-  fechaInicial?: string;  // ISO string
-  fechaFinal?: string;    // ISO string
+  descripcion: string;
+  fechaCreacion: string; // formato ISO
 }
+
+export type AreaForm = Partial<Omit<Area, "id">>;
