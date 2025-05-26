@@ -1,6 +1,6 @@
 export interface Titulado {
-  id?: number;
+  id: number;
   nombre: string;
-  fechaInicial: string;
-  fechaFinal: string;
+  fechaCreacion: string | null;      // ISO 8601
+  fechaFinalizacion: string | null;  // ISO 8601
 }
