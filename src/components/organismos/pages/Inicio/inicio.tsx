@@ -1,122 +1,149 @@
-import { Link } from "@heroui/link";
 import DefaultLayout from "@/layouts/default";
+import { Card } from "@/components/ui/card";
+import { Users, PackageCheck, Layers, LayoutDashboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useKeenSlider } from "keen-slider/react";
+import "keen-slider/keen-slider.min.css";
 
-const cards = [
+const images = [
   {
     id: 1,
-    image: "src/img/agropecuarioimg.jpeg",
-    description:
-      "Espacio organizado y fresco, donde se resguardan con cuidado insumos, herramientas y productos del campo, listos para impulsar el trabajo agrícola con eficiencia y orden.",
+    title: "Agropecuario",
+    src: "src/img/agropecuarioimg.jpeg",
     link: "/agropecuario",
   },
   {
     id: 2,
-    image: "/img/ambientalimg.jpeg",
-    description:
-      "Espacio responsable y ordenado, diseñado para almacenar materiales y recursos con criterios sostenibles, cuidando cada detalle en armonía con el medio ambiente.",
+    title: "Ambiental",
+    src: "src/img/ambientalimg.jpeg",
     link: "/ambiental",
   },
   {
     id: 3,
-    image: "/img/cafeimg.jpeg",
-    description:
-      "Espacio cálido y aromático donde se conservan granos, utensilios y esencias del café, preservando su frescura y sabor para cada taza perfecta.",
-    link: "/escuelacafe",
+    title: "Tecnología",
+    src: "src/img/ticsimg.jpeg",
+    link: "/tecnologia",
   },
-  {
-    id: 4,
-    image: "/img/gastronomiaimg.jpeg",
-    description:
-      "Ambiente pulcro y bien conservado, donde ingredientes, utensilios y productos gourmet se almacenan con cuidado, conservando la esencia y calidad de la cocina.",
-    link: "/gastronomia",
-  },
-  {
-    id: 5,
-    image: "/img/ticsimg.jpeg",
-    description:
-      "Entorno seguro y organizado donde se almacenan equipos, componentes y tecnología, listos para apoyar soluciones digitales con eficiencia e innovación.",
-    link: "/tic",
-  },
-  {
-    id: 6,
-    image: "/img/viasimg.jpeg",
-    description:
-      "Espacio técnico y ordenado donde se almacenan materiales e insumos esenciales para la construcción y mantenimiento de caminos, impulsando el desarrollo vial con precisión y seguridad.",
-    link: "/vias",
+   {
+    id: 3,
+    title: "Escuela de Cafe",
+    src: "src/img/cafeimg.jpeg",
+    link: "/tecnologia",
   },
 ];
 
-const InventoryLanding = () => {
+// 🔁 Plugin Autoplay con velocidad ajustada
+function AutoplayPlugin(slider: any) {
+  let timeout: ReturnType<typeof setTimeout>;
+  let mouseOver = false;
+
+  function clearNextTimeout() {
+    clearTimeout(timeout);
+  }
+
+  function nextTimeout() {
+    clearTimeout(timeout);
+    if (mouseOver) return;
+    timeout = setTimeout(() => {
+      slider.next();
+    }, 1500); // ✅ Más rápido: 1.5 segundos
+  }
+
+  slider.on("created", () => {
+    slider.container.addEventListener("mouseover", () => {
+      mouseOver = true;
+      clearNextTimeout();
+    });
+    slider.container.addEventListener("mouseout", () => {
+      mouseOver = false;
+      nextTimeout();
+    });
+    nextTimeout();
+  });
+
+  slider.on("dragStarted", clearNextTimeout);
+  slider.on("animationEnded", nextTimeout);
+  slider.on("updated", nextTimeout);
+}
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [sliderRef] = useKeenSlider<HTMLDivElement>(
+    {
+      loop: true,
+      slides: { perView: 1 },
+    },
+    [AutoplayPlugin]
+  );
+
   return (
     <DefaultLayout>
-      <div className="min-h-screen bg-[#004c2a] text-white flex flex-col font-sans">
-        {/* Main content */}
-        <main className="flex flex-col md:flex-row items-center justify-center gap-10 p-10 flex-grow">
-          {/* Left image */}
-          <div className="w-full md:w-1/3 bg-[#005f33] rounded-2xl shadow-lg p-6 border border-[#007147]">
-            <img
-              src="/img/bodegas.jpeg"
-              alt="Bodegas"
-              className="rounded-xl mx-auto max-h-60 object-cover"
-            />
-          </div>
+      <div className="space-y-6 px-4 py-6">
+        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
 
-          {/* Right description */}
-          <div className="md:w-2/3 space-y-5 text-center md:text-left">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-[#FFB400] leading-snug">
-              Bodegas: Espacios de Aprendizaje y Desarrollo
-            </h2>
-            <p className="text-white text-lg leading-relaxed">
-              Las bodegas del SENA están diseñadas como centros de almacenamiento especializados,
-              adaptados para diversas áreas de formación y desarrollo profesional. Estos espacios no
-              solo sirven como almacenes, sino también como lugares donde se promueve el aprendizaje
-              práctico, impulsando la capacitación de estudiantes en diferentes sectores productivos.
-              <br />
-              <br />
-              Cada bodega tiene una función específica, alineada con los objetivos de formación en
-              distintas áreas, como agropecuario, ambiental, gastronomía, TIC y más. Cada espacio
-              está optimizado para ofrecer el mejor entorno de trabajo, garantizando la seguridad y
-              el orden en el almacenamiento de insumos y recursos.
-            </p>
-          </div>
-        </main>
+        {/* Cards */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="shadow-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total de Usuarios</p>
+                <h2 className="text-2xl font-bold">123</h2>
+              </div>
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+          </Card>
+          <Card className="shadow-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Productos</p>
+                <h2 className="text-2xl font-bold">245</h2>
+              </div>
+              <PackageCheck className="h-8 w-8 text-primary" />
+            </div>
+          </Card>
+          <Card className="shadow-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Áreas</p>
+                <h2 className="text-2xl font-bold">15</h2>
+              </div>
+              <Layers className="h-8 w-8 text-primary" />
+            </div>
+          </Card>
+          <Card className="shadow-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Resumen</p>
+                <h2 className="text-2xl font-bold">89%</h2>
+              </div>
+              <LayoutDashboard className="h-8 w-8 text-primary" />
+            </div>
+          </Card>
+        </div>
 
-        {/* Cards Section */}
-        <section className="px-6 py-10 bg-[#005f33]">
-          <h3 className="text-center text-2xl font-bold text-[#FFB400] mb-6">
-            Áreas de Almacenamiento
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
-            {cards.map((card) => (
-              <Link
-                key={card.id}
-                href={card.link}
-                className="bg-[#004c2a] hover:bg-[#00663c] transition-colors rounded-xl shadow-md border border-[#007147] flex flex-col h-full"
+        {/* Carrusel con autoplay más rápido */}
+        <div>
+          <h2 className="text-xl font-semibold mb-3 text-gray-800">Galería Destacada</h2>
+          <div ref={sliderRef} className="keen-slider rounded-xl overflow-hidden shadow-md">
+            {images.map((img) => (
+              <div
+                key={img.id}
+                className="keen-slider__slide cursor-pointer relative"
+                onClick={() => navigate(img.link)}
               >
                 <img
-                  src={card.image}
-                  alt={`Card ${card.id}`}
-                  className="w-full h-40 object-cover rounded-t-xl"
+                  src={img.src}
+                  alt={img.title}
+                  className="w-full h-64 object-cover rounded-xl transition-transform duration-300 hover:scale-105"
                 />
-                <div className="p-4 flex-grow flex items-center justify-center">
-                  <p className="text-white text-center text-sm">{card.description}</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-center py-2 text-lg font-semibold rounded-b-xl">
+                  {img.title}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="bg-[#004c2a] py-5 px-6 text-center text-white text-sm border-t border-[#007147]">
-          <p className="font-bold text-[#FFB400] mb-2">ENCUÉNTRANOS EN:</p>
-          <p>
-            <span className="font-semibold">CELULAR:</span> 3123456789 <br />
-            San Agustín - Huila.
-          </p>
-        </footer>
+        </div>
       </div>
     </DefaultLayout>
   );
-};
-
-export default InventoryLanding;
+}

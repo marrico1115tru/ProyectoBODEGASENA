@@ -103,7 +103,7 @@ export default function MunicipioPage() {
     <DefaultLayout>
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">
-          🌍 Gestión de Municipios
+        Gestión de Municipios
         </h1>
 
         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">

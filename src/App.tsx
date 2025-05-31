@@ -24,7 +24,7 @@ import VistaSitiosActivosInactivos from "./components/organismos/pages/estadisti
 import ProductosVencidos from "./components/organismos/pages/Reportes/productosRep/ProductosVencidos.tsx";
 import ProductosVencimiento from "./components/organismos/pages/Reportes/productosRep/ProductosVencimiento.tsx";
 import TituladosPage from "./components/organismos/pages/Titulados/TituladosPage.tsx";
-import MunicipioPage from "./components/organismos/pages/municipios/MunicipioPage.tsx";
+import MunicipioPage from "./components/organismos/pages/Admin/municipios/MunicipioPage.tsx";
 import AreasPage from "./components/organismos/pages/Admin/Areas/AreasPage.tsx";
 import SedesPage from "./components/organismos/pages/Admin/Sedes/SedesPage.tsx";
 import RolesPage from "./components/organismos/pages/Admin/Roles/RolesPage.tsx";
@@ -35,6 +35,7 @@ import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/Sol
 import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
 import SitiosPage from "./components/organismos/pages/Admin/Sitios/SitiosPage.tsx";
 import Tipo_sitiosPage from "./components/organismos/pages/Admin/Tipo_sitios/Tipo_sitiosPage.tsx";
+import Perfil from "./components/organismos/pages/Perfil/Perfil.tsx"
 const queryClient = new QueryClient();
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
         <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage />} />
         <Route path="/SitiosPage" element={<SitiosPage />} />
         <Route path="/Tipo_sitiosPage" element={<Tipo_sitiosPage />} />
+        <Route path="/Perfil" element={<Perfil />} />
       </Routes>
     </QueryClientProvider>
   );
