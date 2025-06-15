@@ -1,344 +1,212 @@
-import { useEffect, useState } from "react";
-import {
-  getSedes,
-  createSede,
-  updateSede,
-  deleteSede,
-} from "@/Api/SedesService";
-import { getCentrosFormacion } from "@/Api/centrosformacionTable";
-import { Sede } from "@/types/types/Sede";
-import { CentroFormacion } from "@/types/types/typesCentroFormacion";
-import DefaultLayout from "@/layouts/default";
-import {
-  PencilIcon,
-  TrashIcon,
-  PlusIcon,
-  EyeIcon,
-  EyeSlashIcon,
-} from "@heroicons/react/24/solid";
-import { Dialog } from "@headlessui/react";
-
-/* --------- Columnas visibles (sin fechaFinalización) --------- */
-const ALL_COLUMNS = [
-  { id: "id", label: "ID" },
-  { id: "nombre", label: "Nombre" },
-  { id: "ubicacion", label: "Ubicación" },
-  { id: "centroFormacion", label: "Centro de Formación" },
-  { id: "fechaCreacion", label: "Fecha de Creación" },
-  { id: "acciones", label: "Acciones" },
-] as const;
+import { useEffect, useState } from 'react';
+import { getSedes, createSede, updateSede, deleteSede } from '@/Api/SedesService';
+import { getCentrosFormacion } from '@/Api/centrosformacionTable';
+import { Sede, SedeFormValues } from '@/types/types/Sede';
+import { CentroFormacion } from '@/types/types/typesCentroFormacion';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon } from 'lucide-react';
 
 export default function SedesPage() {
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [centros, setCentros] = useState<CentroFormacion[]>([]);
-  const [filteredSedes, setFilteredSedes] = useState<Sede[]>([]);
-  const [form, setForm] = useState<Partial<Sede>>({});
+  const [formData, setFormData] = useState<SedeFormValues>({
+    nombre: '',
+    ubicacion: '',
+    idCentroFormacion: { id: 0 },
+  });
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    ALL_COLUMNS.map((c) => c.id)
-  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const itemsPerPage = 5;
 
-  /* ---------------- Carga inicial ---------------- */
   useEffect(() => {
-    Promise.all([getSedes(), getCentrosFormacion()]).then(
-      ([sedesData, centrosData]) => {
-        setSedes(Array.isArray(sedesData) ? sedesData : []);
-        setCentros(Array.isArray(centrosData) ? centrosData : []);
-      }
-    );
+    fetchSedes();
+    fetchCentros();
   }, []);
 
-  /* -------------- Filtro de búsqueda -------------- */
-  useEffect(() => {
-    const filtered = sedes.filter((s) =>
-      `${s.nombre ?? ""} ${s.ubicacion ?? ""} ${s.centroFormacion?.nombre ?? ""}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    );
-    setFilteredSedes(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, sedes]);
+  const fetchSedes = async () => {
+    const data = await getSedes();
+    setSedes(data);
+  };
 
-  /* ----------- Crear / actualizar sede ----------- */
-  const handleSubmit = async () => {
-    if (!form.nombre || !form.ubicacion || !form.idCentroFormacion) {
-      return alert("Todos los campos son obligatorios.");
+  const fetchCentros = async () => {
+    const data = await getCentrosFormacion();
+    setCentros(data);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name === 'idCentroFormacion') {
+      setFormData({ ...formData, idCentroFormacion: { id: Number(value) } });
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       if (editingId) {
-        await updateSede(editingId, form);
+        await updateSede(editingId, formData);
       } else {
-        await createSede({ ...form, fechaCreacion: new Date().toISOString() });
+        await createSede(formData);
       }
-      setOpen(false);
-      setForm({});
-      setEditingId(null);
-      setSedes(await getSedes());
-    } catch (err) {
-      console.error("Error al guardar la sede:", err);
+      fetchSedes();
+      setIsModalOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error al guardar sede:', error);
     }
   };
 
-  /* ---------------- Editar sede ----------------- */
   const handleEdit = (sede: Sede) => {
-    setForm({
-      id: sede.id,
-      nombre: sede.nombre,
-      ubicacion: sede.ubicacion,
-      idCentroFormacion: sede.centroFormacion?.id,
+    setFormData({
+      nombre: sede.nombre ?? '',
+      ubicacion: sede.ubicacion ?? '',
+      idCentroFormacion: { id: sede.idCentroFormacion?.id ?? 0 },
     });
     setEditingId(sede.id);
-    setOpen(true);
+    setIsModalOpen(true);
   };
 
-  /* --------------- Eliminar sede ---------------- */
   const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar esta sede?")) {
-      await deleteSede(id);
-      setSedes(await getSedes());
-    }
+    await deleteSede(id);
+    fetchSedes();
   };
 
-  /* ------------ Mostrar / ocultar columnas ----------- */
-  const toggleColumn = (id: string) => {
-    setVisibleColumns((cols) =>
-      cols.includes(id) ? cols.filter((c) => c !== id) : [...cols, id]
-    );
+  const resetForm = () => {
+    setFormData({ nombre: '', ubicacion: '', idCentroFormacion: { id: 0 } });
+    setEditingId(null);
   };
 
-  /* ---------------- Paginación ---------------- */
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginated = filteredSedes.slice(startIndex, startIndex + rowsPerPage);
-  const totalPages = Math.ceil(filteredSedes.length / rowsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = sedes.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sedes.length / itemsPerPage);
 
-  /* ------------------- Render ------------------ */
   return (
     <DefaultLayout>
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-800">🏢 Gestión de Sedes</h1>
-
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Buscar por nombre, ubicación o centro..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold flex items-center gap-2">🏢 Gestión de Sedes</h1>
           <button
             onClick={() => {
-              setForm({});
-              setEditingId(null);
-              setOpen(true);
+              setIsModalOpen(true);
+              resetForm();
             }}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
+            <PlusIcon className="inline-block w-4 h-4 mr-1" />
             Crear
           </button>
         </div>
-      </div>
 
-      {/* Botones de columnas */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {ALL_COLUMNS.map((col) => (
-          <button
-            key={col.id}
-            onClick={() => toggleColumn(col.id)}
-            className={`flex items-center px-3 py-1 rounded text-sm font-medium border ${
-              visibleColumns.includes(col.id)
-                ? "bg-green-100 text-green-800 border-green-300"
-                : "bg-gray-100 text-gray-600 border-gray-300"
-            }`}
-          >
-            {visibleColumns.includes(col.id) ? (
-              <EyeIcon className="h-4 w-4 mr-1" />
-            ) : (
-              <EyeSlashIcon className="h-4 w-4 mr-1" />
-            )}
-            {col.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Resumen */}
-      <div className="text-sm text-gray-600 mb-2">
-        Total sedes: {filteredSedes.length}
-      </div>
-
-      {/* Tabla */}
-      <div className="overflow-x-auto rounded-lg shadow ring-1 ring-black ring-opacity-5 bg-white">
-        <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-700">
-          <thead className="bg-blue-100">
-            <tr>
-              {ALL_COLUMNS.map(
-                (col) =>
-                  visibleColumns.includes(col.id) && (
-                    <th
-                      key={col.id}
-                      className="px-6 py-3 text-left font-semibold whitespace-nowrap"
-                    >
-                      {col.label}
-                    </th>
-                  )
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {paginated.length > 0 ? (
-              paginated.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50 transition">
-                  {visibleColumns.includes("id") && (
-                    <td className="px-6 py-3 whitespace-nowrap">{s.id}</td>
-                  )}
-                  {visibleColumns.includes("nombre") && (
-                    <td className="px-6 py-3 whitespace-nowrap">{s.nombre}</td>
-                  )}
-                  {visibleColumns.includes("ubicacion") && (
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      {s.ubicacion}
-                    </td>
-                  )}
-                  {visibleColumns.includes("centroFormacion") && (
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      {s.centroFormacion?.nombre ?? "—"}
-                    </td>
-                  )}
-                  {visibleColumns.includes("fechaCreacion") && (
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      {new Date(s.fechaCreacion).toLocaleDateString()}
-                    </td>
-                  )}
-                  {visibleColumns.includes("acciones") && (
-                    <td className="px-6 py-3 space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => handleEdit(s)}
-                        className="text-blue-600 hover:text-blue-800 transition"
-                        title="Editar"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id!)}
-                        className="text-red-600 hover:text-red-800 transition"
-                        title="Eliminar"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))
-            ) : (
+        <div className="overflow-x-auto bg-white shadow rounded-lg">
+          <table className="min-w-full text-sm">
+            <thead className="bg-blue-100 text-left">
               <tr>
-                <td
-                  colSpan={visibleColumns.length}
-                  className="text-center py-6 text-gray-500"
-                >
-                  No se encontraron sedes.
-                </td>
+                <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">Nombre</th>
+                <th className="px-4 py-2">Ubicación</th>
+                <th className="px-4 py-2">Centro de Formación</th>
+                <th className="px-4 py-2">Acciones</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Paginación */}
-      <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
-        <span>
-          Página {currentPage} de {totalPages || 1}
-        </span>
-        <div className="space-x-2">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded border ${
-              currentPage === 1
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            Anterior
-          </button>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className={`px-3 py-1 rounded border ${
-              currentPage === totalPages || totalPages === 0
-                ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                : "text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            Siguiente
-          </button>
+            </thead>
+            <tbody>
+              {currentItems.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-4">
+                    No hay sedes registradas.
+                  </td>
+                </tr>
+              ) : (
+                currentItems.map((sede) => (
+                  <tr key={sede.id} className="border-t">
+                    <td className="px-4 py-2">{sede.id}</td>
+                    <td className="px-4 py-2">{sede.nombre}</td>
+                    <td className="px-4 py-2">{sede.ubicacion}</td>
+                    <td className="px-4 py-2">{sede.idCentroFormacion?.nombre ?? 'Sin centro'}</td>
+                    <td className="px-4 py-2 space-x-2">
+                      <button onClick={() => handleEdit(sede)} className="text-blue-600 hover:underline">Editar</button>
+                      <button onClick={() => handleDelete(sede.id)} className="text-red-600 hover:underline">Eliminar</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      {/* Modal creación / edición */}
-      <Dialog open={open} onClose={() => setOpen(false)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-md bg-white p-6 rounded shadow-lg space-y-4">
-            <Dialog.Title className="text-lg font-bold">
-              {editingId ? "Editar Sede" : "Crear Sede"}
-            </Dialog.Title>
-
-            <input
-              type="text"
-              placeholder="Nombre de la sede"
-              value={form.nombre ?? ""}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full border p-2 rounded"
-            />
-
-            <input
-              type="text"
-              placeholder="Ubicación"
-              value={form.ubicacion ?? ""}
-              onChange={(e) => setForm({ ...form, ubicacion: e.target.value })}
-              className="w-full border p-2 rounded"
-            />
-
-            {/* Select centros de formación */}
-            <select
-              value={form.idCentroFormacion ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, idCentroFormacion: Number(e.target.value) })
-              }
-              className="w-full border p-2 rounded"
+        {/* Paginación */}
+        <div className="flex justify-center mt-4 space-x-2">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+            <button
+              key={num}
+              onClick={() => setCurrentPage(num)}
+              className={`px-3 py-1 rounded ${currentPage === num ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
             >
-              <option value="" disabled>
-                Seleccione un Centro de Formación
-              </option>
-              {centros.map((centro) => (
-                <option key={centro.id} value={centro.id}>
-                  {centro.nombre}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <button
-                onClick={() => setOpen(false)}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Guardar
-              </button>
-            </div>
-          </Dialog.Panel>
+              {num}
+            </button>
+          ))}
         </div>
-      </Dialog>
+
+        {/* Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <form onSubmit={handleSubmit} className="bg-white rounded p-6 w-full max-w-md shadow-lg">
+              <h2 className="text-lg font-semibold mb-4">
+                {editingId ? 'Editar Sede' : 'Crear Sede'}
+              </h2>
+
+              <input
+                type="text"
+                name="nombre"
+                placeholder="Nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                className="w-full mb-2 p-2 border rounded"
+              />
+              <input
+                type="text"
+                name="ubicacion"
+                placeholder="Ubicación"
+                value={formData.ubicacion}
+                onChange={handleChange}
+                className="w-full mb-4 p-2 border rounded"
+              />
+              <select
+                name="idCentroFormacion"
+                value={formData.idCentroFormacion.id}
+                onChange={handleChange}
+                className="w-full mb-4 p-2 border rounded"
+              >
+                <option value="0">Seleccione un centro de formación</option>
+                {centros.map((centro) => (
+                  <option key={centro.id} value={centro.id}>
+                    {centro.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                >
+                  {editingId ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </DefaultLayout>
   );
 }

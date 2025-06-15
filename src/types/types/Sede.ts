@@ -1,17 +1,18 @@
+// src/types/typesSede.ts
+
+import { CentroFormacion } from './typesCentroFormacion';
+
 export interface Sede {
   id: number;
+  nombre: string | null;
+  ubicacion: string | null;
+  idCentroFormacion: CentroFormacion;
+}
+
+export interface SedeFormValues {
   nombre: string;
   ubicacion: string;
-  fechaCreacion: string;
-  fechaFinalizacion?: string | null;
-  idCentroFormacion: number;
-  centroFormacion?: {
+  idCentroFormacion: {
     id: number;
-    nombre: string;
-    ubicacion: string;
-    telefono: string;
-    email: string;
-    fechaCreacion: string;
-    fechaFinalizacion: string | null;
   };
 }

@@ -1,14 +1,22 @@
-// src/types/CentroFormacion.ts
 export interface CentroFormacion {
-  id?: number; // opcional para cuando crees uno nuevo
+  id: number;
+  nombre: string | null;
+  ubicacion: string | null;
+  telefono: string | null;
+  email: string | null;
+  idMunicipio: {
+    id: number;
+    nombre: string;
+  };
+  createdAt?: string;
+}
+
+export interface CentroFormacionFormValues {
   nombre: string;
   ubicacion: string;
   telefono: string;
   email: string;
-  fechaInicial: string; // ISO date string
-  fechaFinal: string;   // ISO date string
-  // Si quieres incluir relaciones, puedes agregar opcionales así:
-  // Sede?: Sede[];
-  // areas?: Area[];
-  // municipios?: Municipio[];
+  idMunicipio: {
+    id: number;
+  };
 }

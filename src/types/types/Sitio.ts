@@ -1,9 +1,24 @@
 export interface Sitio {
-  id?: number;
+  id: number;
+  nombre: string | null;
+  ubicacion: string | null;
+  idArea: {
+    id: number;
+    nombreArea: string;
+  };
+  idTipoSitio: {
+    id: number;
+    nombre: string;
+  };
+}
+
+export interface SitioFormValues {
   nombre: string;
   ubicacion: string;
-  tipoSitioId: number;
-  fechaInicial: string;  // ISO string
-  fechaFinal: string;    // ISO string
-  activo: boolean;
+  idArea: {
+    id: number;
+  };
+  idTipoSitio: {
+    id: number;
+  };
 }

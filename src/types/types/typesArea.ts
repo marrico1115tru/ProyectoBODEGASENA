@@ -1,8 +1,16 @@
+
 export interface Area {
   id: number;
+  nombreArea: string | null;
+  idSede: {
+    id: number;
+    nombre: string | null;
+  };
+}
+
+export interface AreaFormValues {
   nombreArea: string;
-  fechaCreacion: string;           
-  fechaFinalizacion: string | null;
-  fkSitio: { id: number };
-  idCentroFormacion: { id: number };
+  idSede: {
+    id: number;
+  };
 }

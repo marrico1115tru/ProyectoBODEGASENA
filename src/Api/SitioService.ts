@@ -1,36 +1,22 @@
-import { Sitio } from '@/types/types/Sitio';
+// Api/sitioTable.ts
+import axios from 'axios';
+import { Sitio, SitioFormValues } from '@/types/types/Sitio';
 
-const BASE_URL = 'http://localhost:3500/api/sitio';
+const API_URL = 'http://localhost:3000/sitio';
 
-export async function getSitios(): Promise<Sitio[]> {
-  const res = await fetch(BASE_URL);
-  if (!res.ok) throw new Error('Error al obtener sitios');
-  return res.json();
-}
+export const getSitios = async (): Promise<Sitio[]> => {
+  const res = await axios.get(API_URL);
+  return res.data;
+};
 
-export async function createSitio(sitio: Sitio): Promise<Sitio> {
-  const res = await fetch(BASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sitio),
-  });
-  if (!res.ok) throw new Error('Error al crear sitio');
-  return res.json();
-}
+export const createSitio = async (data: SitioFormValues) => {
+  await axios.post(API_URL, data);
+};
 
-export async function updateSitio(id: number, sitio: Sitio): Promise<Sitio> {
-  const res = await fetch(`${BASE_URL}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sitio),
-  });
-  if (!res.ok) throw new Error('Error al actualizar sitio');
-  return res.json();
-}
+export const updateSitio = async (id: number, data: SitioFormValues) => {
+  await axios.patch(`${API_URL}/${id}`, data);
+};
 
-export async function deleteSitio(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/${id}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) throw new Error('Error al eliminar sitio');
-}
+export const deleteSitio = async (id: number) => {
+  await axios.delete(`${API_URL}/${id}`);
+};
