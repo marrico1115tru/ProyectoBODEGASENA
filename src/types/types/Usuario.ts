@@ -1,14 +1,27 @@
-export interface Usuario {
-  id?: number;
+export interface Rol {
+  id: number;
+  nombreRol: string;
+}
+
+export interface Area {
+  id: number;
+  nombreArea: string;
+}
+
+export interface FichaFormacion {
+  id: number;
   nombre: string;
-  apellido: string;
-  cedula: string;
-  telefono: string;
-  email: string;
-  cargo: string;
-  areaId: number;
-  fichaId: number;
-  rolId: number;
-  fechaInicial?: string;
-  fechaFinal?: string;
+}
+
+export interface Usuario {
+  id: number;
+  nombre: string;
+  apellido: string | null;
+  cedula: string | null;
+  email: string | null;
+  telefono: string | null;
+  cargo: string | null;
+  idArea: Area;
+  idFichaFormacion: FichaFormacion;
+  idRol: Rol;
 }

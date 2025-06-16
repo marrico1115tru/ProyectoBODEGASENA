@@ -1,8 +1,12 @@
+export interface Usuario {
+  id: number;
+  nombre: string;
+  apellido: string;
+}
+
 export interface Solicitud {
-  id?: number;
-  usuarioSolicitanteId: number;
+  id: number;
   fechaSolicitud: string;
-  estadoSolicitud: string;
-  fechaInicial: string;
-  fechaFinal: string;
+  estadoSolicitud: string | null;
+  idUsuarioSolicitante: Usuario;
 }

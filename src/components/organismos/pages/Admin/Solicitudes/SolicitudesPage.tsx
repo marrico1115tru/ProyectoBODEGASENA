@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getSolicitudes,
   createSolicitud,
@@ -7,161 +7,169 @@ import {
 } from "@/Api/Solicitudes";
 import { Solicitud } from "@/types/types/Solicitud";
 import DefaultLayout from "@/layouts/default";
-
-const initialFormState: Omit<Solicitud, "id"> = {
-  usuarioSolicitanteId: 0,
-  fechaSolicitud: new Date().toISOString().slice(0, 16),
-  estadoSolicitud: "Pendiente",
-  fechaInicial: new Date().toISOString().slice(0, 16),
-  fechaFinal: new Date().toISOString().slice(0, 16),
-};
+import {
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+} from "@heroicons/react/24/solid";
 
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [form, setForm] = useState<Omit<Solicitud, "id">>(initialFormState);
-  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<Partial<Solicitud>>({});
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    loadSolicitudes();
+    fetchSolicitudes();
   }, []);
 
-  const loadSolicitudes = async () => {
+  const fetchSolicitudes = async () => {
     const data = await getSolicitudes();
     setSolicitudes(data);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: name === "usuarioSolicitanteId" ? Number(value) : value,
-    }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editandoId !== null) {
-        await updateSolicitud(editandoId, form);
-      } else {
-        await createSolicitud(form);
-      }
-      setForm(initialFormState);
-      setEditandoId(null);
-      loadSolicitudes();
-    } catch (error) {
-      console.error("Error al guardar la solicitud:", error);
+    if (!formData.fechaSolicitud || !formData.estadoSolicitud || !formData.idUsuarioSolicitante) {
+      alert("Todos los campos son obligatorios");
+      return;
     }
+
+    const payload = {
+      fechaSolicitud: formData.fechaSolicitud,
+      estadoSolicitud: formData.estadoSolicitud,
+      idUsuarioSolicitante: formData.idUsuarioSolicitante,
+    };
+
+    if (editId) {
+      await updateSolicitud(editId, payload);
+    } else {
+      await createSolicitud(payload);
+    }
+
+    setFormData({});
+    setEditId(null);
+    setShowForm(false);
+    fetchSolicitudes();
   };
 
   const handleEdit = (solicitud: Solicitud) => {
-    setForm({
-      usuarioSolicitanteId: solicitud.usuarioSolicitanteId,
-      fechaSolicitud: solicitud.fechaSolicitud.slice(0, 16),
+    setFormData({
+      fechaSolicitud: solicitud.fechaSolicitud,
       estadoSolicitud: solicitud.estadoSolicitud,
-      fechaInicial: solicitud.fechaInicial.slice(0, 16),
-      fechaFinal: solicitud.fechaFinal.slice(0, 16),
+      idUsuarioSolicitante: solicitud.idUsuarioSolicitante,
     });
-    setEditandoId(solicitud.id!);
+    setEditId(solicitud.id);
+    setShowForm(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("¿Estás seguro de eliminar esta solicitud?")) {
+    if (confirm("¿Seguro que quieres eliminar esta solicitud?")) {
       await deleteSolicitud(id);
-      loadSolicitudes();
+      fetchSolicitudes();
     }
   };
 
   return (
     <DefaultLayout>
-      <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">Gestión de Solicitudes</h1>
-
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-2 gap-4 mb-8 bg-gray-100 p-6 rounded shadow"
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestión de Solicitudes</h1>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center"
+          onClick={() => {
+            setFormData({});
+            setEditId(null);
+            setShowForm(true);
+          }}
         >
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Crear Solicitud
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white p-4 shadow rounded mb-6">
           <input
-            type="number"
-            name="usuarioSolicitanteId"
-            placeholder="ID Usuario Solicitante"
-            value={form.usuarioSolicitanteId}
-            onChange={handleChange}
-            required
-            className="border p-2 rounded"
-          />
-          <input
-            type="datetime-local"
+            type="date"
             name="fechaSolicitud"
-            value={form.fechaSolicitud}
+            value={formData.fechaSolicitud || ""}
             onChange={handleChange}
+            className="w-full border p-2 rounded mb-2"
             required
-            className="border p-2 rounded"
           />
           <input
             type="text"
             name="estadoSolicitud"
-            placeholder="Estado de la Solicitud"
-            value={form.estadoSolicitud}
+            placeholder="Estado de la solicitud"
+            value={formData.estadoSolicitud || ""}
             onChange={handleChange}
+            className="w-full border p-2 rounded mb-2"
             required
-            className="border p-2 rounded"
           />
           <input
-            type="datetime-local"
-            name="fechaInicial"
-            value={form.fechaInicial}
-            onChange={handleChange}
+            type="number"
+            name="idUsuarioSolicitante"
+            placeholder="ID del Usuario Solicitante"
+            value={(formData.idUsuarioSolicitante as any)?.id || ""}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                idUsuarioSolicitante: {
+                  id: Number(e.target.value),
+                  nombre: "",
+                  apellido: "",
+                },
+              })
+            }
+            className="w-full border p-2 rounded mb-2"
             required
-            className="border p-2 rounded"
           />
-          <input
-            type="datetime-local"
-            name="fechaFinal"
-            value={form.fechaFinal}
-            onChange={handleChange}
-            required
-            className="border p-2 rounded"
-          />
-          <button
-            type="submit"
-            className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
-            {editandoId ? "Actualizar Solicitud" : "Crear Solicitud"}
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+            {editId ? "Actualizar" : "Crear"}
           </button>
         </form>
+      )}
 
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border px-4 py-2">ID</th>
-              <th className="border px-4 py-2">Usuario</th>
-              <th className="border px-4 py-2">Estado</th>
-              <th className="border px-4 py-2">Fecha Inicial</th>
-              <th className="border px-4 py-2">Fecha Final</th>
-              <th className="border px-4 py-2">Acciones</th>
+      <div className="bg-white shadow rounded overflow-x-auto">
+        <table className="min-w-full table-auto">
+          <thead className="bg-gray-100 text-left">
+            <tr>
+              <th className="px-4 py-2">ID</th>
+              <th className="px-4 py-2">Fecha</th>
+              <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Solicitante</th>
+              <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {solicitudes.map((s) => (
-              <tr key={s.id}>
-                <td className="border px-4 py-2">{s.id}</td>
-                <td className="border px-4 py-2">{s.usuarioSolicitanteId}</td>
-                <td className="border px-4 py-2">{s.estadoSolicitud}</td>
-                <td className="border px-4 py-2">{s.fechaInicial}</td>
-                <td className="border px-4 py-2">{s.fechaFinal}</td>
-                <td className="border px-4 py-2">
+            {solicitudes.map((sol) => (
+              <tr key={sol.id} className="border-t">
+                <td className="px-4 py-2">{sol.id}</td>
+                <td className="px-4 py-2">{sol.fechaSolicitud}</td>
+                <td className="px-4 py-2">{sol.estadoSolicitud}</td>
+                <td className="px-4 py-2">
+                  {sol.idUsuarioSolicitante
+                    ? `${sol.idUsuarioSolicitante.nombre} ${sol.idUsuarioSolicitante.apellido}`
+                    : "Sin solicitante"}
+                </td>
+                <td className="px-4 py-2 flex space-x-2">
                   <button
-                    onClick={() => handleEdit(s)}
-                    className="mr-2 text-blue-600 hover:underline"
+                    className="text-yellow-500 hover:text-yellow-700"
+                    onClick={() => handleEdit(sol)}
                   >
-                    Editar
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(s.id!)}
-                    className="text-red-600 hover:underline"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => handleDelete(sol.id)}
                   >
-                    Eliminar
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </td>
               </tr>

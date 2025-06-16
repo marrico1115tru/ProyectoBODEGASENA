@@ -157,12 +157,14 @@ const Sidebar = () => {
               <SidebarButton to="/SedesPage" icon={<Landmark className="w-4 h-4" />} label="Sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
               <SidebarButton to="/FichaFormacionPage" icon={<BookOpen className="w-4 h-4" />} label="Fichas Formación" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
               <SidebarButton to="/RolesPage" icon={<ShieldCheck className="w-4 h-4" />} label="Roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
-              <SidebarButton to="/OpcionPage" icon={<LayoutGrid className="w-4 h-4" />} label="Opciones" isOpen={isOpen} activePaths={["/OpcionPage"]} />
               <SidebarButton to="/AccesosPage" icon={<KeySquare className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
               <SidebarButton to="/SolicitudesPage" icon={<ClipboardList className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
               <SidebarButton to="/EntregaMaterialPage" icon={<Send className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
               <SidebarButton to="/SitiosPage" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
               <SidebarButton to="/Tipo_sitiosPage" icon={<MapPin className="w-4 h-4" />} label="Tipo de Sitios" isOpen={isOpen} activePaths={["/Tipo_sitiosPage"]} />
+              <SidebarButton to="/CategoriasProductosPage" icon={<Send className="w-4 h-4" />} label="Categorias" isOpen={isOpen} activePaths={["/CategoriasProductosPage"]} />
+              <SidebarButton to="/InventarioPage" icon={<MapPin className="w-4 h-4" />} label="Inventario" isOpen={isOpen} activePaths={["/InventarioPage"]} />
+              <SidebarButton to="/DetalleSolicitudPage" icon={<MapPin className="w-4 h-4" />} label="Detalle solicitud" isOpen={isOpen} activePaths={["/DetalleSolicitudPage"]} />
             </Submenu>
           )}
         </nav>

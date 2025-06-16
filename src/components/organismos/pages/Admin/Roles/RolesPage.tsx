@@ -1,161 +1,139 @@
-import React, { useEffect, useState } from 'react';
-import { Rol } from '@/types/types/Rol';
-import {
-  getRoles,
-  createRol,
-  updateRol,
-  deleteRol,
-} from '@/Api/RolService';
+import { useEffect, useState } from 'react';
+import { getRoles, createRol, updateRol, deleteRol } from '@/Api/RolService';
+import { Rol, RolFormValues } from '@/types/types/Rol';
 import DefaultLayout from '@/layouts/default';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { PlusIcon } from 'lucide-react';
 
-const initialForm: Rol = {
-  nombreRol: '',
-  fechaInicial: '',
-  fechaFinal: '',
-};
-
-export default function RolesPage() {
+export default function RolPage() {
   const [roles, setRoles] = useState<Rol[]>([]);
-  const [form, setForm] = useState<Rol>(initialForm);
-  const [editando, setEditando] = useState(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [formData, setFormData] = useState<RolFormValues>({ nombreRol: '' });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    cargarRoles();
+    fetchRoles();
   }, []);
 
-  const cargarRoles = async () => {
+  const fetchRoles = async () => {
     const data = await getRoles();
     setRoles(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editando && idEditando !== null) {
-        await updateRol(idEditando, form);
-      } else {
-        await createRol(form);
-      }
-      setForm(initialForm);
-      setEditando(false);
-      setIdEditando(null);
-      cargarRoles();
-    } catch (error) {
-      console.error(' Error al guardar rol:', error);
+    if (editingId) {
+      await updateRol(editingId, formData);
+    } else {
+      await createRol(formData);
     }
+    fetchRoles();
+    setIsModalOpen(false);
+    resetForm();
   };
 
   const handleEdit = (rol: Rol) => {
-    setForm(rol);
-    setEditando(true);
-    setIdEditando(rol.id || null);
+    setFormData({ nombreRol: rol.nombreRol });
+    setEditingId(rol.id);
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este rol?')) {
-      await deleteRol(id);
-      cargarRoles();
-    }
+    await deleteRol(id);
+    fetchRoles();
+  };
+
+  const resetForm = () => {
+    setFormData({ nombreRol: '' });
+    setEditingId(null);
   };
 
   return (
     <DefaultLayout>
-      <div className="max-w-6xl mx-auto p-6 bg-slate-100 min-h-screen text-slate-800">
-        <h1 className="text-3xl font-semibold mb-6 text-blue-800">Gestión de Roles</h1>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold flex items-center gap-2">🎖️ Gestión de Roles</h1>
+          <button
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <PlusIcon className="inline-block w-4 h-4 mr-1" />
+            Crear
+          </button>
+        </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-2xl shadow-md mb-8"
-        >
-          <input
-            type="text"
-            name="nombreRol"
-            placeholder="Nombre del Rol"
-            value={form.nombreRol}
-            onChange={handleChange}
-            required
-            className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="date"
-            name="fechaInicial"
-            value={form.fechaInicial}
-            onChange={handleChange}
-            className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            type="date"
-            name="fechaFinal"
-            value={form.fechaFinal}
-            onChange={handleChange}
-            className="px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="md:col-span-3">
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition font-medium"
-            >
-              {editando ? 'Actualizar Rol' : 'Crear Rol'}
-            </button>
-          </div>
-        </form>
-
-        <div className="bg-white p-4 rounded-xl shadow-md overflow-auto">
-          <table className="w-full table-auto text-left">
-            <thead className="bg-blue-100 text-blue-900">
+        <div className="overflow-x-auto bg-white shadow rounded-lg">
+          <table className="min-w-full text-sm">
+            <thead className="bg-blue-100 text-left">
               <tr>
-                <th className="px-4 py-2 border">ID</th>
-                <th className="px-4 py-2 border">Nombre del Rol</th>
-                <th className="px-4 py-2 border">Fecha Inicial</th>
-                <th className="px-4 py-2 border">Fecha Final</th>
-                <th className="px-4 py-2 border text-center">Acciones</th>
+                <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">Nombre del Rol</th>
+                <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {roles.map((rol) => (
-                <tr key={rol.id} className="hover:bg-slate-50 transition">
-                  <td className="px-4 py-2 border">{rol.id}</td>
-                  <td className="px-4 py-2 border">{rol.nombreRol}</td>
-                  <td className="px-4 py-2 border">{rol.fechaInicial?.split('T')[0]}</td>
-                  <td className="px-4 py-2 border">{rol.fechaFinal?.split('T')[0]}</td>
-                  <td className="px-4 py-2 border text-center">
-                    <div className="flex justify-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(rol)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition"
-                        title="Editar"
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(rol.id!)}
-                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md transition"
-                        title="Eliminar"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {roles.length === 0 && (
+              {roles.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-4 text-slate-500">
-                    No hay roles registrados.
-                  </td>
+                  <td colSpan={3} className="text-center py-4">No hay registros.</td>
                 </tr>
+              ) : (
+                roles.map((rol) => (
+                  <tr key={rol.id} className="border-t">
+                    <td className="px-4 py-2">{rol.id}</td>
+                    <td className="px-4 py-2">{rol.nombreRol}</td>
+                    <td className="px-4 py-2 space-x-2">
+                      <button onClick={() => handleEdit(rol)} className="text-blue-600 hover:underline">Editar</button>
+                      <button onClick={() => handleDelete(rol.id)} className="text-red-600 hover:underline">Eliminar</button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <form onSubmit={handleSubmit} className="bg-white rounded p-6 w-full max-w-md shadow-lg">
+              <h2 className="text-lg font-semibold mb-4">
+                {editingId ? 'Editar Rol' : 'Crear Rol'}
+              </h2>
+
+              <input
+                type="text"
+                name="nombreRol"
+                placeholder="Nombre del rol"
+                value={formData.nombreRol}
+                onChange={handleChange}
+                className="w-full mb-4 p-2 border rounded"
+                required
+              />
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                >
+                  {editingId ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </DefaultLayout>
   );

@@ -1,155 +1,163 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   getFichasFormacion,
   createFichaFormacion,
   updateFichaFormacion,
-  deleteFichaFormacion
-} from '@/Api/fichasFormacion';
-import { FichaFormacion } from '@/types/types/FichaFormacion';
-import DefaultLayout from '@/layouts/default';
-
-const initialFormState: FichaFormacion = {
-  nombre: '',
-  tituloId: 1,
-  fechaInicial: '',
-  fechaFinal: '',
-};
+  deleteFichaFormacion,
+} from "@/Api/fichasFormacion";
+import { FichaFormacion } from "@/types/types/FichaFormacion";
+import DefaultLayout from "@/layouts/default";
+import {
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+} from "@heroicons/react/24/solid";
 
 export default function FichasFormacionPage() {
   const [fichas, setFichas] = useState<FichaFormacion[]>([]);
-  const [form, setForm] = useState<FichaFormacion>(initialFormState);
-  const [editando, setEditando] = useState<boolean>(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
+  const [formData, setFormData] = useState<Partial<FichaFormacion>>({});
+  const [editId, setEditId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    cargarFichas();
+    fetchFichas();
   }, []);
 
-  const cargarFichas = async () => {
+  const fetchFichas = async () => {
     const data = await getFichasFormacion();
     setFichas(data);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editando && idEditando !== null) {
-        await updateFichaFormacion(idEditando, form);
-      } else {
-        await createFichaFormacion(form);
-      }
-      setForm(initialFormState);
-      setEditando(false);
-      setIdEditando(null);
-      cargarFichas();
-    } catch (error) {
-      console.error(" Error al guardar ficha:", error);
+    if (!formData.nombre || !formData.idTitulado) {
+      alert("Nombre y Titulado son obligatorios.");
+      return;
     }
+    if (editId) {
+      await updateFichaFormacion(editId, {
+        nombre: formData.nombre,
+        idTitulado: formData.idTitulado,
+      });
+    } else {
+      await createFichaFormacion({
+        nombre: formData.nombre,
+        idTitulado: formData.idTitulado,
+      });
+    }
+    setFormData({});
+    setEditId(null);
+    setShowForm(false);
+    fetchFichas();
   };
 
   const handleEdit = (ficha: FichaFormacion) => {
-    setForm(ficha);
-    setEditando(true);
-    setIdEditando(ficha.id || null);
+    setFormData({
+      nombre: ficha.nombre,
+      idTitulado: ficha.idTitulado,
+    });
+    setEditId(ficha.id);
+    setShowForm(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar esta ficha?')) {
+    if (confirm("¿Estás seguro de eliminar esta ficha de formación?")) {
       await deleteFichaFormacion(id);
-      cargarFichas();
+      fetchFichas();
     }
   };
 
   return (
     <DefaultLayout>
-      <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Gestión de Fichas de Formación</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestión de Fichas de Formación</h1>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center"
+          onClick={() => {
+            setFormData({});
+            setEditId(null);
+            setShowForm(true);
+          }}
+        >
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Crear Ficha
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-6">
           <input
             type="text"
             name="nombre"
-            placeholder="Nombre"
-            value={form.nombre}
+            value={formData.nombre || ""}
             onChange={handleChange}
+            placeholder="Nombre de la ficha"
+            className="w-full border p-2 rounded mb-2"
             required
-            className="border p-2 rounded"
           />
+          {/* Este campo solo es ilustrativo, debe convertirse en select dinámico si se implementan titulados */}
           <input
             type="number"
-            name="tituloId"
-            placeholder="Título ID"
-            value={form.tituloId}
-            onChange={handleChange}
+            name="idTitulado"
+            placeholder="ID Titulado"
+            value={(formData.idTitulado as any)?.id || ""}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                idTitulado: { id: Number(e.target.value), nombre: "" },
+              })
+            }
+            className="w-full border p-2 rounded mb-2"
             required
-            className="border p-2 rounded"
           />
-          <input
-            type="date"
-            name="fechaInicial"
-            value={form.fechaInicial}
-            onChange={handleChange}
-            required
-            className="border p-2 rounded"
-          />
-          <input
-            type="date"
-            name="fechaFinal"
-            value={form.fechaFinal}
-            onChange={handleChange}
-            required
-            className="border p-2 rounded"
-          />
-          <button
-            type="submit"
-            className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
-            {editando ? 'Actualizar Ficha' : 'Crear Ficha'}
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+            {editId ? "Actualizar" : "Crear"}
           </button>
         </form>
+      )}
 
-        <table className="w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border px-2 py-1">ID</th>
-              <th className="border px-2 py-1">Nombre</th>
-              <th className="border px-2 py-1">Título ID</th>
-              <th className="border px-2 py-1">Acciones</th>
+      <div className="bg-white shadow rounded overflow-x-auto">
+        <table className="min-w-full table-auto">
+          <thead className="bg-gray-100 text-left">
+            <tr>
+              <th className="px-4 py-2">ID</th>
+              <th className="px-4 py-2">Nombre</th>
+              <th className="px-4 py-2">Titulado</th>
+              <th className="px-4 py-2">Responsable</th>
+              <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {fichas.map((ficha) => (
-              <tr key={ficha.id}>
-                <td className="border px-2 py-1">{ficha.id}</td>
-                <td className="border px-2 py-1">{ficha.nombre}</td>
-                <td className="border px-2 py-1">{ficha.tituloId}</td>
-                <td className="border px-2 py-1">
+              <tr key={ficha.id} className="border-t">
+                <td className="px-4 py-2">{ficha.id}</td>
+                <td className="px-4 py-2">{ficha.nombre}</td>
+                <td className="px-4 py-2">{ficha.idTitulado?.nombre}</td>
+                <td className="px-4 py-2">
+                  {ficha.idUsuarioResponsable
+                    ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ""}`
+                    : "Sin responsable"}
+                </td>
+                <td className="px-4 py-2 flex space-x-2">
                   <button
+                    className="text-yellow-500 hover:text-yellow-700"
                     onClick={() => handleEdit(ficha)}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
                   >
-                    Editar
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(ficha.id!)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => handleDelete(ficha.id)}
                   >
-                    Eliminar
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 </td>
               </tr>
             ))}
-            {fichas.length === 0 && (
-              <tr>
-                <td colSpan={4} className="text-center py-4">
-                  No hay fichas registradas
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

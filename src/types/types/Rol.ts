@@ -1,6 +1,8 @@
 export interface Rol {
-  id?: number;
+  id: number;
   nombreRol: string;
-  fechaInicial?: string;
-  fechaFinal?: string;
+}
+
+export interface RolFormValues {
+  nombreRol: string;
 }

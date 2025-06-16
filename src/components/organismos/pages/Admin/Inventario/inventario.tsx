@@ -1,87 +1,90 @@
 import { useEffect, useState } from "react";
 import {
-  getProductos,
-  createProducto,
-  updateProducto,
-  deleteProducto,
-} from "@/Api/Productosform";
-import { Producto, ProductoFormValues } from "@/types/types/typesProductos";
-import { getCategoriasProductos } from "@/Api/Categorias";
-import { CategoriaProducto } from "@/types/types/categorias";
+  getInventarios,
+  createInventario,
+  updateInventario,
+  deleteInventario,
+} from "@/Api/inventario";
+import { Inventario, InventarioFormValues } from "@/types/types/inventario";
+import { getProductos } from "@/Api/Productosform";
+import { getSitios } from "@/Api/SitioService";
+import { Producto } from "@/types/types/typesProductos";
+import { Sitio } from "@/types/types/Sitio";
 import DefaultLayout from "@/layouts/default";
 import { PlusIcon } from "lucide-react";
 
-export default function ProductosPage() {
+export default function InventarioPage() {
+  const [inventarios, setInventarios] = useState<Inventario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [formData, setFormData] = useState<ProductoFormValues>({
-    nombre: "",
-    descripcion: "",
-    tipoMateria: "",
-    fechaVencimiento: "",
-    idCategoriaId: 0,
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [formData, setFormData] = useState<InventarioFormValues>({
+    stock: 0,
+    fkSitioId: 0,
+    idProductoId: 0,
   });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
+    fetchInventarios();
     fetchProductos();
-    fetchCategorias();
+    fetchSitios();
   }, []);
+
+  const fetchInventarios = async () => {
+    const data = await getInventarios();
+    setInventarios(data);
+  };
 
   const fetchProductos = async () => {
     const data = await getProductos();
     setProductos(data);
   };
 
-  const fetchCategorias = async () => {
-    const data = await getCategoriasProductos();
-    setCategorias(data);
+  const fetchSitios = async () => {
+    const data = await getSitios();
+    setSitios(data);
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData({ ...formData, [name]: Number(value) || value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
-      await updateProducto(editingId, formData);
+      await updateInventario(editingId, formData);
     } else {
-      await createProducto(formData);
+      await createInventario(formData);
     }
-    fetchProductos();
-    setIsModalOpen(false);
+    fetchInventarios();
     resetForm();
+    setIsModalOpen(false);
   };
 
-  const handleEdit = (producto: Producto) => {
+  const handleEdit = (inv: Inventario) => {
     setFormData({
-      nombre: producto.nombre,
-      descripcion: producto.descripcion || "",
-      tipoMateria: producto.tipoMateria || "",
-      fechaVencimiento: producto.fechaVencimiento || "",
-      idCategoriaId: producto.idCategoria.id,
+      stock: inv.stock,
+      fkSitioId: inv.fkSitio.id,
+      idProductoId: inv.idProducto.id,
     });
-    setEditingId(producto.id);
+    setEditingId(inv.idProductoInventario);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    await deleteProducto(id);
-    fetchProductos();
+    await deleteInventario(id);
+    fetchInventarios();
   };
 
   const resetForm = () => {
     setFormData({
-      nombre: "",
-      descripcion: "",
-      tipoMateria: "",
-      fechaVencimiento: "",
-      idCategoriaId: 0,
+      stock: 0,
+      fkSitioId: 0,
+      idProductoId: 0,
     });
     setEditingId(null);
   };
@@ -90,7 +93,7 @@ export default function ProductosPage() {
     <DefaultLayout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">📋 Productos</h1>
+          <h1 className="text-xl font-bold flex items-center gap-2">📦 Inventario</h1>
           <button
             onClick={() => {
               resetForm();
@@ -107,38 +110,38 @@ export default function ProductosPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
-                <th className="px-4 py-2">Nombre</th>
+                <th className="px-4 py-2">Producto</th>
                 <th className="px-4 py-2">Descripción</th>
-                <th className="px-4 py-2">Tipo</th>
-                <th className="px-4 py-2">Vencimiento</th>
-                <th className="px-4 py-2">Categoría</th>
+                <th className="px-4 py-2">Stock</th>
+                <th className="px-4 py-2">Sitio</th>
+                <th className="px-4 py-2">Ubicación</th>
                 <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {productos.length === 0 ? (
+              {inventarios.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-4">
-                    No hay productos registrados.
+                    No hay inventario registrado.
                   </td>
                 </tr>
               ) : (
-                productos.map((prod) => (
-                  <tr key={prod.id} className="border-t">
-                    <td className="px-4 py-2">{prod.nombre}</td>
-                    <td className="px-4 py-2">{prod.descripcion}</td>
-                    <td className="px-4 py-2">{prod.tipoMateria}</td>
-                    <td className="px-4 py-2">{prod.fechaVencimiento || "—"}</td>
-                    <td className="px-4 py-2">{prod.idCategoria.nombre}</td>
+                inventarios.map((inv) => (
+                  <tr key={inv.idProductoInventario} className="border-t">
+                    <td className="px-4 py-2">{inv.idProducto.nombre}</td>
+                    <td className="px-4 py-2">{inv.idProducto.descripcion}</td>
+                    <td className="px-4 py-2">{inv.stock}</td>
+                    <td className="px-4 py-2">{inv.fkSitio.nombre}</td>
+                    <td className="px-4 py-2">{inv.fkSitio.ubicacion}</td>
                     <td className="px-4 py-2 space-x-2">
                       <button
-                        onClick={() => handleEdit(prod)}
+                        onClick={() => handleEdit(inv)}
                         className="text-blue-600 hover:underline"
                       >
                         Editar
                       </button>
                       <button
-                        onClick={() => handleDelete(prod.id)}
+                        onClick={() => handleDelete(inv.idProductoInventario)}
                         className="text-red-600 hover:underline"
                       >
                         Eliminar
@@ -159,56 +162,45 @@ export default function ProductosPage() {
               className="bg-white rounded p-6 w-full max-w-md shadow-lg"
             >
               <h2 className="text-lg font-semibold mb-4">
-                {editingId ? "Editar Producto" : "Crear Producto"}
+                {editingId ? "Editar Inventario" : "Crear Inventario"}
               </h2>
 
               <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre"
-                value={formData.nombre}
+                type="number"
+                name="stock"
+                placeholder="Cantidad en stock"
+                value={formData.stock}
                 onChange={handleChange}
                 className="w-full mb-4 p-2 border rounded"
                 required
               />
 
-              <input
-                type="text"
-                name="descripcion"
-                placeholder="Descripción"
-                value={formData.descripcion}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <input
-                type="text"
-                name="tipoMateria"
-                placeholder="Tipo de materia"
-                value={formData.tipoMateria}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <input
-                type="date"
-                name="fechaVencimiento"
-                value={formData.fechaVencimiento || ""}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
               <select
-                name="idCategoriaId"
-                value={formData.idCategoriaId}
+                name="fkSitioId"
+                value={formData.fkSitioId}
                 onChange={handleChange}
                 className="w-full mb-4 p-2 border rounded"
                 required
               >
-                <option value="">Seleccione una categoría</option>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nombre}
+                <option value="">Seleccione un sitio</option>
+                {sitios.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                name="idProductoId"
+                value={formData.idProductoId}
+                onChange={handleChange}
+                className="w-full mb-4 p-2 border rounded"
+                required
+              >
+                <option value="">Seleccione un producto</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
                   </option>
                 ))}
               </select>

@@ -1,14 +1,22 @@
+export interface CategoriaProducto {
+  id: number;
+  nombre: string;
+  unpsc: string | null;
+}
+
 export interface Producto {
-  id?: number; 
-  codigoSena: string;
-  unspc?: string;
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  tipoMateria: string | null;
+  fechaVencimiento: string | null;
+  idCategoria: CategoriaProducto;
+}
+
+export interface ProductoFormValues {
   nombre: string;
   descripcion?: string;
-  cantidad: number;
-  categoria: string;
-  tipoMateria: string;
-  fechaVencimiento?: string; 
-  areaId: number;
-  fechaInicial?: string; 
-  fechaFinal?: string;  
+  tipoMateria?: string;
+  fechaVencimiento?: string;
+  idCategoriaId: number;
 }

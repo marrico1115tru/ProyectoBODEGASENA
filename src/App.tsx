@@ -36,6 +36,9 @@ import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMate
 import SitiosPage from "./components/organismos/pages/Admin/Sitios/SitiosPage.tsx";
 import Tipo_sitiosPage from "./components/organismos/pages/Admin/Tipo_sitios/Tipo_sitiosPage.tsx";
 import Perfil from "./components/organismos/pages/Perfil/Perfil.tsx"
+import CategoriasProductosPage from "./components/organismos/pages/Admin/categorias/categorias.tsx";
+import InventarioPage from "./components/organismos/pages/Admin/Inventario/inventario.tsx";
+import DetalleSolicitudPage from "./components/organismos/pages/Admin/detalles_solicitud/detalles_solicitud.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -79,6 +82,9 @@ function App() {
         <Route path="/SitiosPage" element={<SitiosPage />} />
         <Route path="/Tipo_sitiosPage" element={<Tipo_sitiosPage />} />
         <Route path="/Perfil" element={<Perfil />} />
+        <Route path ="/CategoriasProductosPage" element={<CategoriasProductosPage/>} />
+        <Route path="/InventarioPage" element={<InventarioPage/>}/>
+        <Route path="/DetalleSolicitudPage" element={<DetalleSolicitudPage/>}/>
       </Routes>
     </QueryClientProvider>
   );

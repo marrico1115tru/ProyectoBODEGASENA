@@ -1,27 +1,27 @@
 import { useEffect, useState } from "react";
 import {
-  getEntregasMaterial,
-  createEntregaMaterial,
-  updateEntregaMaterial,
-  deleteEntregaMaterial,
-} from "@/Api/entregaMaterial";
-import { EntregaMaterial } from "@/types/types/EntregaMaterial";
+  getDetalleSolicitudes,
+  createDetalleSolicitud,
+  updateDetalleSolicitud,
+  deleteDetalleSolicitud,
+} from "@/Api/detalles_solicitud";
+import { DetalleSolicitud } from "@/types/types/detalles_solicitud";
 import DefaultLayout from "@/layouts/default";
 import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/solid";
 
-export default function EntregaMaterialPage() {
-  const [entregas, setEntregas] = useState<EntregaMaterial[]>([]);
-  const [formData, setFormData] = useState<Partial<EntregaMaterial>>({});
+export default function DetalleSolicitudPage() {
+  const [detalles, setDetalles] = useState<DetalleSolicitud[]>([]);
+  const [formData, setFormData] = useState<Partial<DetalleSolicitud>>({});
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    fetchEntregas();
+    fetchDetalles();
   }, []);
 
-  const fetchEntregas = async () => {
-    const data = await getEntregasMaterial();
-    setEntregas(data);
+  const fetchDetalles = async () => {
+    const data = await getDetalleSolicitudes();
+    setDetalles(data);
   };
 
   const handleChange = (
@@ -32,49 +32,49 @@ export default function EntregaMaterialPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fechaEntrega || !formData.idFichaFormacion || !formData.idSolicitud || !formData.idUsuarioResponsable) {
+
+    if (!formData.cantidadSolicitada || !formData.idProducto || !formData.idSolicitud) {
       alert("Todos los campos son obligatorios");
       return;
     }
 
     const payload = {
-      fechaEntrega: formData.fechaEntrega,
+      cantidadSolicitada: formData.cantidadSolicitada,
       observaciones: formData.observaciones || null,
-      idFichaFormacion: formData.idFichaFormacion,
+      idProducto: formData.idProducto,
       idSolicitud: formData.idSolicitud,
-      idUsuarioResponsable: formData.idUsuarioResponsable,
     };
 
     if (editId) {
-      await updateEntregaMaterial(editId, payload);
+      await updateDetalleSolicitud(editId, payload);
     } else {
-      await createEntregaMaterial(payload);
+      await createDetalleSolicitud(payload);
     }
 
     setFormData({});
     setEditId(null);
     setShowForm(false);
-    fetchEntregas();
+    fetchDetalles();
   };
 
-  const handleEdit = (data: EntregaMaterial) => {
-    setFormData(data);
-    setEditId(data.id!);
+  const handleEdit = (detalle: DetalleSolicitud) => {
+    setFormData(detalle);
+    setEditId(detalle.id!);
     setShowForm(true);
   };
 
   const handleDelete = async (id?: number) => {
     if (!id) return;
-    if (confirm("¿Eliminar esta entrega?")) {
-      await deleteEntregaMaterial(id);
-      fetchEntregas();
+    if (confirm("¿Eliminar este detalle de solicitud?")) {
+      await deleteDetalleSolicitud(id);
+      fetchDetalles();
     }
   };
 
   return (
     <DefaultLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Entregas de Material</h1>
+        <h1 className="text-2xl font-bold">Detalle de Solicitudes</h1>
         <button
           onClick={() => {
             setFormData({});
@@ -84,16 +84,17 @@ export default function EntregaMaterialPage() {
           className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center"
         >
           <PlusIcon className="w-5 h-5 mr-2" />
-          Crear Entrega
+          Crear Detalle
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white p-4 shadow rounded mb-6">
           <input
-            type="date"
-            name="fechaEntrega"
-            value={formData.fechaEntrega || ""}
+            type="number"
+            name="cantidadSolicitada"
+            placeholder="Cantidad solicitada"
+            value={formData.cantidadSolicitada || ""}
             onChange={handleChange}
             className="w-full border p-2 rounded mb-2"
             required
@@ -107,13 +108,13 @@ export default function EntregaMaterialPage() {
           />
           <input
             type="number"
-            name="idFichaFormacion"
-            placeholder="ID Ficha Formación"
-            value={formData.idFichaFormacion?.id || ""}
+            name="idProducto"
+            placeholder="ID Producto"
+            value={formData.idProducto?.id || ""}
             onChange={(e) =>
               setFormData({
                 ...formData,
-                idFichaFormacion: { id: Number(e.target.value), nombre: "" },
+                idProducto: { id: Number(e.target.value), nombre: "" },
               })
             }
             className="w-full border p-2 rounded mb-2"
@@ -127,33 +128,7 @@ export default function EntregaMaterialPage() {
             onChange={(e) =>
               setFormData({
                 ...formData,
-                idSolicitud: {
-                  id: Number(e.target.value),
-                  fechaSolicitud: "",
-                  estadoSolicitud: "",
-                },
-              })
-            }
-            className="w-full border p-2 rounded mb-2"
-            required
-          />
-          <input
-            type="number"
-            name="idUsuarioResponsable"
-            placeholder="ID Usuario Responsable"
-            value={formData.idUsuarioResponsable?.id || ""}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                idUsuarioResponsable: {
-                  id: Number(e.target.value),
-                  nombre: "",
-                  apellido: "",
-                  cedula: "",
-                  email: "",
-                  telefono: "",
-                  cargo: "",
-                },
+                idSolicitud: { id: Number(e.target.value) },
               })
             }
             className="w-full border p-2 rounded mb-2"
@@ -170,34 +145,30 @@ export default function EntregaMaterialPage() {
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Fecha</th>
+              <th className="px-4 py-2">Cantidad</th>
               <th className="px-4 py-2">Observaciones</th>
-              <th className="px-4 py-2">Ficha</th>
+              <th className="px-4 py-2">Producto</th>
               <th className="px-4 py-2">Solicitud</th>
-              <th className="px-4 py-2">Responsable</th>
               <th className="px-4 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {entregas.map((entrega) => (
-              <tr key={entrega.id} className="border-t">
-                <td className="px-4 py-2">{entrega.id}</td>
-                <td className="px-4 py-2">{entrega.fechaEntrega}</td>
-                <td className="px-4 py-2">{entrega.observaciones || "-"}</td>
-                <td className="px-4 py-2">{entrega.idFichaFormacion.nombre}</td>
-                <td className="px-4 py-2">{entrega.idSolicitud.id}</td>
-                <td className="px-4 py-2">
-                  {entrega.idUsuarioResponsable.nombre} {entrega.idUsuarioResponsable.apellido}
-                </td>
+            {detalles.map((detalle) => (
+              <tr key={detalle.id} className="border-t">
+                <td className="px-4 py-2">{detalle.id}</td>
+                <td className="px-4 py-2">{detalle.cantidadSolicitada}</td>
+                <td className="px-4 py-2">{detalle.observaciones || "-"}</td>
+                <td className="px-4 py-2">{detalle.idProducto.nombre}</td>
+                <td className="px-4 py-2">{detalle.idSolicitud.id}</td>
                 <td className="px-4 py-2 flex space-x-2">
                   <button
-                    onClick={() => handleEdit(entrega)}
+                    onClick={() => handleEdit(detalle)}
                     className="text-yellow-500 hover:text-yellow-700"
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(entrega.id)}
+                    onClick={() => handleDelete(detalle.id)}
                     className="text-red-500 hover:text-red-700"
                   >
                     <TrashIcon className="w-5 h-5" />
