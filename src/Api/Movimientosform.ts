@@ -1,52 +1,25 @@
-export interface MovimientoMaterial {
-    id: number;
-    tipo: string; 
-    cantidad: number;
-    fecha: string;
-    id_producto: number;
-    id_usuario: number;
-  }
-  
-  const API_URL = 'http://localhost:3500/API/movimientosmateriales';
-  
-  export const fetchMovimientos = async (): Promise<MovimientoMaterial[]> => {
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error('Error al obtener movimientos');
-    }
-    return await response.json();
-  };
-  
-  export const createMovimiento = async (movimiento: Omit<MovimientoMaterial, 'id'>) => {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(movimiento),
-    });
-    if (!response.ok) {
-      throw new Error('Error al crear movimiento');
-    }
-    return await response.json();
-  };
-  
-  export const updateMovimiento = async (id: number, movimiento: Partial<MovimientoMaterial>) => {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(movimiento),
-    });
-    if (!response.ok) {
-      throw new Error('Error al actualizar movimiento');
-    }
-    return await response.json();
-  };
-  
-  export const deleteMovimiento = async (id: number) => {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Error al eliminar movimiento');
-    }
-  };
-  
+// src/api/MovimientosForm.ts
+
+import axios from "axios";
+import { Movimiento } from "@/types/types/movimientos";
+
+const API_URL = "http://localhost:3000/movimientos";
+
+export const getMovimientos = async (): Promise<Movimiento[]> => {
+  const res = await axios.get(API_URL);
+  return res.data;
+};
+
+export const createMovimiento = async (data: Partial<Movimiento>): Promise<Movimiento> => {
+  const res = await axios.post(API_URL, data);
+  return res.data;
+};
+
+export const updateMovimiento = async (id: number, data: Partial<Movimiento>): Promise<Movimiento> => {
+  const res = await axios.put(`${API_URL}/${id}`, data);
+  return res.data;
+};
+
+export const deleteMovimiento = async (id: number): Promise<void> => {
+  await axios.delete(`${API_URL}/${id}`);
+};

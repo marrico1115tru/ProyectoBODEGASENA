@@ -2,8 +2,21 @@ import { useState } from "react";
 import {
   Home, Menu, FileText, ChevronDown, ChevronUp, Users, BarChart2,
   List, Table, Warehouse, Building2, GraduationCap, FolderGit2,
-  MapPin, BookOpen, ShieldCheck, LayoutGrid, KeySquare, ClipboardList,
+  MapPin, BookOpen, ShieldCheck, KeySquare, ClipboardList,
   Send, Landmark, LogOut,
+  Boxes,
+  Tags,
+  ListChecks,
+  PackageCheck,
+  ArrowLeftRight,
+  FilePlus,
+  PackageSearch,
+  Users2,
+  UserCog,
+  History,
+  LayoutGrid,
+  AlertTriangle,
+  Clock, // <-- Asegúrate de importar History desde lucide-react
 } from "lucide-react";
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
@@ -14,6 +27,7 @@ const Sidebar = () => {
   const [openMenus, setOpenMenus] = useState({
     reports: false,
     products: false,
+    solicitudes: false,
     infoReports: false,
     productReports: false,
     userReports: false,
@@ -26,16 +40,16 @@ const Sidebar = () => {
     setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
 
   const handleLogout = () => {
-    // Aquí puedes borrar token, limpiar estado o redirigir
+    
     localStorage.clear();
-    navigate("/login"); // Cambia a la ruta de login según tu sistema
+    navigate("/login"); 
   };
 
   return (
     <aside className={`transition-all duration-300 flex flex-col shadow-lg border-r border-slate-700 ${isOpen ? "w-64" : "w-20"} min-h-screen bg-slate-900 text-white`}>
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-        {isOpen && <h1 className="text-xl font-bold tracking-wide text-cyan-400">NATURVIDA</h1>}
+        {isOpen && <h1 className="text-xl font-bold tracking-wide text-cyan-400">INNOVASOFT</h1>}
         <Button
           variant="ghost"
           className="text-white hover:text-slate-200 p-2"
@@ -51,93 +65,196 @@ const Sidebar = () => {
           <SidebarButton to="/" icon={<Home className="w-5 h-5" />} label="Home" isOpen={isOpen} activePaths={["/"]} />
           <SidebarButton to="/inicio" icon={<FileText className="w-5 h-5" />} label="Inicio" isOpen={isOpen} activePaths={["/inicio"]} />
 
-          {/* Productos */}
-          <SidebarButton
-            icon={<FileText className="w-5 h-5" />}
-            label="Productos"
-            isOpen={isOpen}
-            onClick={() => toggleMenu("products")}
-            endIcon={openMenus.products ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          />
-          {openMenus.products && isOpen && (
-            <Submenu>
-              <SidebarButton
-                to="/productos/listar"
-                icon={<Table className="w-4 h-4" />}
-                label="Ver Productos"
-                isOpen={isOpen}
-                activePaths={["/productos/listar"]}
-              />
-            </Submenu>
-          )}
+ {/* Productos */}
+<SidebarButton
+  icon={<FileText className="w-5 h-5" />}
+  label="Productos"
+  isOpen={isOpen}
+  onClick={() => toggleMenu("products")}
+  endIcon={
+    openMenus.products ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+  }
+/>
+{openMenus.products && isOpen && (
+  <Submenu>
+    <SidebarButton
+      to="/productos/listar"
+      icon={<Boxes className="w-4 h-4" />} // 📦 ícono bonito para productos
+      label="Ver Productos"
+      isOpen={isOpen}
+      activePaths={["/productos/listar"]}
+    />
+    <SidebarButton
+      to="/CategoriasProductosPage"
+      icon={<Tags className="w-4 h-4" />} // 🏷️ ícono para categorías
+      label="Categorías"
+      isOpen={isOpen}
+      activePaths={["/CategoriasProductosPage"]}
+    />
+    <SidebarButton
+      to="/InventarioPage"
+      icon={<Warehouse className="w-4 h-4" />} // 🏬 ícono para inventario
+      label="Inventario"
+      isOpen={isOpen}
+      activePaths={["/InventarioPage"]}
+    />
+  </Submenu>
+)}
 
-          {/* Movimiento de inventario */}
-          <SidebarButton
-            to="/MovimientoInventarioPage"
-            icon={<Warehouse className="w-5 h-5" />}
-            label="Entradas y Salidas"
-            isOpen={isOpen}
-            activePaths={["/MovimientoInventarioPage"]}
-          />
+{/* Solicitudes */}
+<SidebarButton
+  icon={<ClipboardList className="w-5 h-5" />} // Icono principal para solicitudes
+  label="Solicitudes"
+  isOpen={isOpen}
+  onClick={() => toggleMenu("solicitudes")}
+  endIcon={
+    openMenus.solicitudes ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+  }
+/>
+{openMenus.solicitudes && isOpen && (
+  <Submenu>
+    <SidebarButton
+      to="/SolicitudesPage"
+      icon={<FilePlus className="w-4 h-4" />} // 📝 para registrar solicitudes
+      label="Solicitudes"
+      isOpen={isOpen}
+      activePaths={["/SolicitudesPage"]}
+    />
+    <SidebarButton
+      to="/DetalleSolicitudPage"
+      icon={<ListChecks className="w-4 h-4" />} // 📋 para ver detalle de la solicitud
+      label="Detalle de la Solicitud"
+      isOpen={isOpen}
+      activePaths={["/DetalleSolicitudPage"]}
+    />
+    <SidebarButton
+      to="/EntregaMaterialPage"
+      icon={<PackageCheck className="w-4 h-4" />} // 📦 para entrega de materiales
+      label="Entrega de Material"
+      isOpen={isOpen}
+      activePaths={["/EntregaMaterialPage"]}
+    />
+    <SidebarButton
+      to="/MovimientoInventarioPage"
+      icon={<ArrowLeftRight className="w-4 h-4" />} // 🔁 para movimientos
+      label="Movimientos"
+      isOpen={isOpen}
+      activePaths={["/MovimientoInventarioPage"]}
+    />
+  </Submenu>
+)}
 
-          {/* Estadísticas */}
-          <SidebarButton
-            icon={<BarChart2 className="w-5 h-5" />}
-            label="Estadísticas"
-            isOpen={isOpen}
-            onClick={() => toggleMenu("reports")}
-            endIcon={openMenus.reports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          />
-          {openMenus.reports && isOpen && (
-            <Submenu>
-              <SidebarButton to="/VistaProductos" label="Productos" isOpen={isOpen} activePaths={["/VistaProductos"]} />
-              <SidebarButton to="/VistaEstadisticasUsuarios" label="Usuarios" isOpen={isOpen} activePaths={["/VistaEstadisticasUsuarios"]} />
-              <SidebarButton to="/VistaEstadisticasSitios" label="Sitios" isOpen={isOpen} activePaths={["/VistaEstadisticasSitios"]} />
-            </Submenu>
-          )}
 
-          {/* Reportes */}
-          <SidebarButton
-            icon={<FileText className="w-5 h-5" />}
-            label="Reportes"
-            isOpen={isOpen}
-            onClick={() => toggleMenu("infoReports")}
-            endIcon={openMenus.infoReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          />
-          {openMenus.infoReports && isOpen && (
-            <Submenu>
-              {/* Submenu Productos */}
-              <SidebarButton
-                icon={<List className="w-4 h-4" />}
-                label="Productos"
-                isOpen={isOpen}
-                onClick={() => toggleMenu("productReports")}
-                endIcon={openMenus.productReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              />
-              {openMenus.productReports && (
-                <Submenu indent>
-                  <SidebarButton to="/report/productosRep/ProductosPorArea" label="Productos por área" isOpen={isOpen} activePaths={["/report/productosRep/ProductosPorArea"]} />
-                  <SidebarButton to="/report/productosRep/ProductosVencidos" label="Productos vencidos" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencidos"]} />
-                  <SidebarButton to="/report/productosRep/ProductosVencimiento" label="Próximos a vencer" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencimiento"]} />
-                </Submenu>
-              )}
 
-              {/* Submenu Usuarios */}
-              <SidebarButton
-                icon={<Users className="w-4 h-4" />}
-                label="Usuarios"
-                isOpen={isOpen}
-                onClick={() => toggleMenu("userReports")}
-                endIcon={openMenus.userReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              />
-              {openMenus.userReports && (
-                <Submenu indent>
-                  <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" label="Usuarios por rol" isOpen={isOpen} activePaths={["/report/UsuariosRep/UsuariosPorRol"]} />
-                  <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" label="Historial materiales utilizados" isOpen={isOpen} activePaths={["/report/UsuariosRep/UsuariosHistoria"]} />
-                </Submenu>
-              )}
-            </Submenu>
-          )}
+          
+
+         {/* Estadísticas */}
+<SidebarButton
+  icon={<BarChart2 className="w-5 h-5" />} // Icono principal de estadísticas
+  label="Estadísticas"
+  isOpen={isOpen}
+  onClick={() => toggleMenu("reports")}
+  endIcon={openMenus.reports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+/>
+{openMenus.reports && isOpen && (
+  <Submenu>
+    <SidebarButton
+      to="/VistaProductos"
+      icon={<PackageSearch className="w-4 h-4" />} // 📦 Icono para estadísticas de productos
+      label="Productos"
+      isOpen={isOpen}
+      activePaths={["/VistaProductos"]}
+    />
+    <SidebarButton
+      to="/VistaEstadisticasUsuarios"
+      icon={<Users2 className="w-4 h-4" />} // 👥 Icono para usuarios
+      label="Usuarios"
+      isOpen={isOpen}
+      activePaths={["/VistaEstadisticasUsuarios"]}
+    />
+    <SidebarButton
+      to="/VistaEstadisticasSitios"
+      icon={<MapPin className="w-4 h-4" />} // 🗺️ Icono para sitios
+      label="Sitios"
+      isOpen={isOpen}
+      activePaths={["/VistaEstadisticasSitios"]}
+    />
+  </Submenu>
+)}
+
+
+         {/* Reportes */}
+<SidebarButton
+  icon={<FileText className="w-5 h-5" />} // Icono principal del menú Reportes
+  label="Reportes"
+  isOpen={isOpen}
+  onClick={() => toggleMenu("infoReports")}
+  endIcon={openMenus.infoReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+/>
+{openMenus.infoReports && isOpen && (
+  <Submenu>
+    {/* Submenu Productos */}
+    <SidebarButton
+      icon={<PackageSearch className="w-4 h-4" />} // 📦 Icono para el grupo de productos
+      label="Productos"
+      isOpen={isOpen}
+      onClick={() => toggleMenu("productReports")}
+      endIcon={openMenus.productReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    />
+    {openMenus.productReports && (
+      <Submenu indent>
+        <SidebarButton
+          to="/report/productosRep/ProductosPorArea"
+          icon={<LayoutGrid className="w-4 h-4" />} // 🗂️ Productos por área
+          label="Productos por área"
+          isOpen={isOpen}
+          activePaths={["/report/productosRep/ProductosPorArea"]}
+        />
+        <SidebarButton
+          to="/report/productosRep/ProductosVencidos"
+          icon={<AlertTriangle className="w-4 h-4" />} // ⚠️ Productos vencidos
+          label="Productos vencidos"
+          isOpen={isOpen}
+          activePaths={["/report/productosRep/ProductosVencidos"]}
+        />
+        <SidebarButton
+          to="/report/productosRep/ProductosVencimiento"
+          icon={<Clock className="w-4 h-4" />} // 🕒 Próximos a vencer
+          label="Próximos a vencer"
+          isOpen={isOpen}
+          activePaths={["/report/productosRep/ProductosVencimiento"]}
+        />
+      </Submenu>
+    )}
+
+    {/* Submenu Usuarios */}
+    <SidebarButton
+      icon={<Users className="w-4 h-4" />} // 👥 Usuarios
+      label="Usuarios"
+      isOpen={isOpen}
+      onClick={() => toggleMenu("userReports")}
+      endIcon={openMenus.userReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    />
+    {openMenus.userReports && (
+      <Submenu indent>
+        <SidebarButton
+          to="/report/UsuariosRep/UsuariosPorRol"
+          icon={<UserCog className="w-4 h-4" />} // 👤 Usuarios por rol
+          label="Usuarios por rol"
+          isOpen={isOpen}
+          activePaths={["/report/UsuariosRep/UsuariosPorRol"]}
+        />
+        <SidebarButton
+          to="/report/UsuariosRep/UsuariosHistoria"
+          icon={<History className="w-4 h-4" />} // 🕘 Historial de materiales
+          label="Historial materiales utilizados"
+          isOpen={isOpen}
+          activePaths={["/report/UsuariosRep/UsuariosHistoria"]}
+        />
+      </Submenu>
+    )}
+  </Submenu>
+)}
 
           {/* Admin */}
           <SidebarButton
@@ -157,14 +274,8 @@ const Sidebar = () => {
               <SidebarButton to="/SedesPage" icon={<Landmark className="w-4 h-4" />} label="Sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
               <SidebarButton to="/FichaFormacionPage" icon={<BookOpen className="w-4 h-4" />} label="Fichas Formación" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
               <SidebarButton to="/RolesPage" icon={<ShieldCheck className="w-4 h-4" />} label="Roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
-              <SidebarButton to="/AccesosPage" icon={<KeySquare className="w-4 h-4" />} label="Accesos" isOpen={isOpen} activePaths={["/AccesosPage"]} />
-              <SidebarButton to="/SolicitudesPage" icon={<ClipboardList className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
-              <SidebarButton to="/EntregaMaterialPage" icon={<Send className="w-4 h-4" />} label="Entrega Materiales" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
               <SidebarButton to="/SitiosPage" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
               <SidebarButton to="/Tipo_sitiosPage" icon={<MapPin className="w-4 h-4" />} label="Tipo de Sitios" isOpen={isOpen} activePaths={["/Tipo_sitiosPage"]} />
-              <SidebarButton to="/CategoriasProductosPage" icon={<Send className="w-4 h-4" />} label="Categorias" isOpen={isOpen} activePaths={["/CategoriasProductosPage"]} />
-              <SidebarButton to="/InventarioPage" icon={<MapPin className="w-4 h-4" />} label="Inventario" isOpen={isOpen} activePaths={["/InventarioPage"]} />
-              <SidebarButton to="/DetalleSolicitudPage" icon={<MapPin className="w-4 h-4" />} label="Detalle solicitud" isOpen={isOpen} activePaths={["/DetalleSolicitudPage"]} />
             </Submenu>
           )}
         </nav>

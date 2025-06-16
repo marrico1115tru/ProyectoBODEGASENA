@@ -11,7 +11,7 @@ import { getSitios } from "@/Api/SitioService";
 import { Producto } from "@/types/types/typesProductos";
 import { Sitio } from "@/types/types/Sitio";
 import DefaultLayout from "@/layouts/default";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 
 export default function InventarioPage() {
   const [inventarios, setInventarios] = useState<Inventario[]>([]);
@@ -81,32 +81,43 @@ export default function InventarioPage() {
   };
 
   const resetForm = () => {
-    setFormData({
-      stock: 0,
-      fkSitioId: 0,
-      idProductoId: 0,
-    });
+    setFormData({ stock: 0, fkSitioId: 0, idProductoId: 0 });
     setEditingId(null);
+  };
+
+  const getStockBarColor = (stock: number) => {
+    if (stock === 0) return "bg-red-500";
+    if (stock <= 10) return "bg-orange-400";
+    if (stock <= 50) return "bg-yellow-400";
+    return "bg-green-500";
+  };
+
+  const getStockPercentage = (stock: number) => {
+    // Se asume que el stock máximo visual es 100
+    const percent = Math.min((stock / 100) * 100, 100);
+    return `${percent}%`;
   };
 
   return (
     <DefaultLayout>
       <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">📦 Inventario</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            📦 Inventario
+          </h1>
           <button
             onClick={() => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           >
-            <PlusIcon className="inline-block w-4 h-4 mr-1" />
+            <PlusIcon className="w-4 h-4" />
             Crear
           </button>
         </div>
 
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
+        <div className="overflow-x-auto bg-white shadow-md rounded-lg">
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
@@ -121,7 +132,7 @@ export default function InventarioPage() {
             <tbody>
               {inventarios.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4">
+                  <td colSpan={6} className="text-center py-6 text-gray-500">
                     No hay inventario registrado.
                   </td>
                 </tr>
@@ -130,7 +141,21 @@ export default function InventarioPage() {
                   <tr key={inv.idProductoInventario} className="border-t">
                     <td className="px-4 py-2">{inv.idProducto.nombre}</td>
                     <td className="px-4 py-2">{inv.idProducto.descripcion}</td>
-                    <td className="px-4 py-2">{inv.stock}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium">
+                          {inv.stock} unidades
+                        </span>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${getStockBarColor(
+                              inv.stock
+                            )}`}
+                            style={{ width: getStockPercentage(inv.stock) }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-2">{inv.fkSitio.nombre}</td>
                     <td className="px-4 py-2">{inv.fkSitio.ubicacion}</td>
                     <td className="px-4 py-2 space-x-2">
@@ -156,14 +181,23 @@ export default function InventarioPage() {
 
         {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <form
               onSubmit={handleSubmit}
-              className="bg-white rounded p-6 w-full max-w-md shadow-lg"
+              className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg"
             >
-              <h2 className="text-lg font-semibold mb-4">
-                {editingId ? "Editar Inventario" : "Crear Inventario"}
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">
+                  {editingId ? "Editar Inventario" : "Crear Inventario"}
+                </h2>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  type="button"
+                  className="text-gray-600 hover:text-red-500"
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
 
               <input
                 type="number"
@@ -171,7 +205,7 @@ export default function InventarioPage() {
                 placeholder="Cantidad en stock"
                 value={formData.stock}
                 onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
+                className="w-full mb-4 p-2 border border-gray-300 rounded"
                 required
               />
 
@@ -179,7 +213,7 @@ export default function InventarioPage() {
                 name="fkSitioId"
                 value={formData.fkSitioId}
                 onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
+                className="w-full mb-4 p-2 border border-gray-300 rounded"
                 required
               >
                 <option value="">Seleccione un sitio</option>
@@ -194,7 +228,7 @@ export default function InventarioPage() {
                 name="idProductoId"
                 value={formData.idProductoId}
                 onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
+                className="w-full mb-4 p-2 border border-gray-300 rounded"
                 required
               >
                 <option value="">Seleccione un producto</option>
@@ -205,17 +239,17 @@ export default function InventarioPage() {
                 ))}
               </select>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded"
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
                   {editingId ? "Actualizar" : "Crear"}
                 </button>

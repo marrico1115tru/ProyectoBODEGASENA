@@ -1,185 +1,116 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/movimientos/MovimientosView.tsx
+
+import { useEffect, useState } from "react";
 import {
   getMovimientos,
-  createMovimiento,
-  updateMovimiento,
   deleteMovimiento,
-} from '@/Api/MovimientoInventarioApi';
-import { MovimientoInventario } from '@/types/types/movimientoInventario';
-import DefaultLayout from '@/layouts/default';
+} from "@/Api/Movimientosform";
+import { Movimiento } from "@/types/types/movimientos";
+import DefaultLayout from "@/layouts/default";
+import {
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+} from "@heroicons/react/24/solid";
 
-const initialFormState: MovimientoInventario = {
-  productoId: 0,
-  usuarioId: 0,
-  tipoMovimiento: 'entrada',
-  cantidad: 0,
-  observaciones: '',
-};
+export default function MovimientosView() {
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function MovimientoInventarioPage() {
-  const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
-  const [form, setForm] = useState<MovimientoInventario>(initialFormState);
-  const [editando, setEditando] = useState(false);
-  const [idEditando, setIdEditando] = useState<number | null>(null);
-
-  useEffect(() => {
-    cargarMovimientos();
-  }, []);
-
-  const cargarMovimientos = async () => {
-    const data = await getMovimientos();
-    setMovimientos(data);
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setForm({
-      ...form,
-      [name]:
-        name === 'cantidad' || name === 'productoId' || name === 'usuarioId'
-          ? Number(value)
-          : value,
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const fetchMovimientos = async () => {
     try {
-      if (editando && idEditando !== null) {
-        await updateMovimiento(idEditando, form);
-      } else {
-        await createMovimiento(form);
-      }
-      setForm(initialFormState);
-      setEditando(false);
-      setIdEditando(null);
-      cargarMovimientos();
+      setLoading(true);
+      const data = await getMovimientos();
+      setMovimientos(data);
     } catch (error) {
-      console.error(' Error al guardar movimiento:', error);
+      console.error("Error al obtener movimientos", error);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleEdit = (movimiento: MovimientoInventario) => {
-    setForm(movimiento);
-    setEditando(true);
-    setIdEditando(movimiento.id || null);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('¿Estás seguro de eliminar este movimiento?')) {
-      await deleteMovimiento(id);
-      cargarMovimientos();
+    if (confirm("¿Estás seguro de eliminar este movimiento?")) {
+      try {
+        await deleteMovimiento(id);
+        fetchMovimientos();
+      } catch (error) {
+        console.error("Error al eliminar", error);
+      }
     }
   };
 
+  useEffect(() => {
+    fetchMovimientos();
+  }, []);
+
   return (
     <DefaultLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Gestión de Movimientos de Inventario</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestión de Movimientos</h1>
+        <button className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center">
+          <PlusIcon className="w-5 h-5 mr-2" />
+          Crear Movimiento
+        </button>
+      </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow"
-        >
-          <input
-            type="number"
-            name="productoId"
-            placeholder="ID Producto"
-            value={form.productoId}
-            onChange={handleChange}
-            required
-            className="input"
-            min={1}
-          />
-          <input
-            type="number"
-            name="usuarioId"
-            placeholder="ID Usuario"
-            value={form.usuarioId}
-            onChange={handleChange}
-            required
-            className="input"
-            min={1}
-          />
-          <select
-            name="tipoMovimiento"
-            value={form.tipoMovimiento}
-            onChange={handleChange}
-            required
-            className="input"
-          >
-            <option value="entrada">Entrada</option>
-            <option value="salida">Salida</option>
-          </select>
-          <input
-            type="number"
-            name="cantidad"
-            placeholder="Cantidad"
-            value={form.cantidad}
-            onChange={handleChange}
-            required
-            className="input"
-            min={1}
-          />
-          <textarea
-            name="observaciones"
-            placeholder="Observaciones"
-            value={form.observaciones}
-            onChange={handleChange}
-            className="input col-span-2"
-            rows={2}
-          />
-          <button
-            type="submit"
-            className="col-span-2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
-            {editando ? 'Actualizar Movimiento' : 'Crear Movimiento'}
-          </button>
-        </form>
-
-        <table className="w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border px-2 py-1">ID</th>
-              <th className="border px-2 py-1">Producto ID</th>
-              <th className="border px-2 py-1">Usuario ID</th>
-              <th className="border px-2 py-1">Tipo Movimiento</th>
-              <th className="border px-2 py-1">Cantidad</th>
-              <th className="border px-2 py-1">Fecha Movimiento</th>
-              <th className="border px-2 py-1">Observaciones</th>
-              <th className="border px-2 py-1">Acciones</th>
+      <div className="overflow-x-auto bg-white rounded shadow">
+        <table className="min-w-full border border-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 text-left">ID</th>
+              <th className="px-4 py-2 text-left">Tipo</th>
+              <th className="px-4 py-2 text-left">Cantidad</th>
+              <th className="px-4 py-2 text-left">Fecha</th>
+              <th className="px-4 py-2 text-left">Entrega</th>
+              <th className="px-4 py-2 text-left">Producto</th>
+              <th className="px-4 py-2 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {movimientos.map((m) => (
-              <tr key={m.id}>
-                <td className="border px-2 py-1">{m.id}</td>
-                <td className="border px-2 py-1">{m.productoId}</td>
-                <td className="border px-2 py-1">{m.usuarioId}</td>
-                <td className="border px-2 py-1 capitalize">{m.tipoMovimiento}</td>
-                <td className="border px-2 py-1">{m.cantidad}</td>
-                <td className="border px-2 py-1">
-                  {m.fechaMovimiento ? new Date(m.fechaMovimiento).toLocaleString() : '-'}
+            {movimientos.map((mov) => (
+              <tr key={mov.id} className="border-t">
+                <td className="px-4 py-2">{mov.id}</td>
+                <td className="px-4 py-2">{mov.tipoMovimiento}</td>
+                <td className="px-4 py-2">{mov.cantidad}</td>
+                <td className="px-4 py-2">{mov.fechaMovimiento}</td>
+                <td className="px-4 py-2">
+                  {typeof mov.idEntrega === "object"
+                    ? mov.idEntrega?.observaciones
+                    : mov.idEntrega}
                 </td>
-                <td className="border px-2 py-1">{m.observaciones || '-'}</td>
-                <td className="border px-2 py-1">
-                  <button
-                    onClick={() => handleEdit(m)}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 mr-2 rounded"
-                  >
-                    Editar
+                <td className="px-4 py-2">
+                  {typeof mov.idProductoInventario === "object"
+                    ? mov.idProductoInventario?.nombre
+                    : mov.idProductoInventario}
+                </td>
+                <td className="px-4 py-2 flex justify-center gap-2">
+                  <button className="bg-blue-500 text-white p-1 rounded">
+                    <PencilIcon className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => m.id && handleDelete(m.id)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                    onClick={() => handleDelete(mov.id)}
+                    className="bg-red-500 text-white p-1 rounded"
                   >
-                    Eliminar
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
             ))}
+            {movimientos.length === 0 && !loading && (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  No hay movimientos registrados.
+                </td>
+              </tr>
+            )}
+            {loading && (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  Cargando...
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
