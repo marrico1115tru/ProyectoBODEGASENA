@@ -1,3 +1,5 @@
+// ✅ Versión mejorada: colores suaves, búsqueda reactiva, paginación y modal elegante
+
 import { useEffect, useState } from "react";
 import {
   getInventarios,
@@ -24,6 +26,9 @@ export default function InventarioPage() {
   });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetchInventarios();
@@ -93,31 +98,45 @@ export default function InventarioPage() {
   };
 
   const getStockPercentage = (stock: number) => {
-    // Se asume que el stock máximo visual es 100
-    const percent = Math.min((stock / 100) * 100, 100);
-    return `${percent}%`;
+    return `${Math.min((stock / 100) * 100, 100)}%`;
   };
+
+  const filtered = inventarios.filter((inv) =>
+    inv.idProducto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <DefaultLayout>
       <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            📦 Inventario
-          </h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">📦 Inventario</h1>
           <button
             onClick={() => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" />
-            Crear
+            <PlusIcon className="w-4 h-4" /> Crear
           </button>
         </div>
 
-        <div className="overflow-x-auto bg-white shadow-md rounded-lg">
+        <div className="flex mb-4">
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+          />
+        </div>
+
+        <div className="overflow-x-auto bg-white shadow rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
@@ -130,27 +149,23 @@ export default function InventarioPage() {
               </tr>
             </thead>
             <tbody>
-              {inventarios.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-6 text-gray-500">
-                    No hay inventario registrado.
+                    No hay resultados.
                   </td>
                 </tr>
               ) : (
-                inventarios.map((inv) => (
-                  <tr key={inv.idProductoInventario} className="border-t">
+                paginated.map((inv) => (
+                  <tr key={inv.idProductoInventario} className="hover:bg-gray-50">
                     <td className="px-4 py-2">{inv.idProducto.nombre}</td>
                     <td className="px-4 py-2">{inv.idProducto.descripcion}</td>
                     <td className="px-4 py-2">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium">
-                          {inv.stock} unidades
-                        </span>
+                        <span className="text-sm font-medium">{inv.stock} unidades</span>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full ${getStockBarColor(
-                              inv.stock
-                            )}`}
+                            className={`h-2 rounded-full ${getStockBarColor(inv.stock)}`}
                             style={{ width: getStockPercentage(inv.stock) }}
                           ></div>
                         </div>
@@ -177,6 +192,23 @@ export default function InventarioPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex justify-center mt-4 gap-2">
+          {[...Array(totalPages)].map((_, i) => (
+            <button
+              key={i}
+              className={`px-3 py-1 rounded ${
+                currentPage === i + 1
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 hover:bg-gray-200"
+              }`}
+              onClick={() => setCurrentPage(i + 1)}
+            >
+              {i + 1}
+            </button>
+          ))}
         </div>
 
         {/* Modal */}
@@ -249,7 +281,7 @@ export default function InventarioPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   {editingId ? "Actualizar" : "Crear"}
                 </button>

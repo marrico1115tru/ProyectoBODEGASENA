@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   getProductos,
@@ -10,15 +9,13 @@ import {
   getCategoriasProductos,
   createCategoriaProducto,
 } from "@/Api/Categorias";
-import {
-  Producto,
-} from "@/types/types/typesProductos";
+import { Producto } from "@/types/types/typesProductos";
 import {
   CategoriaProducto,
   CategoriaProductoFormValues,
 } from "@/types/types/categorias";
 import DefaultLayout from "@/layouts/default";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -35,14 +32,15 @@ type ProductoSchema = z.infer<typeof productoSchema>;
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
+  const [search, setSearch] = useState("");
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
-  const [nuevaCategoria, setNuevaCategoria] = useState<CategoriaProductoFormValues>({
-    nombre: "",
-    unpsc: "",
-  });
+  const [nuevaCategoria, setNuevaCategoria] = useState<CategoriaProductoFormValues>({ nombre: "", unpsc: "" });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const {
     register,
@@ -66,9 +64,21 @@ export default function ProductosPage() {
     fetchCategorias();
   }, []);
 
+  useEffect(() => {
+    const lower = search.toLowerCase();
+    const filtered = productos.filter((p) =>
+      p.nombre.toLowerCase().includes(lower) ||
+      p.descripcion?.toLowerCase().includes(lower) ||
+      p.tipoMateria?.toLowerCase().includes(lower)
+    );
+    setFilteredProductos(filtered);
+    setCurrentPage(1);
+  }, [search, productos]);
+
   const fetchProductos = async () => {
     const data = await getProductos();
     setProductos(data);
+    setFilteredProductos(data);
   };
 
   const fetchCategorias = async () => {
@@ -92,14 +102,16 @@ export default function ProductosPage() {
     setValue("descripcion", producto.descripcion || "");
     setValue("tipoMateria", producto.tipoMateria || "");
     setValue("fechaVencimiento", producto.fechaVencimiento || "");
-    setValue("idCategoriaId", producto.idCategoria.id);
+    setValue("idCategoriaId", producto.idCategoria?.id || 0);
     setEditingId(producto.id);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    await deleteProducto(id);
-    fetchProductos();
+    if (confirm("¿Estás seguro de eliminar este producto?")) {
+      await deleteProducto(id);
+      fetchProductos();
+    }
   };
 
   const handleCreateCategoria = async () => {
@@ -115,62 +127,68 @@ export default function ProductosPage() {
     setEditingId(null);
   };
 
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentData = filteredProductos.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
+
   return (
     <DefaultLayout>
       <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">📋 Productos</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">📦 Gestión de Productos</h1>
           <button
             onClick={() => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
           >
-            <PlusIcon className="inline-block w-4 h-4 mr-1" />
-            Crear
+            <PlusIcon className="w-5 h-5 mr-2" /> Crear Producto
           </button>
         </div>
 
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
+        <input
+          type="text"
+          placeholder="🔍 Buscar productos..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
+        />
+
+        <div className="bg-white shadow rounded-lg overflow-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-blue-100 text-gray-700">
               <tr>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Descripción</th>
-                <th className="px-4 py-2">Tipo</th>
-                <th className="px-4 py-2">Vencimiento</th>
-                <th className="px-4 py-2">Categoría</th>
-                <th className="px-4 py-2">Acciones</th>
+                <th className="px-6 py-3 font-semibold">Nombre</th>
+                <th className="px-6 py-3 font-semibold">Descripción</th>
+                <th className="px-6 py-3 font-semibold">Tipo</th>
+                <th className="px-6 py-3 font-semibold">Vencimiento</th>
+                <th className="px-6 py-3 font-semibold">Categoría</th>
+                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              {productos.length === 0 ? (
+            <tbody className="bg-white divide-y divide-gray-100">
+              {currentData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4">
+                  <td colSpan={6} className="text-center py-4 text-gray-500">
                     No hay productos registrados.
                   </td>
                 </tr>
               ) : (
-                productos.map((prod) => (
-                  <tr key={prod.id} className="border-t">
-                    <td className="px-4 py-2">{prod.nombre}</td>
-                    <td className="px-4 py-2">{prod.descripcion}</td>
-                    <td className="px-4 py-2">{prod.tipoMateria}</td>
-                    <td className="px-4 py-2">{prod.fechaVencimiento || "—"}</td>
-                    <td className="px-4 py-2">{prod.idCategoria?.nombre || "—"}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(prod)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
+                currentData.map((prod) => (
+                  <tr key={prod.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-2">{prod.nombre}</td>
+                    <td className="px-6 py-2">{prod.descripcion || "—"}</td>
+                    <td className="px-6 py-2">{prod.tipoMateria || "—"}</td>
+                    <td className="px-6 py-2">{prod.fechaVencimiento || "—"}</td>
+                    <td className="px-6 py-2">{prod.idCategoria?.nombre || "—"}</td>
+                    <td className="px-6 py-2 flex justify-center gap-2">
+                      <button onClick={() => handleEdit(prod)} className="text-blue-600 hover:text-blue-800">
+                        <PencilIcon className="w-5 h-5" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(prod.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
+                      <button onClick={() => handleDelete(prod.id)} className="text-red-600 hover:text-red-800">
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </td>
                   </tr>
@@ -180,135 +198,21 @@ export default function ProductosPage() {
           </table>
         </div>
 
-        {/* Modal Producto */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="bg-white rounded p-6 w-full max-w-md shadow-lg"
-            >
-              <h2 className="text-lg font-semibold mb-4">
-                {editingId ? "Editar Producto" : "Crear Producto"}
-              </h2>
-
-              <input
-                type="text"
-                placeholder="Nombre"
-                {...register("nombre")}
-                className="w-full mb-1 p-2 border rounded"
-              />
-              {errors.nombre && (
-                <p className="text-red-500 text-sm mb-2">{errors.nombre.message}</p>
-              )}
-
-              <input
-                type="text"
-                placeholder="Descripción"
-                {...register("descripcion")}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <input
-                type="text"
-                placeholder="Tipo de materia"
-                {...register("tipoMateria")}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <input
-                type="date"
-                {...register("fechaVencimiento")}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <div className="flex items-center mb-4 gap-2">
-                <select
-                  {...register("idCategoriaId", { valueAsNumber: true })}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Seleccione una categoría</option>
-                  {categorias.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nombre}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setIsCategoriaModalOpen(true)}
-                  className="bg-green-600 text-white px-2 py-2 rounded hover:bg-green-700"
-                  title="Agregar nueva categoría"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                </button>
-              </div>
-              {errors.idCategoriaId && (
-                <p className="text-red-500 text-sm mb-2">
-                  {errors.idCategoriaId.message}
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
-                >
-                  {editingId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Modal Crear Categoría */}
-        {isCategoriaModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded p-6 w-full max-w-sm shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Crear Categoría</h2>
-              <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre de la categoría"
-                value={nuevaCategoria.nombre}
-                onChange={(e) =>
-                  setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })
-                }
-                className="w-full mb-4 p-2 border rounded"
-                required
-              />
-              <input
-                type="text"
-                name="unpsc"
-                placeholder="Código UNPSC (opcional)"
-                value={nuevaCategoria.unpsc || ""}
-                onChange={(e) =>
-                  setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })
-                }
-                className="w-full mb-4 p-2 border rounded"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCategoriaModalOpen(false)}
-                  className="px-4 py-2 border rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreateCategoria}
-                  className="px-4 py-2 bg-green-600 text-white rounded"
-                >
-                  Crear
-                </button>
-              </div>
-            </div>
+        {totalPages > 1 && (
+          <div className="mt-4 flex justify-center items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Anterior</button>
+            <span className="text-sm text-gray-700">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Siguiente</button>
           </div>
         )}
       </div>

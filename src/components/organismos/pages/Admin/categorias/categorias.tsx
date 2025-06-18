@@ -7,13 +7,16 @@ import {
 } from "@/Api/Categorias";
 import { CategoriaProducto, CategoriaProductoFormValues } from "@/types/types/categorias";
 import DefaultLayout from "@/layouts/default";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, PencilIcon, TrashIcon } from "lucide-react";
 
 export default function CategoriasProductosPage() {
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [formData, setFormData] = useState<CategoriaProductoFormValues>({ nombre: "", unpsc: "" });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   useEffect(() => {
     fetchCategorias();
@@ -42,10 +45,7 @@ export default function CategoriasProductosPage() {
   };
 
   const handleEdit = (categoria: CategoriaProducto) => {
-    setFormData({
-      nombre: categoria.nombre,
-      unpsc: categoria.unpsc || "",
-    });
+    setFormData({ nombre: categoria.nombre, unpsc: categoria.unpsc || "" });
     setEditingId(categoria.id);
     setIsModalOpen(true);
   };
@@ -60,6 +60,14 @@ export default function CategoriasProductosPage() {
     setEditingId(null);
   };
 
+  const filtered = categorias.filter((c) =>
+    c.nombre.toLowerCase().includes(search.toLowerCase()) ||
+    (c.unpsc || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+
   return (
     <DefaultLayout>
       <div className="p-6">
@@ -70,16 +78,23 @@ export default function CategoriasProductosPage() {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="inline-block w-4 h-4 mr-1" />
-            Crear
+            <PlusIcon className="inline-block w-4 h-4 mr-1" /> Crear
           </button>
         </div>
 
+        <input
+          type="text"
+          placeholder="Buscar por nombre o UNPSC"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-4 p-2 border rounded w-full"
+        />
+
         <div className="overflow-x-auto bg-white shadow rounded-lg">
           <table className="min-w-full text-sm">
-            <thead className="bg-green-100 text-left">
+            <thead className="bg-blue-100 text-left">
               <tr>
                 <th className="px-4 py-2">ID</th>
                 <th className="px-4 py-2">Nombre</th>
@@ -89,20 +104,24 @@ export default function CategoriasProductosPage() {
               </tr>
             </thead>
             <tbody>
-              {categorias.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-4">No hay categorías registradas.</td>
                 </tr>
               ) : (
-                categorias.map((cat) => (
-                  <tr key={cat.id} className="border-t">
+                paginated.map((cat) => (
+                  <tr key={cat.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-2">{cat.id}</td>
                     <td className="px-4 py-2">{cat.nombre}</td>
                     <td className="px-4 py-2">{cat.unpsc || "—"}</td>
                     <td className="px-4 py-2">{cat.productos.length}</td>
                     <td className="px-4 py-2 space-x-2">
-                      <button onClick={() => handleEdit(cat)} className="text-blue-600 hover:underline">Editar</button>
-                      <button onClick={() => handleDelete(cat.id)} className="text-red-600 hover:underline">Eliminar</button>
+                      <button onClick={() => handleEdit(cat)} className="text-blue-600 hover:underline">
+                        <PencilIcon className="w-4 h-4 inline-block" />
+                      </button>
+                      <button onClick={() => handleDelete(cat.id)} className="text-red-600 hover:underline">
+                        <TrashIcon className="w-4 h-4 inline-block" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -110,6 +129,21 @@ export default function CategoriasProductosPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-4 gap-2">
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i + 1)}
+                className={`px-3 py-1 rounded ${page === i + 1 ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Modal */}
         {isModalOpen && (
