@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   getProductos,
@@ -5,24 +6,60 @@ import {
   updateProducto,
   deleteProducto,
 } from "@/Api/Productosform";
-import { Producto, ProductoFormValues } from "@/types/types/typesProductos";
-import { getCategoriasProductos } from "@/Api/Categorias";
-import { CategoriaProducto } from "@/types/types/categorias";
+import {
+  getCategoriasProductos,
+  createCategoriaProducto,
+} from "@/Api/Categorias";
+import {
+  Producto,
+} from "@/types/types/typesProductos";
+import {
+  CategoriaProducto,
+  CategoriaProductoFormValues,
+} from "@/types/types/categorias";
 import DefaultLayout from "@/layouts/default";
 import { PlusIcon } from "lucide-react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+
+const productoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio"),
+  descripcion: z.string().optional(),
+  tipoMateria: z.string().optional(),
+  fechaVencimiento: z.string().optional(),
+  idCategoriaId: z.number().min(1, "Seleccione una categoría válida"),
+});
+
+type ProductoSchema = z.infer<typeof productoSchema>;
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [formData, setFormData] = useState<ProductoFormValues>({
-    nombre: "",
-    descripcion: "",
-    tipoMateria: "",
-    fechaVencimiento: "",
-    idCategoriaId: 0,
-  });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState<CategoriaProductoFormValues>({
+    nombre: "",
+    unpsc: "",
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<ProductoSchema>({
+    resolver: zodResolver(productoSchema),
+    defaultValues: {
+      nombre: "",
+      descripcion: "",
+      tipoMateria: "",
+      fechaVencimiento: "",
+      idCategoriaId: 0,
+    },
+  });
 
   useEffect(() => {
     fetchProductos();
@@ -39,19 +76,11 @@ export default function ProductosPage() {
     setCategorias(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ProductoSchema) => {
     if (editingId) {
-      await updateProducto(editingId, formData);
+      await updateProducto(editingId, data);
     } else {
-      await createProducto(formData);
+      await createProducto(data);
     }
     fetchProductos();
     setIsModalOpen(false);
@@ -59,13 +88,11 @@ export default function ProductosPage() {
   };
 
   const handleEdit = (producto: Producto) => {
-    setFormData({
-      nombre: producto.nombre,
-      descripcion: producto.descripcion || "",
-      tipoMateria: producto.tipoMateria || "",
-      fechaVencimiento: producto.fechaVencimiento || "",
-      idCategoriaId: producto.idCategoria.id,
-    });
+    setValue("nombre", producto.nombre);
+    setValue("descripcion", producto.descripcion || "");
+    setValue("tipoMateria", producto.tipoMateria || "");
+    setValue("fechaVencimiento", producto.fechaVencimiento || "");
+    setValue("idCategoriaId", producto.idCategoria.id);
     setEditingId(producto.id);
     setIsModalOpen(true);
   };
@@ -75,14 +102,16 @@ export default function ProductosPage() {
     fetchProductos();
   };
 
+  const handleCreateCategoria = async () => {
+    if (!nuevaCategoria.nombre.trim()) return;
+    await createCategoriaProducto(nuevaCategoria);
+    fetchCategorias();
+    setIsCategoriaModalOpen(false);
+    setNuevaCategoria({ nombre: "", unpsc: "" });
+  };
+
   const resetForm = () => {
-    setFormData({
-      nombre: "",
-      descripcion: "",
-      tipoMateria: "",
-      fechaVencimiento: "",
-      idCategoriaId: 0,
-    });
+    reset();
     setEditingId(null);
   };
 
@@ -129,7 +158,7 @@ export default function ProductosPage() {
                     <td className="px-4 py-2">{prod.descripcion}</td>
                     <td className="px-4 py-2">{prod.tipoMateria}</td>
                     <td className="px-4 py-2">{prod.fechaVencimiento || "—"}</td>
-                    <td className="px-4 py-2">{prod.idCategoria.nombre}</td>
+                    <td className="px-4 py-2">{prod.idCategoria?.nombre || "—"}</td>
                     <td className="px-4 py-2 space-x-2">
                       <button
                         onClick={() => handleEdit(prod)}
@@ -151,11 +180,11 @@ export default function ProductosPage() {
           </table>
         </div>
 
-        {/* Modal */}
+        {/* Modal Producto */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <form
-              onSubmit={handleSubmit}
+              onSubmit={handleSubmit(onSubmit)}
               className="bg-white rounded p-6 w-full max-w-md shadow-lg"
             >
               <h2 className="text-lg font-semibold mb-4">
@@ -164,54 +193,60 @@ export default function ProductosPage() {
 
               <input
                 type="text"
-                name="nombre"
                 placeholder="Nombre"
-                value={formData.nombre}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-                required
+                {...register("nombre")}
+                className="w-full mb-1 p-2 border rounded"
               />
+              {errors.nombre && (
+                <p className="text-red-500 text-sm mb-2">{errors.nombre.message}</p>
+              )}
 
               <input
                 type="text"
-                name="descripcion"
                 placeholder="Descripción"
-                value={formData.descripcion}
-                onChange={handleChange}
+                {...register("descripcion")}
                 className="w-full mb-4 p-2 border rounded"
               />
 
               <input
                 type="text"
-                name="tipoMateria"
                 placeholder="Tipo de materia"
-                value={formData.tipoMateria}
-                onChange={handleChange}
+                {...register("tipoMateria")}
                 className="w-full mb-4 p-2 border rounded"
               />
 
               <input
                 type="date"
-                name="fechaVencimiento"
-                value={formData.fechaVencimiento || ""}
-                onChange={handleChange}
+                {...register("fechaVencimiento")}
                 className="w-full mb-4 p-2 border rounded"
               />
 
-              <select
-                name="idCategoriaId"
-                value={formData.idCategoriaId}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-                required
-              >
-                <option value="">Seleccione una categoría</option>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center mb-4 gap-2">
+                <select
+                  {...register("idCategoriaId", { valueAsNumber: true })}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">Seleccione una categoría</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoriaModalOpen(true)}
+                  className="bg-green-600 text-white px-2 py-2 rounded hover:bg-green-700"
+                  title="Agregar nueva categoría"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </div>
+              {errors.idCategoriaId && (
+                <p className="text-red-500 text-sm mb-2">
+                  {errors.idCategoriaId.message}
+                </p>
+              )}
 
               <div className="flex justify-end gap-2">
                 <button
@@ -229,6 +264,51 @@ export default function ProductosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Modal Crear Categoría */}
+        {isCategoriaModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white rounded p-6 w-full max-w-sm shadow-lg">
+              <h2 className="text-lg font-semibold mb-4">Crear Categoría</h2>
+              <input
+                type="text"
+                name="nombre"
+                placeholder="Nombre de la categoría"
+                value={nuevaCategoria.nombre}
+                onChange={(e) =>
+                  setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })
+                }
+                className="w-full mb-4 p-2 border rounded"
+                required
+              />
+              <input
+                type="text"
+                name="unpsc"
+                placeholder="Código UNPSC (opcional)"
+                value={nuevaCategoria.unpsc || ""}
+                onChange={(e) =>
+                  setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })
+                }
+                className="w-full mb-4 p-2 border rounded"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoriaModalOpen(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateCategoria}
+                  className="px-4 py-2 bg-green-600 text-white rounded"
+                >
+                  Crear
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

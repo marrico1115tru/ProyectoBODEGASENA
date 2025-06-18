@@ -1,4 +1,3 @@
-// Api/areasTable.ts
 import axios from 'axios';
 import { Area, AreaFormValues } from '@/types/types/typesArea';
 

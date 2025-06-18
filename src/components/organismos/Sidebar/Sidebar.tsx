@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
   Home, Menu, FileText, ChevronDown, ChevronUp, Users, BarChart2,
-  List, Table, Warehouse, Building2, GraduationCap, FolderGit2,
-  MapPin, BookOpen, ShieldCheck, KeySquare, ClipboardList,
-  Send, Landmark, LogOut,
+  Warehouse, Building2, GraduationCap, FolderGit2,
+  MapPin, BookOpen, ShieldCheck, ClipboardList,
+  Landmark, LogOut,
   Boxes,
   Tags,
   ListChecks,
@@ -16,7 +16,7 @@ import {
   History,
   LayoutGrid,
   AlertTriangle,
-  Clock, // <-- Asegúrate de importar History desde lucide-react
+  Clock,
 } from "lucide-react";
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
