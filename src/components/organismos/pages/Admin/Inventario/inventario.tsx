@@ -1,5 +1,3 @@
-// ✅ Versión mejorada: colores suaves, búsqueda reactiva, paginación y modal elegante
-
 import { useEffect, useState } from "react";
 import {
   getInventarios,

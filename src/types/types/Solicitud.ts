@@ -10,3 +10,11 @@ export interface Solicitud {
   estadoSolicitud: string | null;
   idUsuarioSolicitante: Usuario;
 }
+
+export interface SolicitudPayload {
+  fechaSolicitud: string;
+  estadoSolicitud: string;
+  idUsuarioSolicitante: {
+    id: number;
+  };
+}

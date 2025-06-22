@@ -19,7 +19,7 @@ export const updateSolicitud = async (
   id: number,
   data: Partial<Solicitud>
 ): Promise<Solicitud> => {
-  const res = await axios.patch(`${API_URL}/${id}`, data);
+  const res = await axios.put(`${API_URL}/${id}`, data);
   return res.data;
 };
 
