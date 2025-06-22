@@ -14,6 +14,10 @@ export default function DetalleSolicitudPage() {
   const [formData, setFormData] = useState<Partial<DetalleSolicitud>>({});
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const itemsPerPage = 5;
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchDetalles();
@@ -71,22 +75,43 @@ export default function DetalleSolicitudPage() {
     }
   };
 
+  const filteredDetalles = detalles.filter((detalle) =>
+    detalle.idProducto.nombre.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredDetalles.length / itemsPerPage);
+  const paginatedDetalles = filteredDetalles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <DefaultLayout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Detalle de Solicitudes</h1>
+        <h1 className="text-2xl font-bold">Gestión de Detalles de Solicitud</h1>
         <button
           onClick={() => {
             setFormData({});
             setEditId(null);
             setShowForm(true);
           }}
-          className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center"
+          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"
         >
           <PlusIcon className="w-5 h-5 mr-2" />
-          Crear Detalle
+          Crear detalle
         </button>
       </div>
+
+      <input
+        type="text"
+        placeholder="🔍 Buscar por nombre del producto..."
+        className="w-full p-2 border rounded mb-4"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setCurrentPage(1);
+        }}
+      />
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white p-4 shadow rounded mb-6">
@@ -142,7 +167,7 @@ export default function DetalleSolicitudPage() {
 
       <div className="bg-white shadow rounded overflow-x-auto">
         <table className="min-w-full table-auto">
-          <thead className="bg-gray-100 text-left">
+          <thead className="bg-blue-100 text-left">
             <tr>
               <th className="px-4 py-2">ID</th>
               <th className="px-4 py-2">Cantidad</th>
@@ -153,8 +178,8 @@ export default function DetalleSolicitudPage() {
             </tr>
           </thead>
           <tbody>
-            {detalles.map((detalle) => (
-              <tr key={detalle.id} className="border-t">
+            {paginatedDetalles.map((detalle) => (
+              <tr key={detalle.id} className="border-t hover:bg-gray-50">
                 <td className="px-4 py-2">{detalle.id}</td>
                 <td className="px-4 py-2">{detalle.cantidadSolicitada}</td>
                 <td className="px-4 py-2">{detalle.observaciones || "-"}</td>
@@ -178,6 +203,35 @@ export default function DetalleSolicitudPage() {
             ))}
           </tbody>
         </table>
+
+        {/* PAGINACIÓN HERO UI STYLE */}
+        <div className="flex justify-between items-center px-4 py-2 border-t text-sm text-gray-600">
+          <div>Página {currentPage} de {totalPages}</div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded ${
+                currentPage === 1
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded ${
+                currentPage === totalPages
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       </div>
     </DefaultLayout>
   );
