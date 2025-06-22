@@ -19,6 +19,7 @@ import { PlusIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import toast, { Toaster } from "react-hot-toast";
 
 const productoSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
@@ -87,14 +88,20 @@ export default function ProductosPage() {
   };
 
   const onSubmit = async (data: ProductoSchema) => {
-    if (editingId) {
-      await updateProducto(editingId, data);
-    } else {
-      await createProducto(data);
+    try {
+      if (editingId) {
+        await updateProducto(editingId, data);
+        toast.success("Producto actualizado correctamente");
+      } else {
+        await createProducto(data);
+        toast.success("Producto creado correctamente");
+      }
+      fetchProductos();
+      setIsModalOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error("Error al guardar el producto");
     }
-    fetchProductos();
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleEdit = (producto: Producto) => {
@@ -109,17 +116,27 @@ export default function ProductosPage() {
 
   const handleDelete = async (id: number) => {
     if (confirm("¿Estás seguro de eliminar este producto?")) {
-      await deleteProducto(id);
-      fetchProductos();
+      try {
+        await deleteProducto(id);
+        fetchProductos();
+        toast.success("Producto eliminado correctamente");
+      } catch (error) {
+        toast.error("Error al eliminar el producto");
+      }
     }
   };
 
   const handleCreateCategoria = async () => {
     if (!nuevaCategoria.nombre.trim()) return;
-    await createCategoriaProducto(nuevaCategoria);
-    fetchCategorias();
-    setIsCategoriaModalOpen(false);
-    setNuevaCategoria({ nombre: "", unpsc: "" });
+    try {
+      await createCategoriaProducto(nuevaCategoria);
+      fetchCategorias();
+      setIsCategoriaModalOpen(false);
+      setNuevaCategoria({ nombre: "", unpsc: "" });
+      toast.success("Categoría creada correctamente");
+    } catch (error) {
+      toast.error("Error al crear categoría");
+    }
   };
 
   const resetForm = () => {
@@ -134,6 +151,7 @@ export default function ProductosPage() {
 
   return (
     <DefaultLayout>
+      <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">📦 Gestión de Productos</h1>
@@ -216,6 +234,107 @@ export default function ProductosPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de producto */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-lg relative">
+            <h2 className="text-xl font-bold mb-4">{editingId ? "Editar Producto" : "Crear Producto"}</h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium">Nombre</label>
+                <input {...register("nombre")} className="w-full border px-3 py-2 rounded" />
+                {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Descripción</label>
+                <input {...register("descripcion")} className="w-full border px-3 py-2 rounded" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Tipo de Materia</label>
+                <input {...register("tipoMateria")} className="w-full border px-3 py-2 rounded" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Fecha de Vencimiento</label>
+                <input type="date" {...register("fechaVencimiento")} className="w-full border px-3 py-2 rounded" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Categoría</label>
+                <div className="flex gap-2">
+                  <select
+                    {...register("idCategoriaId", { valueAsNumber: true })}
+                    className="w-full border px-3 py-2 rounded"
+                  >
+                    <option value={0}>Seleccione una categoría</option>
+                    {categorias.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoriaModalOpen(true)}
+                    className="bg-green-600 text-white px-3 rounded hover:bg-green-700"
+                  >+</button>
+                </div>
+                {errors.idCategoriaId && <p className="text-red-500 text-sm">{errors.idCategoriaId.message}</p>}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetForm();
+                  }}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+                >Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">
+                  {editingId ? "Actualizar" : "Crear"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de categoría */}
+      {isCategoriaModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-sm shadow-lg relative">
+            <h2 className="text-xl font-bold mb-4">Crear Nueva Categoría</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium">Nombre</label>
+                <input
+                  value={nuevaCategoria.nombre}
+                  onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
+                  className="w-full border px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">UNPSC</label>
+                <input
+                  value={nuevaCategoria.unpsc}
+                  onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })}
+                  className="w-full border px-3 py-2 rounded"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setIsCategoriaModalOpen(false);
+                    setNuevaCategoria({ nombre: "", unpsc: "" });
+                  }}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+                >Cancelar</button>
+                <button
+                  onClick={handleCreateCategoria}
+                  className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
+                >Crear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DefaultLayout>
   );
 }

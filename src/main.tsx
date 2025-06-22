@@ -1,9 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster } from "react-hot-toast";
 
-<Toaster position="top-right" richColors />
+<Toaster position="top-right" reverseOrder={false} />
+
 
 import App from "./App.tsx";
 import { Provider } from "./provider.tsx";

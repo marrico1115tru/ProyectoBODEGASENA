@@ -5,25 +5,30 @@ import { BarChart } from './Graficasbases/GraficasBaseProductos';
 import axios from 'axios';
 import DefaultLayout from '@/layouts/default';
 
-interface Producto {
+interface ProductoVencido {
   nombre: string;
-  cantidad: number;
+  inventarios: { stock: number }[];
+}
+
+interface ProductoMasUsado {
+  nombre: string;
+  totalSolicitado: string; // viene como string desde el backend
 }
 
 export default function VistaProductos() {
-  const [vencidos, setVencidos] = useState<Producto[]>([]);
-  const [masUsados, setMasUsados] = useState<Producto[]>([]);
+  const [vencidos, setVencidos] = useState<ProductoVencido[]>([]);
+  const [masUsados, setMasUsados] = useState<ProductoMasUsado[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
-      axios.get('http://localhost:3500/api/productos/estadisticas/vencidos'),
-      axios.get('http://localhost:3500/api/productos/estadisticas/uso'),
+      axios.get('http://localhost:3000/productos/vencidos'),
+      axios.get('http://localhost:3000/productos/mas-solicitados'), 
     ])
       .then(([vencidosRes, masUsadosRes]) => {
         setVencidos(vencidosRes.data);
-        setMasUsados(masUsadosRes.data.mas);
+        setMasUsados(masUsadosRes.data);
       })
       .catch((err) => {
         setError('Error al obtener los datos de las estadísticas.');
@@ -44,7 +49,7 @@ export default function VistaProductos() {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-         
+            {/* Productos Vencidos */}
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Productos Vencidos</h3>
               {vencidos.length > 0 ? (
@@ -53,9 +58,11 @@ export default function VistaProductos() {
                     labels: vencidos.map((p) => p.nombre),
                     datasets: [
                       {
-                        label: 'Cantidad',
-                        data: vencidos.map((p) => p.cantidad),
-                        backgroundColor: 'rgba(99, 115, 255, 0.5)',
+                        label: 'Stock Total',
+                        data: vencidos.map((p) =>
+                          p.inventarios?.reduce((acc, inv) => acc + inv.stock, 0),
+                        ),
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
                       },
                     ],
                     title: 'Productos Vencidos',
@@ -75,8 +82,8 @@ export default function VistaProductos() {
                     labels: masUsados.map((p) => p.nombre),
                     datasets: [
                       {
-                        label: 'Cantidad Usada',
-                        data: masUsados.map((p) => p.cantidad),
+                        label: 'Cantidad Solicitada',
+                        data: masUsados.map((p) => parseInt(p.totalSolicitado)),
                         backgroundColor: 'rgba(54, 162, 235, 0.5)',
                       },
                     ],

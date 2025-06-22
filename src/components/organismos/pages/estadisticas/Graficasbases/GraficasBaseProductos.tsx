@@ -40,7 +40,6 @@ export const BarChart = ({ data }: BarChartProps) => {
             legend: { position: 'top' },
             title: { display: true, text: data.title },
           },
-        
           scales: {
             x: {
               title: {
@@ -49,6 +48,7 @@ export const BarChart = ({ data }: BarChartProps) => {
               },
             },
             y: {
+              beginAtZero: true,
               title: {
                 display: true,
                 text: 'Cantidad',

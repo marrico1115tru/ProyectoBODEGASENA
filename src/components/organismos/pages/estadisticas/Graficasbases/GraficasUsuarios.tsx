@@ -1,80 +1,79 @@
+'use client';
+
+import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
+  BarElement,
   CategoryScale,
   LinearScale,
-  BarElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement,
 } from 'chart.js';
 
-import { Bar, Pie } from 'react-chartjs-2';
+ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
-
-interface Props {
-  data: any;
+interface BarChartProps {
+  data: {
+    labels: string[];
+    datasets: {
+      label: string;
+      data: number[];
+      backgroundColor?: string;
+    }[];
+    title: string;
+  };
 }
 
+export const BarChart = ({ data }: BarChartProps) => {
+  const allValues = data.datasets.flatMap((d) => d.data);
+  const maxValue = Math.max(...allValues);
+  const isSmallScale = maxValue <= 5;
 
-export const BarChart = ({ data }: Props) => {
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        labels: {
-          color: '#cbd5e1', 
-        },
-      },
-      title: {
-        display: false,
-      },
-    },
-    scales: {
-      x: {
-        ticks: {
-          color: '#cbd5e1',
-        },
-        grid: {
-          color: 'rgba(255,255,255,0.05)',
-        },
-      },
-      y: {
-        ticks: {
-          color: '#cbd5e1',
-        },
-        grid: {
-          color: 'rgba(255,255,255,0.05)',
-        },
-      },
-    },
-  };
+  const yMax = isSmallScale ? 5 : Math.ceil(maxValue / 10) * 10;
+  const stepSize = isSmallScale ? 1 : 10;
 
-  return <Bar data={data} options={options} />;
-};
-
-
-export const PieChart = ({ data }: Props) => {
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        labels: {
-          color: '#cbd5e1',
-        },
-        position: 'bottom' as const,
-      },
-    },
-  };
-
-  return <Pie data={data} options={options} />;
+  return (
+    <div className="w-full h-full">
+      <Bar
+        data={{
+          labels: data.labels,
+          datasets: data.datasets,
+        }}
+        options={{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: data.title },
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.dataset.label}: ${context.parsed.y}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Categoría',
+              },
+            },
+            y: {
+              beginAtZero: true,
+              max: yMax,
+              ticks: {
+                stepSize,
+                precision: 0,
+              },
+              title: {
+                display: true,
+                text: 'Cantidad',
+              },
+            },
+          },
+        }}
+      />
+    </div>
+  );
 };
