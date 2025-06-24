@@ -1,3 +1,4 @@
+// pages/detalles/DetalleSolicitudPage.tsx
 import { useEffect, useState } from "react";
 import {
   getDetalleSolicitudes,
@@ -7,7 +8,8 @@ import {
 } from "@/Api/detalles_solicitud";
 import { DetalleSolicitud } from "@/types/types/detalles_solicitud";
 import DefaultLayout from "@/layouts/default";
-import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function DetalleSolicitudPage() {
   const [detalles, setDetalles] = useState<DetalleSolicitud[]>([]);
@@ -15,9 +17,8 @@ export default function DetalleSolicitudPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
-
-  const itemsPerPage = 5;
   const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetchDetalles();
@@ -38,7 +39,7 @@ export default function DetalleSolicitudPage() {
     e.preventDefault();
 
     if (!formData.cantidadSolicitada || !formData.idProducto || !formData.idSolicitud) {
-      alert("Todos los campos son obligatorios");
+      toast.error("Todos los campos son obligatorios");
       return;
     }
 
@@ -49,16 +50,21 @@ export default function DetalleSolicitudPage() {
       idSolicitud: formData.idSolicitud,
     };
 
-    if (editId) {
-      await updateDetalleSolicitud(editId, payload);
-    } else {
-      await createDetalleSolicitud(payload);
+    try {
+      if (editId) {
+        await updateDetalleSolicitud(editId, payload);
+        toast.success("Detalle actualizado");
+      } else {
+        await createDetalleSolicitud(payload);
+        toast.success("Detalle creado");
+      }
+      setFormData({});
+      setEditId(null);
+      setShowForm(false);
+      fetchDetalles();
+    } catch {
+      toast.error("Error al guardar el detalle");
     }
-
-    setFormData({});
-    setEditId(null);
-    setShowForm(false);
-    fetchDetalles();
   };
 
   const handleEdit = (detalle: DetalleSolicitud) => {
@@ -72,6 +78,7 @@ export default function DetalleSolicitudPage() {
     if (confirm("¿Eliminar este detalle de solicitud?")) {
       await deleteDetalleSolicitud(id);
       fetchDetalles();
+      toast.success("Detalle eliminado");
     }
   };
 
@@ -87,151 +94,181 @@ export default function DetalleSolicitudPage() {
 
   return (
     <DefaultLayout>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Detalles de Solicitud</h1>
-        <button
-          onClick={() => {
-            setFormData({});
-            setEditId(null);
-            setShowForm(true);
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Crear detalle
-        </button>
-      </div>
-
-      <input
-        type="text"
-        placeholder="🔍 Buscar por nombre del producto..."
-        className="w-full p-2 border rounded mb-4"
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setCurrentPage(1);
-        }}
-      />
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white p-4 shadow rounded mb-6">
-          <input
-            type="number"
-            name="cantidadSolicitada"
-            placeholder="Cantidad solicitada"
-            value={formData.cantidadSolicitada || ""}
-            onChange={handleChange}
-            className="w-full border p-2 rounded mb-2"
-            required
-          />
-          <textarea
-            name="observaciones"
-            placeholder="Observaciones"
-            value={formData.observaciones || ""}
-            onChange={handleChange}
-            className="w-full border p-2 rounded mb-2"
-          />
-          <input
-            type="number"
-            name="idProducto"
-            placeholder="ID Producto"
-            value={formData.idProducto?.id || ""}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                idProducto: { id: Number(e.target.value), nombre: "" },
-              })
-            }
-            className="w-full border p-2 rounded mb-2"
-            required
-          />
-          <input
-            type="number"
-            name="idSolicitud"
-            placeholder="ID Solicitud"
-            value={formData.idSolicitud?.id || ""}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                idSolicitud: { id: Number(e.target.value) },
-              })
-            }
-            className="w-full border p-2 rounded mb-2"
-            required
-          />
-          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-            {editId ? "Actualizar" : "Crear"}
+      <Toaster />
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">📋 Detalles de Solicitud</h1>
+          <button
+            onClick={() => {
+              setFormData({});
+              setEditId(null);
+              setShowForm(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+          >
+            <PlusIcon className="w-5 h-5 mr-2" /> Crear Detalle
           </button>
-        </form>
-      )}
+        </div>
 
-      <div className="bg-white shadow rounded overflow-x-auto">
-        <table className="min-w-full table-auto">
-          <thead className="bg-blue-100 text-left">
-            <tr>
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Cantidad</th>
-              <th className="px-4 py-2">Observaciones</th>
-              <th className="px-4 py-2">Producto</th>
-              <th className="px-4 py-2">Solicitud</th>
-              <th className="px-4 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedDetalles.map((detalle) => (
-              <tr key={detalle.id} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-2">{detalle.id}</td>
-                <td className="px-4 py-2">{detalle.cantidadSolicitada}</td>
-                <td className="px-4 py-2">{detalle.observaciones || "-"}</td>
-                <td className="px-4 py-2">{detalle.idProducto.nombre}</td>
-                <td className="px-4 py-2">{detalle.idSolicitud.id}</td>
-                <td className="px-4 py-2 flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(detalle)}
-                    className="text-yellow-500 hover:text-yellow-700"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(detalle.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </td>
+        <input
+          type="text"
+          placeholder="🔍 Buscar por nombre del producto..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
+        />
+
+        <div className="bg-white shadow rounded-lg overflow-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-blue-100 text-gray-700">
+              <tr>
+                <th className="px-6 py-3 font-semibold">ID</th>
+                <th className="px-6 py-3 font-semibold">Cantidad</th>
+                <th className="px-6 py-3 font-semibold">Observaciones</th>
+                <th className="px-6 py-3 font-semibold">Producto</th>
+                <th className="px-6 py-3 font-semibold">Solicitud</th>
+                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {paginatedDetalles.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-4 text-gray-500">
+                    No hay detalles registrados.
+                  </td>
+                </tr>
+              ) : (
+                paginatedDetalles.map((detalle) => (
+                  <tr key={detalle.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-2">{detalle.id}</td>
+                    <td className="px-6 py-2">{detalle.cantidadSolicitada}</td>
+                    <td className="px-6 py-2">{detalle.observaciones || "—"}</td>
+                    <td className="px-6 py-2">{detalle.idProducto.nombre}</td>
+                    <td className="px-6 py-2">{detalle.idSolicitud.id}</td>
+                    <td className="px-6 py-2 flex justify-center gap-2">
+                      <button
+                        onClick={() => handleEdit(detalle)}
+                        className="text-yellow-600 hover:text-yellow-800"
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(detalle.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-        {/* PAGINACIÓN HERO UI STYLE */}
-        <div className="flex justify-between items-center px-4 py-2 border-t text-sm text-gray-600">
-          <div>Página {currentPage} de {totalPages}</div>
-          <div className="flex space-x-2">
+        {totalPages > 1 && (
+          <div className="flex justify-end items-center mt-4 gap-2">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className={`px-3 py-1 rounded ${
-                currentPage === 1
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >
               Anterior
             </button>
+            <span className="text-sm text-gray-700">
+              Página {currentPage} de {totalPages}
+            </span>
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className={`px-3 py-1 rounded ${
-                currentPage === totalPages
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >
               Siguiente
             </button>
           </div>
-        </div>
+        )}
+
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
+              <h2 className="text-xl font-bold mb-4">
+                {editId ? "Editar Detalle" : "Crear Detalle"}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium">Cantidad Solicitada</label>
+                  <input
+                    type="number"
+                    name="cantidadSolicitada"
+                    value={formData.cantidadSolicitada || ""}
+                    onChange={handleChange}
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Observaciones</label>
+                  <textarea
+                    name="observaciones"
+                    value={formData.observaciones || ""}
+                    onChange={handleChange}
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">ID Producto</label>
+                  <input
+                    type="number"
+                    name="idProducto"
+                    value={formData.idProducto?.id || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        idProducto: { id: Number(e.target.value), nombre: "" },
+                      })
+                    }
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">ID Solicitud</label>
+                  <input
+                    type="number"
+                    name="idSolicitud"
+                    value={formData.idSolicitud?.id || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        idSolicitud: { id: Number(e.target.value) },
+                      })
+                    }
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
+                  >
+                    {editId ? "Actualizar" : "Crear"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DefaultLayout>
   );

@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import toast, { Toaster } from "react-hot-toast";
+import DefaultLayout from "@/layouts/default";
 import {
   getProductos,
   createProducto,
@@ -10,23 +16,14 @@ import {
   createCategoriaProducto,
 } from "@/Api/Categorias";
 import { Producto } from "@/types/types/typesProductos";
-import {
-  CategoriaProducto,
-  CategoriaProductoFormValues,
-} from "@/types/types/categorias";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, PencilIcon, TrashIcon } from "lucide-react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import toast, { Toaster } from "react-hot-toast";
+import { CategoriaProducto } from "@/types/types/categorias";
 
 const productoSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
+  nombre: z.string().min(1),
   descripcion: z.string().optional(),
   tipoMateria: z.string().optional(),
   fechaVencimiento: z.string().optional(),
-  idCategoriaId: z.number().min(1, "Seleccione una categoría válida"),
+  idCategoriaId: z.number().min(1),
 });
 
 type ProductoSchema = z.infer<typeof productoSchema>;
@@ -34,13 +31,14 @@ type ProductoSchema = z.infer<typeof productoSchema>;
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
-  const [search, setSearch] = useState("");
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
-  const [nuevaCategoria, setNuevaCategoria] = useState<CategoriaProductoFormValues>({ nombre: "", unpsc: "" });
+  const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCategoriaOpen, setIsCategoriaOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", unpsc: "" });
+
   const itemsPerPage = 5;
 
   const {
@@ -51,13 +49,6 @@ export default function ProductosPage() {
     formState: { errors },
   } = useForm<ProductoSchema>({
     resolver: zodResolver(productoSchema),
-    defaultValues: {
-      nombre: "",
-      descripcion: "",
-      tipoMateria: "",
-      fechaVencimiento: "",
-      idCategoriaId: 0,
-    },
   });
 
   useEffect(() => {
@@ -66,11 +57,8 @@ export default function ProductosPage() {
   }, []);
 
   useEffect(() => {
-    const lower = search.toLowerCase();
-    const filtered = productos.filter((p) =>
-      p.nombre.toLowerCase().includes(lower) ||
-      p.descripcion?.toLowerCase().includes(lower) ||
-      p.tipoMateria?.toLowerCase().includes(lower)
+    const filtered = productos.filter(p =>
+      p.nombre.toLowerCase().includes(search.toLowerCase())
     );
     setFilteredProductos(filtered);
     setCurrentPage(1);
@@ -89,64 +77,50 @@ export default function ProductosPage() {
 
   const onSubmit = async (data: ProductoSchema) => {
     try {
-      if (editingId) {
-        await updateProducto(editingId, data);
-        toast.success("Producto actualizado correctamente");
+      if (editId) {
+        await updateProducto(editId, data);
+        toast.success("Producto actualizado");
       } else {
         await createProducto(data);
-        toast.success("Producto creado correctamente");
+        toast.success("Producto creado");
       }
       fetchProductos();
-      setIsModalOpen(false);
-      resetForm();
-    } catch (error) {
-      toast.error("Error al guardar el producto");
+      reset();
+      setIsOpen(false);
+    } catch {
+      toast.error("Error al guardar producto");
     }
   };
 
-  const handleEdit = (producto: Producto) => {
-    setValue("nombre", producto.nombre);
-    setValue("descripcion", producto.descripcion || "");
-    setValue("tipoMateria", producto.tipoMateria || "");
-    setValue("fechaVencimiento", producto.fechaVencimiento || "");
-    setValue("idCategoriaId", producto.idCategoria?.id || 0);
-    setEditingId(producto.id);
-    setIsModalOpen(true);
+  const handleEdit = (prod: Producto) => {
+    setValue("nombre", prod.nombre);
+    setValue("descripcion", prod.descripcion || "");
+    setValue("tipoMateria", prod.tipoMateria || "");
+    setValue("fechaVencimiento", prod.fechaVencimiento || "");
+    setValue("idCategoriaId", prod.idCategoria?.id || 0);
+    setEditId(prod.id);
+    setIsOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar este producto?")) {
-      try {
-        await deleteProducto(id);
-        fetchProductos();
-        toast.success("Producto eliminado correctamente");
-      } catch (error) {
-        toast.error("Error al eliminar el producto");
-      }
+    if (confirm("¿Eliminar este producto?")) {
+      await deleteProducto(id);
+      fetchProductos();
     }
   };
 
-  const handleCreateCategoria = async () => {
-    if (!nuevaCategoria.nombre.trim()) return;
-    try {
-      await createCategoriaProducto(nuevaCategoria);
-      fetchCategorias();
-      setIsCategoriaModalOpen(false);
-      setNuevaCategoria({ nombre: "", unpsc: "" });
-      toast.success("Categoría creada correctamente");
-    } catch (error) {
-      toast.error("Error al crear categoría");
-    }
+  const handleCategoriaSubmit = async () => {
+    await createCategoriaProducto(nuevaCategoria);
+    setNuevaCategoria({ nombre: "", unpsc: "" });
+    setIsCategoriaOpen(false);
+    fetchCategorias();
+    toast.success("Categoría creada");
   };
 
-  const resetForm = () => {
-    reset();
-    setEditingId(null);
-  };
-
-  const indexOfLast = currentPage * itemsPerPage;
-  const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentData = filteredProductos.slice(indexOfFirst, indexOfLast);
+  const currentData = filteredProductos.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
   const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
 
   return (
@@ -154,63 +128,62 @@ export default function ProductosPage() {
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">📦 Gestión de Productos</h1>
+          <h1 className="text-2xl font-bold">📦 Gestión de Productos</h1>
           <button
             onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
+              reset();
+              setEditId(null);
+              setIsOpen(true);
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-5 h-5 mr-2" /> Crear Producto
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Crear Producto
           </button>
         </div>
 
         <input
           type="text"
-          placeholder="🔍 Buscar productos..."
+          placeholder="Buscar productos..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
         />
 
-        <div className="bg-white shadow rounded-lg overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-blue-100 text-gray-700">
+        <div className="overflow-x-auto bg-white shadow rounded-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-blue-100">
               <tr>
-                <th className="px-6 py-3 font-semibold">Nombre</th>
-                <th className="px-6 py-3 font-semibold">Descripción</th>
-                <th className="px-6 py-3 font-semibold">Tipo</th>
-                <th className="px-6 py-3 font-semibold">Vencimiento</th>
-                <th className="px-6 py-3 font-semibold">Categoría</th>
-                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
+                <th className="px-6 py-3 text-left font-semibold">Nombre</th>
+                <th className="px-6 py-3 text-left font-semibold">Descripción</th>
+                <th className="px-6 py-3 text-left font-semibold">Tipo</th>
+                <th className="px-6 py-3 text-left font-semibold">Vencimiento</th>
+                <th className="px-6 py-3 text-left font-semibold">Categoría</th>
+                <th className="px-6 py-3 text-center font-semibold">Acciones</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {currentData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-4 text-gray-500">
-                    No hay productos registrados.
+            <tbody className="divide-y divide-gray-100">
+              {currentData.map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-3">{p.nombre}</td>
+                  <td className="px-6 py-3">{p.descripcion || "—"}</td>
+                  <td className="px-6 py-3">{p.tipoMateria || "—"}</td>
+                  <td className="px-6 py-3">{p.fechaVencimiento || "—"}</td>
+                  <td className="px-6 py-3">{p.idCategoria?.nombre || "—"}</td>
+                  <td className="px-6 py-3 text-center space-x-2">
+                    <button onClick={() => handleEdit(p)} className="text-yellow-600 hover:text-yellow-800">
+                      <PencilIcon className="w-5 h-5 inline" />
+                    </button>
+                    <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800">
+                      <TrashIcon className="w-5 h-5 inline" />
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                currentData.map((prod) => (
-                  <tr key={prod.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-2">{prod.nombre}</td>
-                    <td className="px-6 py-2">{prod.descripcion || "—"}</td>
-                    <td className="px-6 py-2">{prod.tipoMateria || "—"}</td>
-                    <td className="px-6 py-2">{prod.fechaVencimiento || "—"}</td>
-                    <td className="px-6 py-2">{prod.idCategoria?.nombre || "—"}</td>
-                    <td className="px-6 py-2 flex justify-center gap-2">
-                      <button onClick={() => handleEdit(prod)} className="text-blue-600 hover:text-blue-800">
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleDelete(prod.id)} className="text-red-600 hover:text-red-800">
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+              ))}
+              {currentData.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center text-gray-500 py-4">No hay productos registrados.</td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -220,75 +193,48 @@ export default function ProductosPage() {
           <div className="mt-4 flex justify-center items-center gap-2">
             <button
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => prev - 1)}
+              onClick={() => setCurrentPage((p) => p - 1)}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >Anterior</button>
-            <span className="text-sm text-gray-700">
-              Página {currentPage} de {totalPages}
-            </span>
+            <span>Página {currentPage} de {totalPages}</span>
             <button
               disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((prev) => prev + 1)}
+              onClick={() => setCurrentPage((p) => p + 1)}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >Siguiente</button>
           </div>
         )}
       </div>
 
-      {/* Modal de producto */}
-      {isModalOpen && (
+      {/* MODAL DE PRODUCTO */}
+      {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-lg relative">
-            <h2 className="text-xl font-bold mb-4">{editingId ? "Editar Producto" : "Crear Producto"}</h2>
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">{editId ? "Editar Producto" : "Crear Producto"}</h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">Nombre</label>
-                <input {...register("nombre")} className="w-full border px-3 py-2 rounded" />
-                {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
+              <input {...register("nombre")} placeholder="Nombre" className="w-full border px-3 py-2 rounded" />
+              {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
+              <input {...register("descripcion")} placeholder="Descripción" className="w-full border px-3 py-2 rounded" />
+              <input {...register("tipoMateria")} placeholder="Tipo" className="w-full border px-3 py-2 rounded" />
+              <input type="date" {...register("fechaVencimiento")} className="w-full border px-3 py-2 rounded" />
+              <div className="flex gap-2 items-center">
+                <select
+                  {...register("idCategoriaId", { valueAsNumber: true })}
+                  className="w-full border px-3 py-2 rounded"
+                >
+                  <option value={0}>Seleccione una categoría</option>
+                  {categorias.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => setIsCategoriaOpen(true)} className="bg-green-600 text-white px-3 rounded">
+                  +
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium">Descripción</label>
-                <input {...register("descripcion")} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Tipo de Materia</label>
-                <input {...register("tipoMateria")} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Fecha de Vencimiento</label>
-                <input type="date" {...register("fechaVencimiento")} className="w-full border px-3 py-2 rounded" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Categoría</label>
-                <div className="flex gap-2">
-                  <select
-                    {...register("idCategoriaId", { valueAsNumber: true })}
-                    className="w-full border px-3 py-2 rounded"
-                  >
-                    <option value={0}>Seleccione una categoría</option>
-                    {categorias.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsCategoriaModalOpen(true)}
-                    className="bg-green-600 text-white px-3 rounded hover:bg-green-700"
-                  >+</button>
-                </div>
-                {errors.idCategoriaId && <p className="text-red-500 text-sm">{errors.idCategoriaId.message}</p>}
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-                >Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">
-                  {editingId ? "Actualizar" : "Crear"}
+              <div className="flex justify-end space-x-2">
+                <button type="button" onClick={() => setIsOpen(false)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancelar</button>
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                  {editId ? "Actualizar" : "Crear"}
                 </button>
               </div>
             </form>
@@ -296,41 +242,28 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {/* Modal de categoría */}
-      {isCategoriaModalOpen && (
+      {/* MODAL DE CATEGORÍA */}
+      {isCategoriaOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-sm shadow-lg relative">
-            <h2 className="text-xl font-bold mb-4">Crear Nueva Categoría</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">Nombre</label>
-                <input
-                  value={nuevaCategoria.nombre}
-                  onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">UNPSC</label>
-                <input
-                  value={nuevaCategoria.unpsc}
-                  onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setIsCategoriaModalOpen(false);
-                    setNuevaCategoria({ nombre: "", unpsc: "" });
-                  }}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-                >Cancelar</button>
-                <button
-                  onClick={handleCreateCategoria}
-                  className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
-                >Crear</button>
-              </div>
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+            <h2 className="text-xl font-bold mb-4">Crear Categoría</h2>
+            <input
+              placeholder="Nombre"
+              value={nuevaCategoria.nombre}
+              onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
+              className="w-full mb-2 border px-3 py-2 rounded"
+            />
+            <input
+              placeholder="UNPSC"
+              value={nuevaCategoria.unpsc}
+              onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })}
+              className="w-full mb-4 border px-3 py-2 rounded"
+            />
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setIsCategoriaOpen(false)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancelar</button>
+              <button onClick={handleCategoriaSubmit} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Crear
+              </button>
             </div>
           </div>
         </div>

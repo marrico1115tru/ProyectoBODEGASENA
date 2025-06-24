@@ -1,5 +1,3 @@
-// src/api/MovimientosForm.ts
-
 import axios from "axios";
 import { Movimiento } from "@/types/types/movimientos";
 
@@ -10,12 +8,12 @@ export const getMovimientos = async (): Promise<Movimiento[]> => {
   return res.data;
 };
 
-export const createMovimiento = async (data: Partial<Movimiento>): Promise<Movimiento> => {
+export const createMovimiento = async (data: Movimiento): Promise<Movimiento> => {
   const res = await axios.post(API_URL, data);
   return res.data;
 };
 
-export const updateMovimiento = async (id: number, data: Partial<Movimiento>): Promise<Movimiento> => {
+export const updateMovimiento = async (id: number, data: Movimiento): Promise<Movimiento> => {
   const res = await axios.put(`${API_URL}/${id}`, data);
   return res.data;
 };

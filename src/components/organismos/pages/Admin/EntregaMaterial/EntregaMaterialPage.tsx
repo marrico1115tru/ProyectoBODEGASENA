@@ -24,9 +24,7 @@ export default function EntregaMaterialPage() {
     setEntregas(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -37,7 +35,7 @@ export default function EntregaMaterialPage() {
       return;
     }
 
-    const payload = {
+    const payload: EntregaMaterial = {
       fechaEntrega: formData.fechaEntrega,
       observaciones: formData.observaciones || null,
       idFichaFormacion: formData.idFichaFormacion,
@@ -83,8 +81,7 @@ export default function EntregaMaterialPage() {
           }}
           className="bg-green-600 text-white px-4 py-2 rounded inline-flex items-center"
         >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Crear Entrega
+          <PlusIcon className="w-5 h-5 mr-2" /> Crear Entrega
         </button>
       </div>
 
@@ -113,7 +110,7 @@ export default function EntregaMaterialPage() {
             onChange={(e) =>
               setFormData({
                 ...formData,
-                idFichaFormacion: { id: Number(e.target.value), nombre: "" },
+                idFichaFormacion: { id: Number(e.target.value) },
               })
             }
             className="w-full border p-2 rounded mb-2"
@@ -127,11 +124,7 @@ export default function EntregaMaterialPage() {
             onChange={(e) =>
               setFormData({
                 ...formData,
-                idSolicitud: {
-                  id: Number(e.target.value),
-                  fechaSolicitud: "",
-                  estadoSolicitud: "",
-                },
+                idSolicitud: { id: Number(e.target.value) },
               })
             }
             className="w-full border p-2 rounded mb-2"
@@ -145,15 +138,7 @@ export default function EntregaMaterialPage() {
             onChange={(e) =>
               setFormData({
                 ...formData,
-                idUsuarioResponsable: {
-                  id: Number(e.target.value),
-                  nombre: "",
-                  apellido: "",
-                  cedula: "",
-                  email: "",
-                  telefono: "",
-                  cargo: "",
-                },
+                idUsuarioResponsable: { id: Number(e.target.value) },
               })
             }
             className="w-full border p-2 rounded mb-2"
@@ -184,10 +169,10 @@ export default function EntregaMaterialPage() {
                 <td className="px-4 py-2">{entrega.id}</td>
                 <td className="px-4 py-2">{entrega.fechaEntrega}</td>
                 <td className="px-4 py-2">{entrega.observaciones || "-"}</td>
-                <td className="px-4 py-2">{entrega.idFichaFormacion.nombre}</td>
+                <td className="px-4 py-2">{entrega.idFichaFormacion?.nombre || entrega.idFichaFormacion?.id}</td>
                 <td className="px-4 py-2">{entrega.idSolicitud.id}</td>
                 <td className="px-4 py-2">
-                  {entrega.idUsuarioResponsable.nombre} {entrega.idUsuarioResponsable.apellido}
+                  {entrega.idUsuarioResponsable?.nombre || "Usuario ID: " + entrega.idUsuarioResponsable?.id}
                 </td>
                 <td className="px-4 py-2 flex space-x-2">
                   <button

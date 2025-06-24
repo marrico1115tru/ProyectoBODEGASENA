@@ -1,3 +1,4 @@
+// pages/inventario/InventarioPage.tsx
 import { useEffect, useState } from "react";
 import {
   getInventarios,
@@ -5,28 +6,45 @@ import {
   updateInventario,
   deleteInventario,
 } from "@/Api/inventario";
-import { Inventario, InventarioFormValues } from "@/types/types/inventario";
 import { getProductos } from "@/Api/Productosform";
 import { getSitios } from "@/Api/SitioService";
 import { Producto } from "@/types/types/typesProductos";
 import { Sitio } from "@/types/types/Sitio";
+import { Inventario } from "@/types/types/inventario";
 import DefaultLayout from "@/layouts/default";
 import { PlusIcon, XIcon } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const inventarioSchema = z.object({
+  stock: z.number().min(1, "Debe ser mayor a 0"),
+  fkSitioId: z.number().min(1, "Seleccione un sitio"),
+  idProductoId: z.number().min(1, "Seleccione un producto"),
+});
+
+type InventarioSchema = z.infer<typeof inventarioSchema>;
 
 export default function InventarioPage() {
   const [inventarios, setInventarios] = useState<Inventario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sitios, setSitios] = useState<Sitio[]>([]);
-  const [formData, setFormData] = useState<InventarioFormValues>({
-    stock: 0,
-    fkSitioId: 0,
-    idProductoId: 0,
-  });
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<InventarioSchema>({
+    resolver: zodResolver(inventarioSchema),
+  });
 
   useEffect(() => {
     fetchInventarios();
@@ -49,44 +67,46 @@ export default function InventarioPage() {
     setSitios(data);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: Number(value) || value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      await updateInventario(editingId, formData);
-    } else {
-      await createInventario(formData);
+  const onSubmit = async (data: InventarioSchema) => {
+    try {
+      if (editingId) {
+        await updateInventario(editingId, data);
+        toast.success("Inventario actualizado");
+      } else {
+        await createInventario(data);
+        toast.success("Inventario creado");
+      }
+      fetchInventarios();
+      reset();
+      setIsModalOpen(false);
+    } catch {
+      toast.error("Error al guardar inventario");
     }
-    fetchInventarios();
-    resetForm();
-    setIsModalOpen(false);
   };
 
   const handleEdit = (inv: Inventario) => {
-    setFormData({
-      stock: inv.stock,
-      fkSitioId: inv.fkSitio.id,
-      idProductoId: inv.idProducto.id,
-    });
+    setValue("stock", inv.stock);
+    setValue("fkSitioId", inv.fkSitio.id);
+    setValue("idProductoId", inv.idProducto.id);
     setEditingId(inv.idProductoInventario);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    await deleteInventario(id);
-    fetchInventarios();
+    if (confirm("¿Eliminar este registro?")) {
+      await deleteInventario(id);
+      fetchInventarios();
+    }
   };
 
-  const resetForm = () => {
-    setFormData({ stock: 0, fkSitioId: 0, idProductoId: 0 });
-    setEditingId(null);
-  };
+  const filtered = inventarios.filter((inv) =>
+    inv.idProducto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const getStockBarColor = (stock: number) => {
     if (stock === 0) return "bg-red-500";
@@ -99,23 +119,16 @@ export default function InventarioPage() {
     return `${Math.min((stock / 100) * 100, 100)}%`;
   };
 
-  const filtered = inventarios.filter((inv) =>
-    inv.idProducto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
   return (
     <DefaultLayout>
+      <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">📦 Inventario</h1>
           <button
             onClick={() => {
-              resetForm();
+              reset();
+              setEditingId(null);
               setIsModalOpen(true);
             }}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -124,15 +137,13 @@ export default function InventarioPage() {
           </button>
         </div>
 
-        <div className="flex mb-4">
-          <input
-            type="text"
-            placeholder="Buscar producto..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Buscar producto..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4 w-full border px-4 py-2 rounded"
+        />
 
         <div className="overflow-x-auto bg-white shadow rounded">
           <table className="min-w-full text-sm">
@@ -192,102 +203,95 @@ export default function InventarioPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex justify-center mt-4 gap-2">
-          {[...Array(totalPages)].map((_, i) => (
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4 gap-2">
             <button
-              key={i}
-              className={`px-3 py-1 rounded ${
-                currentPage === i + 1
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
-              onClick={() => setCurrentPage(i + 1)}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg"
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">
-                  {editingId ? "Editar Inventario" : "Crear Inventario"}
-                </h2>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  type="button"
-                  className="text-gray-600 hover:text-red-500"
-                >
-                  <XIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              <input
-                type="number"
-                name="stock"
-                placeholder="Cantidad en stock"
-                value={formData.stock}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border border-gray-300 rounded"
-                required
-              />
-
-              <select
-                name="fkSitioId"
-                value={formData.fkSitioId}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">Seleccione un sitio</option>
-                {sitios.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                name="idProductoId"
-                value={formData.idProductoId}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">Seleccione un producto</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  {editingId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Anterior</button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Siguiente</button>
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                {editingId ? "Editar Inventario" : "Crear Inventario"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-600 hover:text-red-500"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Stock</label>
+              <input
+                type="number"
+                {...register("stock", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.stock && <p className="text-red-500 text-sm">{errors.stock.message}</p>}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Sitio</label>
+              <select
+                {...register("fkSitioId", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value={0}>Seleccione un sitio</option>
+                {sitios.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                ))}
+              </select>
+              {errors.fkSitioId && <p className="text-red-500 text-sm">{errors.fkSitioId.message}</p>}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Producto</label>
+              <select
+                {...register("idProductoId", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value={0}>Seleccione un producto</option>
+                {productos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+              {errors.idProductoId && <p className="text-red-500 text-sm">{errors.idProductoId.message}</p>}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+              >Cancelar</button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
+              >{editingId ? "Actualizar" : "Crear"}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </DefaultLayout>
   );
 }

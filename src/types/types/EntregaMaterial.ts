@@ -1,22 +1,22 @@
 export interface FichaFormacion {
   id: number;
-  nombre: string;
+  nombre?: string;
 }
 
 export interface Solicitud {
   id: number;
-  fechaSolicitud: string;
-  estadoSolicitud: string;
+  fechaSolicitud?: string;
+  estadoSolicitud?: string;
 }
 
 export interface UsuarioResponsable {
   id: number;
-  nombre: string;
-  apellido: string;
-  cedula: string;
-  email: string;
-  telefono: string;
-  cargo: string;
+  nombre?: string;
+  apellido?: string;
+  cedula?: string;
+  email?: string;
+  telefono?: string;
+  cargo?: string;
 }
 
 export interface EntregaMaterial {

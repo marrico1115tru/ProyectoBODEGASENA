@@ -3,12 +3,12 @@ export interface Movimiento {
   tipoMovimiento: string;
   cantidad: number;
   fechaMovimiento: string;
-  idEntrega: number | {
+  idEntrega?: {
     id: number;
     fechaEntrega?: string;
     observaciones?: string;
   };
-  idProductoInventario: number | {
+  idProductoInventario: {
     idProductoInventario: number;
     nombre?: string;
     cantidadDisponible?: number;
