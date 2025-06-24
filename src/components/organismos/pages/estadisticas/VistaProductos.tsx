@@ -1,43 +1,95 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart } from './Graficasbases/GraficasBaseProductos';
 import axios from 'axios';
+import { Bar } from 'react-chartjs-2';
 import DefaultLayout from '@/layouts/default';
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  Title,
+} from 'chart.js';
 
-interface ProductoVencido {
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title);
+
+interface Producto {
   nombre: string;
   inventarios: { stock: number }[];
 }
 
-interface ProductoMasUsado {
+interface ProductoMovimiento {
   nombre: string;
-  totalSolicitado: string; // viene como string desde el backend
+  totalMovimiento: number | string;
 }
 
 export default function VistaProductos() {
-  const [vencidos, setVencidos] = useState<ProductoVencido[]>([]);
-  const [masUsados, setMasUsados] = useState<ProductoMasUsado[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [vencidos, setVencidos] = useState<Producto[]>([]);
+  const [masMovidos, setMasMovidos] = useState<ProductoMovimiento[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      axios.get('http://localhost:3000/productos/vencidos'),
-      axios.get('http://localhost:3000/productos/mas-solicitados'), 
-    ])
-      .then(([vencidosRes, masUsadosRes]) => {
-        setVencidos(vencidosRes.data);
-        setMasUsados(masUsadosRes.data);
-      })
-      .catch((err) => {
-        setError('Error al obtener los datos de las estadísticas.');
-        console.error('Error:', err);
-      })
-      .finally(() => {
+    const fetchData = async () => {
+      try {
+        const [vencidosRes, movidosRes] = await Promise.all([
+          axios.get('http://localhost:3000/productos/vencidos'),
+          axios.get('http://localhost:3000/productos/mayor-movimiento'),
+        ]);
+
+        const productosVencidosFiltrados = vencidosRes.data.filter(
+          (p: any) => Array.isArray(p.inventarios) && p.inventarios.length > 0
+        );
+
+        setVencidos(productosVencidosFiltrados);
+        setMasMovidos(movidosRes.data);
+      } catch (err) {
+        console.error(err);
+        setError('Error al obtener datos del servidor');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
+
+  const renderBarChart = (labels: string[], data: number[], label: string, color: string) => (
+    <Bar
+      data={{
+        labels,
+        datasets: [
+          {
+            label,
+            data,
+            backgroundColor: color,
+            borderRadius: 6,
+          },
+        ],
+      }}
+      options={{
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: label,
+            font: { size: 18 },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+            },
+          },
+        },
+      }}
+    />
+  );
 
   return (
     <DefaultLayout>
@@ -53,45 +105,33 @@ export default function VistaProductos() {
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Productos Vencidos</h3>
               {vencidos.length > 0 ? (
-                <BarChart
-                  data={{
-                    labels: vencidos.map((p) => p.nombre),
-                    datasets: [
-                      {
-                        label: 'Stock Total',
-                        data: vencidos.map((p) =>
-                          p.inventarios?.reduce((acc, inv) => acc + inv.stock, 0),
-                        ),
-                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                      },
-                    ],
-                    title: 'Productos Vencidos',
-                  }}
-                />
+                renderBarChart(
+                  vencidos.map((p) => p.nombre),
+                  vencidos.map((p) =>
+                    Array.isArray(p.inventarios)
+                      ? p.inventarios.reduce((acc, inv) => acc + inv.stock, 0)
+                      : 0
+                  ),
+                  'Stock Total de Productos Vencidos',
+                  'rgba(255, 99, 132, 0.5)'
+                )
               ) : (
-                <p>No hay productos vencidos.</p>
+                <p>No hay productos vencidos con inventario.</p>
               )}
             </div>
 
-            {/* Productos Más Usados */}
+            {/* Productos con mayor movimiento */}
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
-              <h3 className="text-xl font-semibold mb-4">Productos más utilizados</h3>
-              {masUsados.length > 0 ? (
-                <BarChart
-                  data={{
-                    labels: masUsados.map((p) => p.nombre),
-                    datasets: [
-                      {
-                        label: 'Cantidad Solicitada',
-                        data: masUsados.map((p) => parseInt(p.totalSolicitado)),
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                      },
-                    ],
-                    title: 'Productos más utilizados',
-                  }}
-                />
+              <h3 className="text-xl font-semibold mb-4">Productos con mayor movimiento</h3>
+              {masMovidos.length > 0 ? (
+                renderBarChart(
+                  masMovidos.map((p) => p.nombre),
+                  masMovidos.map((p) => Number(p.totalMovimiento)), // conversión a número
+                  'Cantidad Movida',
+                  'rgba(54, 162, 235, 0.5)'
+                )
               ) : (
-                <p>No hay productos más utilizados.</p>
+                <p>No hay productos con movimiento registrado.</p>
               )}
             </div>
           </div>

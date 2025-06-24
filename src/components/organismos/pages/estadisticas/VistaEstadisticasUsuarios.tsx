@@ -7,12 +7,12 @@ import DefaultLayout from '@/layouts/default';
 
 interface ProductosPorUsuario {
   nombreCompleto: string;
-  totalSolicitado: string | number;
+  totalSolicitado: number;
 }
 
 interface UsuariosPorRol {
   nombreRol: string;
-  cantidad: string | number;
+  cantidad: number;
 }
 
 export default function VistaEstadisticasUsuarios() {
@@ -28,14 +28,17 @@ export default function VistaEstadisticasUsuarios() {
     ])
       .then(([productosRes, rolesRes]) => {
         const productosValidos = productosRes.data
-          .filter((p: any) => p.nombreCompleto && p.totalSolicitado)
+          .filter(
+            (p: any) =>
+              p.nombreCompleto && p.nombreCompleto.trim() !== '' && p.totalSolicitado !== null
+          )
           .map((p: any) => ({
             nombreCompleto: p.nombreCompleto,
             totalSolicitado: Number(p.totalSolicitado),
           }));
 
         const rolesValidos = rolesRes.data
-          .filter((r: any) => r.nombreRol && r.cantidad)
+          .filter((r: any) => r.nombreRol && r.cantidad !== null)
           .map((r: any) => ({
             nombreRol: r.nombreRol,
             cantidad: Number(r.cantidad),
@@ -73,7 +76,7 @@ export default function VistaEstadisticasUsuarios() {
                     datasets: [
                       {
                         label: 'Total Solicitado',
-                        data: productosPorUsuario.map((u) => Number(u.totalSolicitado)),
+                        data: productosPorUsuario.map((u) => u.totalSolicitado),
                         backgroundColor: 'rgba(59, 130, 246, 0.6)',
                       },
                     ],
@@ -81,11 +84,11 @@ export default function VistaEstadisticasUsuarios() {
                   }}
                 />
               ) : (
-                <p>No hay productos solicitados registrados.</p>
+                <p>No hay solicitudes registradas por usuario.</p>
               )}
             </div>
 
-            {}
+            {/* Usuarios por rol */}
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Distribución de usuarios por rol</h3>
               {usuariosPorRol.length > 0 ? (
@@ -95,7 +98,7 @@ export default function VistaEstadisticasUsuarios() {
                     datasets: [
                       {
                         label: 'Cantidad de Usuarios',
-                        data: usuariosPorRol.map((r) => Number(r.cantidad)),
+                        data: usuariosPorRol.map((r) => r.cantidad),
                         backgroundColor: 'rgba(34, 197, 94, 0.6)',
                       },
                     ],
@@ -103,7 +106,7 @@ export default function VistaEstadisticasUsuarios() {
                   }}
                 />
               ) : (
-                <p>No hay datos de usuarios por rol.</p>
+                <p>No hay datos disponibles de usuarios por rol.</p>
               )}
             </div>
           </div>

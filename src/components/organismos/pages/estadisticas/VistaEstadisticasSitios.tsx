@@ -4,41 +4,63 @@ import { BarChart, PieChart } from './Graficasbases/GraficasBaseSitios';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 
+interface SitioEstadistica {
+  estado: string;
+  cantidad: number;
+}
+
 const VistaEstadisticasSitios: React.FC = () => {
-  const [sitiosActivos, setSitiosActivos] = useState<number>(0);
-  const [sitiosInactivos, setSitiosInactivos] = useState<number>(0);
+  const [estadisticas, setEstadisticas] = useState<SitioEstadistica[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEstadisticas = async () => {
       try {
-        const response = await axios.get('http://localhost:3500/api/sitio/activos-inactivos');
-        setSitiosActivos(response.data.activos.length);
-        setSitiosInactivos(response.data.inactivos.length);
-      } catch (error) {
-        console.error('Error al obtener estadísticas de sitios:', error);
+        const response = await axios.get<SitioEstadistica[]>(
+          'http://localhost:3000/sitio/estadisticas/por-estado'
+        );
+        setEstadisticas(response.data);
+      } catch (err) {
+        setError('Error al obtener estadísticas de sitios');
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchEstadisticas();
   }, []);
 
+  const labels = estadisticas.map((e) => e.estado);
+  const values = estadisticas.map((e) => e.cantidad);
+  const colores = labels.map((estado) =>
+    estado === 'ACTIVO' ? '#4ADE80' : '#F87171'
+  );
+
+  const total = values.reduce((acc, val) => acc + val, 0);
+
+  const porcentajes = values.map((valor) =>
+    total > 0 ? Number(((valor / total) * 100).toFixed(2)) : 0
+  );
+
   const dataBarSitios = {
-    labels: ['Activos', 'Inactivos'],
+    labels,
     datasets: [
       {
         label: 'Cantidad de Sitios',
-        data: [sitiosActivos, sitiosInactivos],
-        backgroundColor: ['#4ADE80', '#F87171'],
+        data: values,
+        backgroundColor: colores,
       },
     ],
   };
 
   const dataPieSitios = {
-    labels: ['Activos', 'Inactivos'],
+    labels: labels.map((label, index) => `${label} (${porcentajes[index]}%)`),
     datasets: [
       {
-        data: [sitiosActivos, sitiosInactivos],
-        backgroundColor: ['#4ADE80', '#F87171'],
+        data: values,
+        backgroundColor: colores,
       },
     ],
   };
@@ -47,31 +69,36 @@ const VistaEstadisticasSitios: React.FC = () => {
     <DefaultLayout>
       <div className="p-6 bg-[#0f172a] min-h-screen">
         <h1 className="text-white text-3xl font-bold mb-6 text-center">Estadísticas de Sitios</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
-            <h2 className="text-xl font-bold mb-2 text-center">Sitios Activos vs Inactivos</h2>
-            <p className="text-sm text-gray-600 text-center mb-4">
-              Comparación de sitios activos e inactivos
-            </p>
-            <div className="max-w-2xl mx-auto">
-              <BarChart data={dataBarSitios} />
-            </div>
-          </Card>
 
-          <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
-            <h2 className="text-xl font-bold mb-2 text-center">Distribución de Sitios</h2>
-            <p className="text-sm text-gray-600 text-center mb-4">
-              Porcentaje de sitios activos e inactivos
-            </p>
-            <div className="max-w-md mx-auto">
-              <PieChart data={dataPieSitios} />
-            </div>
-          </Card>
-        </div>
+        {loading && <p className="text-white text-center">Cargando estadísticas...</p>}
+        {error && <p className="text-red-500 text-center">{error}</p>}
+
+        {!loading && !error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-2 text-center">Sitios Activos vs Inactivos</h2>
+              <p className="text-sm text-gray-600 text-center mb-4">
+                Comparación de sitios activos e inactivos
+              </p>
+              <div className="max-w-2xl mx-auto">
+                <BarChart data={dataBarSitios} />
+              </div>
+            </Card>
+
+            <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-2 text-center">Distribución de Sitios (%)</h2>
+              <p className="text-sm text-gray-600 text-center mb-4">
+                Porcentaje de sitios activos e inactivos
+              </p>
+              <div className="max-w-md mx-auto">
+                <PieChart data={dataPieSitios} />
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </DefaultLayout>
   );
 };
 
 export default VistaEstadisticasSitios;
-""
