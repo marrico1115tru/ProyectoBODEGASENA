@@ -14,7 +14,7 @@ export default function UsuariosMayorUso() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-mayor-uso-productos"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3500/api/usuarios/usuarios-mayor-uso-productos");
+      const res = await axios.get("http://localhost:3000/usuarios/usuarios-top-solicitudes");
       return res.data;
     },
   });
@@ -79,7 +79,7 @@ export default function UsuariosMayorUso() {
             <th className="p-3 border">#</th>
             <th className="p-3 border">Nombre</th>
             <th className="p-3 border">Apellido</th>
-            <th className="p-3 border">Historial de Productos</th>
+            <th className="p-3 border">Total de Solicitudes</th>
           </tr>
         </thead>
         <tbody className="text-sm text-blue-800">
@@ -88,7 +88,7 @@ export default function UsuariosMayorUso() {
               <td className="p-3 border font-bold text-blue-700">{index + 1}</td>
               <td className="p-3 border">{usuario.nombre}</td>
               <td className="p-3 border">{usuario.apellido}</td>
-              <td className="p-3 border">{usuario._count?.historial ?? 0}</td>
+              <td className="p-3 border">{usuario.total_solicitudes}</td>
             </tr>
           ))}
         </tbody>

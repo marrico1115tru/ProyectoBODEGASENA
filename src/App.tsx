@@ -19,7 +19,7 @@ import VistaProductos from "./components/organismos/pages/estadisticas/VistaProd
 import UsuariosHistoria from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosHistorial.tsx";
 import UsuariosPorRol from "./components/organismos/pages/Reportes/UsuariosRep/UsuariosPorRol.tsx";
 import VistaEstadisticasUsuarios from "./components/organismos/pages/estadisticas/VistaEstadisticasUsuarios.tsx";
-import ProductosPorArea from "./components/organismos/pages/Reportes/productosRep/ProductosPorArea.tsx";
+import ProductosPorSitio from "./components/organismos/pages/Reportes/productosRep/ProductosPorSitio.tsx";
 import VistaSitiosActivosInactivos from "./components/organismos/pages/estadisticas/VistaEstadisticasSitios.tsx"
 import ProductosVencidos from "./components/organismos/pages/Reportes/productosRep/ProductosVencidos.tsx";
 import ProductosVencimiento from "./components/organismos/pages/Reportes/productosRep/ProductosVencimiento.tsx";
@@ -64,9 +64,9 @@ function App() {
         <Route path="/VistaProductos" element={<VistaProductos />} />
         <Route path="/VistaEstadisticasUsuarios" element={<VistaEstadisticasUsuarios />} />
         <Route path="/VistaEstadisticasSitios" element={<VistaSitiosActivosInactivos />} />
-        <Route path="/report/productosRepo/ProductosPorArea" element={<ProductosPorArea />} />
+        <Route path="/report/productosRep/ProductosPorSitio" element={<ProductosPorSitio />} />
         <Route path="/report/productosRep/ProductosVencidos" element={<ProductosVencidos />} />
-        <Route path="/report/productorRep/ProductosVencimiento" element={<ProductosVencimiento />} />
+        <Route path="/report/productosRep/ProductosVencimiento" element={<ProductosVencimiento />} />
         <Route path="/report/UsuariosRep/UsuariosHistoria" element={<UsuariosHistoria />} />
         <Route path="/report/UsuariosRep/UsuariosPorRol" element={<UsuariosPorRol />} />
         <Route path="/MunicipioPage" element={<MunicipioPage />} />

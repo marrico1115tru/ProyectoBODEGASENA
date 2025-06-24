@@ -91,7 +91,7 @@ const Sidebar = () => {
               <SidebarButton icon={<PackageSearch className="w-4 h-4" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("productReports")} endIcon={openMenus.productReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />} />
               {openMenus.productReports && (
                 <Submenu indent>
-                  <SidebarButton to="/report/productosRep/ProductosPorArea" icon={<LayoutGrid className="w-4 h-4" />} label="Productos por área" isOpen={isOpen} activePaths={["/report/productosRep/ProductosPorArea"]} />
+                  <SidebarButton to="/report/productosRep/ProductosPorSitio" icon={<LayoutGrid className="w-4 h-4" />} label="Productos por Sitio" isOpen={isOpen} activePaths={["/report/productosRep/ProductosPorSitio"]} />
                   <SidebarButton to="/report/productosRep/ProductosVencidos" icon={<AlertTriangle className="w-4 h-4" />} label="Productos vencidos" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencidos"]} />
                   <SidebarButton to="/report/productosRep/ProductosVencimiento" icon={<Clock className="w-4 h-4" />} label="Próximos a vencer" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencimiento"]} />
                 </Submenu>

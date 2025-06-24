@@ -7,14 +7,21 @@ import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
 import Modal from "@/components/ui/Modal";
 
+interface ProductoVencido {
+  id: number;
+  nombre: string;
+  fechaVencimiento: string;
+  inventarios: { stock: number }[];
+}
+
 export default function ProductosVencidos() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ProductoVencido[]>({
     queryKey: ["productos-vencidos"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3500/api/productos/estadisticas/vencidos");
+      const res = await axios.get("http://localhost:3000/productos/vencidos");
       return res.data;
     },
   });
@@ -81,24 +88,31 @@ export default function ProductosVencidos() {
               <th className="border border-gray-300 px-4 py-2">#</th>
               <th className="border border-gray-300 px-4 py-2">Nombre del Producto</th>
               <th className="border border-gray-300 px-4 py-2">Fecha de Vencimiento</th>
-              <th className="border border-gray-300 px-4 py-2">Cantidad</th>
+              <th className="border border-gray-300 px-4 py-2">Cantidad Total</th>
             </tr>
           </thead>
           <tbody className="text-sm text-gray-700">
-            {data.map((prod: any, index: number) => (
-              <tr key={prod?.id} className="hover:bg-blue-50 transition-colors">
-                <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {prod?.nombre || "Producto sin nombre"}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {prod?.fechaVencimiento
-                    ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
-                    : "Sin fecha"}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">{prod?.cantidad ?? 0}</td>
-              </tr>
-            ))}
+            {data.map((prod, index) => {
+              const cantidadTotal = prod.inventarios?.reduce(
+                (acc, inv) => acc + (inv?.stock ?? 0),
+                0
+              );
+
+              return (
+                <tr key={prod.id} className="hover:bg-blue-50 transition-colors">
+                  <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
+                  <td className="border border-gray-300 px-4 py-2">{prod.nombre}</td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {prod.fechaVencimiento
+                      ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
+                      : "Sin fecha"}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {cantidadTotal > 0 ? cantidadTotal : "Sin stock"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -126,12 +140,10 @@ export default function ProductosVencidos() {
           </div>
         </div>
 
-     
         <div ref={containerRef}>
           <ReportContent />
         </div>
 
-    
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
             <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">

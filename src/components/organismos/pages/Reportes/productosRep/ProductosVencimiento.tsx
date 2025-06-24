@@ -14,9 +14,7 @@ export default function ProductosProximosAVencer() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["productos-proximos-vencer"],
     queryFn: async () => {
-      const res = await axios.get(
-        "http://localhost:3500/api/productos/estadisticas/proximos-vencer"
-      );
+      const res = await axios.get("http://localhost:3000/productos/proximos-vencer");
       return res.data;
     },
   });
@@ -72,7 +70,7 @@ export default function ProductosProximosAVencer() {
           })}
         </p>
         <p className="mt-2 text-gray-700">
-          Detalle de productos que están próximos a vencer, agrupados por área.
+          Productos cuya fecha de vencimiento está próxima.
         </p>
       </div>
 
@@ -81,32 +79,33 @@ export default function ProductosProximosAVencer() {
           <thead className="bg-blue-100 text-blue-900 text-left text-sm font-semibold">
             <tr>
               <th className="border border-gray-300 px-4 py-2">#</th>
-              <th className="border border-gray-300 px-4 py-2">Área</th>
               <th className="border border-gray-300 px-4 py-2">Producto</th>
-              <th className="border border-gray-300 px-4 py-2 text-right">Cantidad</th>
-              <th className="border border-gray-300 px-4 py-2 text-center">Fecha de Vencimiento</th>
+              <th className="border border-gray-300 px-4 py-2">Fecha de Vencimiento</th>
+              <th className="border border-gray-300 px-4 py-2 text-right">Stock Total</th>
             </tr>
           </thead>
           <tbody className="text-sm text-gray-700">
-            {data.map((item: any, index: number) => (
-              <tr key={index} className="hover:bg-blue-50 transition-colors">
-                <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {item?.area?.nombre || "Sin nombre"}
-                </td>
-                <td className="border border-gray-300 px-4 py-2">
-                  {item?.nombre || "Sin nombre"}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-right">
-                  {item?.cantidad ?? 0}
-                </td>
-                <td className="border border-gray-300 px-4 py-2 text-center">
-                  {item?.fechaVencimiento
-                    ? new Date(item.fechaVencimiento).toLocaleDateString("es-ES")
-                    : "Sin fecha"}
-                </td>
-              </tr>
-            ))}
+            {data.map((prod: any, index: number) => {
+              const totalStock = prod.inventarios?.reduce(
+                (acc: number, inv: any) => acc + (inv?.stock || 0),
+                0
+              );
+
+              return (
+                <tr key={prod.id} className="hover:bg-blue-50 transition-colors">
+                  <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
+                  <td className="border border-gray-300 px-4 py-2">{prod.nombre}</td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    {prod.fechaVencimiento
+                      ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
+                      : "Sin fecha"}
+                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">
+                    {totalStock ?? 0}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
