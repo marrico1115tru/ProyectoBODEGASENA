@@ -6,138 +6,150 @@ import {
   actualizarMunicipio,
 } from '@/Api/MunicipiosForm';
 import { Municipio } from '@/types/types/typesMunicipio';
-import {
-  PencilIcon,
-  TrashIcon,
-  EyeIcon,
-  PlusIcon,
-  XIcon,
-} from 'lucide-react';
+import { PencilIcon, TrashIcon, PlusIcon, XIcon } from 'lucide-react';
 import DefaultLayout from '@/layouts/default';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import toast, { Toaster } from 'react-hot-toast';
+
+const municipioSchema = z.object({
+  nombre: z.string().min(1, 'Nombre requerido'),
+  departamento: z.string().min(1, 'Departamento requerido'),
+});
+
+type MunicipioSchema = z.infer<typeof municipioSchema>;
 
 export default function MunicipiosView() {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<Omit<Municipio, 'id'>>({ nombre: '', departamento: '' });
   const [editId, setEditId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
-  const cargarMunicipios = async () => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<MunicipioSchema>({
+    resolver: zodResolver(municipioSchema),
+  });
+
+  const fetchMunicipios = async () => {
+    const data = await obtenerMunicipios();
+    setMunicipios(data);
+  };
+
+  useEffect(() => {
+    fetchMunicipios();
+  }, []);
+
+  const onSubmit = async (data: MunicipioSchema) => {
     try {
-      const data = await obtenerMunicipios();
-      setMunicipios(data);
-    } catch (err) {
-      console.error('Error cargando municipios', err);
+      if (editId) {
+        await actualizarMunicipio(editId, data);
+        toast.success('Municipio actualizado');
+      } else {
+        await crearMunicipio(data);
+        toast.success('Municipio creado');
+      }
+      fetchMunicipios();
+      setModalOpen(false);
+      reset();
+      setEditId(null);
+    } catch {
+      toast.error('Error al guardar municipio');
     }
   };
 
-  useEffect(() => { cargarMunicipios(); }, []);
-
-  const abrirCrear = () => {
-    setForm({ nombre: '', departamento: '' });
-    setEditId(null);
-    setModalOpen(true);
-  };
-
-  const abrirEditar = (m: Municipio) => {
-    setForm({ nombre: m.nombre || '', departamento: m.departamento || '' });
+  const handleEdit = (m: Municipio) => {
+    setValue('nombre', m.nombre);
+    setValue('departamento', m.departamento);
     setEditId(m.id);
     setModalOpen(true);
-  };
-
-  const cerrarModal = () => {
-    setForm({ nombre: '', departamento: '' });
-    setEditId(null);
-    setModalOpen(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editId) await actualizarMunicipio(editId, form);
-    else await crearMunicipio(form);
-    cerrarModal();
-    cargarMunicipios();
   };
 
   const handleDelete = async (id: number) => {
     if (confirm('¿Eliminar municipio?')) {
       await eliminarMunicipio(id);
-      cargarMunicipios();
+      fetchMunicipios();
+      toast.success('Municipio eliminado');
     }
   };
 
-  const filtrados = municipios.filter(m =>
+  const filtered = municipios.filter((m) =>
     `${m.nombre} ${m.departamento}`.toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   return (
     <DefaultLayout>
+      <Toaster />
       <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <img src="/icono-municipio.png" alt="" className="w-8 h-8" />
-            Gestión de Municipios
-          </h1>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Buscar por nombre o departamento"
-              className="border rounded px-3 py-1 shadow-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button
-              onClick={abrirCrear}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-1"
-            >
-              <PlusIcon className="w-4 h-4" /> Crear
-            </button>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">🌍 Municipios</h1>
+          <button
+            onClick={() => {
+              reset();
+              setEditId(null);
+              setModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <PlusIcon className="w-4 h-4" /> Crear
+          </button>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          <span className="bg-green-200 text-green-900 px-2 py-1 rounded">
-            <EyeIcon className="inline w-4 h-4 mr-1" /> ID
-          </span>
-          <span className="bg-green-200 text-green-900 px-2 py-1 rounded">
-            <EyeIcon className="inline w-4 h-4 mr-1" /> Nombre
-          </span>
-          <span className="bg-green-200 text-green-900 px-2 py-1 rounded">
-            <EyeIcon className="inline w-4 h-4 mr-1" /> Departamento
-          </span>
-          <span className="bg-green-200 text-green-900 px-2 py-1 rounded">
-            <EyeIcon className="inline w-4 h-4 mr-1" /> Acciones
-          </span>
-        </div>
+        <input
+          type="text"
+          placeholder="Buscar municipio..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-4 w-full border px-4 py-2 rounded"
+        />
 
-        <div className="overflow-x-auto bg-white shadow rounded-lg border mb-6">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-blue-100">
+        <div className="overflow-x-auto bg-white shadow rounded">
+          <table className="min-w-full text-sm">
+            <thead className="bg-blue-100 text-left">
               <tr>
-                {['ID','Nombre','Departamento','Acciones'].map(col => (
-                  <th key={col} className="p-4 text-left font-medium">{col}</th>
-                ))}
+                <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">Nombre</th>
+                <th className="px-4 py-2">Departamento</th>
+                <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtrados.length === 0 ? (
+            <tbody>
+              {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-gray-500">
-                    No se encontraron municipios.
+                  <td colSpan={4} className="text-center py-6 text-gray-500">
+                    No hay municipios registrados.
                   </td>
                 </tr>
               ) : (
-                filtrados.map(m => (
+                paginated.map((m) => (
                   <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">{m.id}</td>
-                    <td className="px-4 py-3">{m.nombre}</td>
-                    <td className="px-4 py-3">{m.departamento}</td>
-                    <td className="px-4 py-3 flex items-center gap-3">
-                      <button onClick={() => abrirEditar(m)} title="Editar" className="text-blue-600 hover:text-blue-800">
-                        <PencilIcon className="h-5 w-5" />
+                    <td className="px-4 py-2">{m.id}</td>
+                    <td className="px-4 py-2">{m.nombre}</td>
+                    <td className="px-4 py-2">{m.departamento}</td>
+                    <td className="px-4 py-2 space-x-2">
+                      <button
+                        onClick={() => handleEdit(m)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Editar
                       </button>
-                      <button onClick={() => handleDelete(m.id)} title="Eliminar" className="text-red-600 hover:text-red-800">
-                        <TrashIcon className="h-5 w-5" />
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Eliminar
                       </button>
                     </td>
                   </tr>
@@ -147,50 +159,76 @@ export default function MunicipiosView() {
           </table>
         </div>
 
-        {/* Modal */}
-        {modalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
-              <button onClick={cerrarModal} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                <XIcon className="h-6 w-6" />
-              </button>
-              <h2 className="text-xl font-semibold mb-4">
-                {editId ? 'Editar Municipio' : 'Crear Municipio'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium">Nombre</label>
-                  <input
-                    type="text"
-                    value={form.nombre || ''}
-                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                    required
-                    className="mt-1 w-full border rounded p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">Departamento</label>
-                  <input
-                    type="text"
-                    value={form.departamento || ''}
-                    onChange={(e) => setForm({ ...form, departamento: e.target.value })}
-                    required
-                    className="mt-1 w-full border rounded p-2"
-                  />
-                </div>
-                <div className="flex justify-end gap-3 mt-4">
-                  <button type="button" onClick={cerrarModal} className="px-4 py-2 border rounded hover:bg-gray-100">
-                    Cancelar
-                  </button>
-                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </button>
-                </div>
-              </form>
-            </div>
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4 gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Anterior</button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Siguiente</button>
           </div>
         )}
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                {editId ? 'Editar Municipio' : 'Crear Municipio'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="text-gray-600 hover:text-red-500"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Nombre</label>
+              <input
+                type="text"
+                {...register('nombre')}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Departamento</label>
+              <input
+                type="text"
+                {...register('departamento')}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.departamento && <p className="text-red-500 text-sm">{errors.departamento.message}</p>}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+              >Cancelar</button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
+              >{editId ? 'Actualizar' : 'Crear'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </DefaultLayout>
   );
 }

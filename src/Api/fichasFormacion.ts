@@ -19,7 +19,7 @@ export const updateFichaFormacion = async (
   id: number,
   data: Partial<FichaFormacion>
 ): Promise<FichaFormacion> => {
-  const res = await axios.patch(`${API_URL}/${id}`, data);
+  const res = await axios.put(`${API_URL}/${id}`, data);
   return res.data;
 };
 

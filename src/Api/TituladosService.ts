@@ -14,7 +14,7 @@ export const createTitulado = async (data: Partial<Titulado>): Promise<Titulado>
 };
 
 export const updateTitulado = async (id: number, data: Partial<Titulado>): Promise<Titulado> => {
-  const res = await axios.patch(`${API_URL}/${id}`, data);
+  const res = await axios.put(`${API_URL}/${id}`, data);
   return res.data;
 };
 
