@@ -9,6 +9,7 @@ export interface Movimiento {
     observaciones?: string;
   };
   idProductoInventario: {
+    stock: string;
     idProductoInventario: number;
     nombre?: string;
     cantidadDisponible?: number;

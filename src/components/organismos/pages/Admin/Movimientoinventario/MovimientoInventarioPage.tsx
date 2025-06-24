@@ -1,4 +1,3 @@
-// src/pages/MovimientosPage.tsx
 import { useEffect, useState } from "react";
 import DefaultLayout from "@/layouts/default";
 import {
@@ -34,6 +33,9 @@ export default function MovimientosPage() {
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } =
     useForm<MovimientoForm>({ resolver: zodResolver(movimientoSchema) });
@@ -90,6 +92,17 @@ export default function MovimientosPage() {
     }
   };
 
+  const filtered = movimientos.filter((m) =>
+    m.idProductoInventario?.nombre?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    m.idProductoInventario.idProductoInventario.toString().includes(searchTerm)
+  );
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <DefaultLayout>
       <Toaster />
@@ -104,37 +117,67 @@ export default function MovimientosPage() {
           </button>
         </div>
 
-        <table className="min-w-full text-sm bg-white border">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Tipo</th>
-              <th className="px-4 py-2">Cantidad</th>
-              <th className="px-4 py-2">Fecha</th>
-              <th className="px-4 py-2">Producto</th>
-              <th className="px-4 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movimientos.map((m) => (
-              <tr key={m.id} className="border-t">
-                <td className="px-4 py-2">{m.id}</td>
-                <td className="px-4 py-2">{m.tipoMovimiento}</td>
-                <td className="px-4 py-2">{m.cantidad}</td>
-                <td className="px-4 py-2">{m.fechaMovimiento}</td>
-                <td className="px-4 py-2">{m.idProductoInventario.nombre || m.idProductoInventario.idProductoInventario}</td>
-                <td className="px-4 py-2 flex gap-2">
-                  <button onClick={() => handleEdit(m)} className="text-yellow-600 hover:text-yellow-800">
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:text-red-800">
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </td>
+        <input
+          type="text"
+          placeholder="Buscar producto o ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4 w-full border px-4 py-2 rounded"
+        />
+
+        <div className="overflow-x-auto bg-white shadow rounded">
+          <table className="min-w-full text-sm">
+            <thead className="bg-blue-100 text-left">
+              <tr>
+                <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">Tipo</th>
+                <th className="px-4 py-2">Cantidad</th>
+                <th className="px-4 py-2">Fecha</th>
+                <th className="px-4 py-2">Producto</th>
+                <th className="px-4 py-2">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-6 text-gray-500">
+                    No hay resultados.
+                  </td>
+                </tr>
+              ) : (
+                paginated.map((m) => (
+                  <tr key={m.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2">{m.id}</td>
+                    <td className="px-4 py-2">{m.tipoMovimiento}</td>
+                    <td className="px-4 py-2">{m.cantidad}</td>
+                    <td className="px-4 py-2">{m.fechaMovimiento}</td>
+                    <td className="px-4 py-2">{m.idProductoInventario.nombre || `Producto #${m.idProductoInventario.idProductoInventario}`}</td>
+                    <td className="px-4 py-2 space-x-2">
+                      <button onClick={() => handleEdit(m)} className="text-blue-600 hover:underline">Editar</button>
+                      <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:underline">Eliminar</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4 gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Anterior</button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >Siguiente</button>
+          </div>
+        )}
 
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -170,7 +213,7 @@ export default function MovimientosPage() {
                     <option value="">Seleccione producto</option>
                     {inventarios.map((inv) => (
                       <option key={inv.idProductoInventario} value={inv.idProductoInventario}>
-                        {inv.nombre || inv.idProductoInventario}
+                        {inv.nombre || `Producto ${inv.idProductoInventario}`}
                       </option>
                     ))}
                   </select>

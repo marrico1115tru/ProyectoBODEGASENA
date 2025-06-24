@@ -14,7 +14,7 @@ export const createSitio = async (data: SitioFormValues) => {
 };
 
 export const updateSitio = async (id: number, data: SitioFormValues) => {
-  await axios.patch(`${API_URL}/${id}`, data);
+  await axios.put(`${API_URL}/${id}`, data);
 };
 
 export const deleteSitio = async (id: number) => {

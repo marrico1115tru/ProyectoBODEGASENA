@@ -1,119 +1,143 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   getSitios,
   createSitio,
   updateSitio,
   deleteSitio,
-} from '@/Api/SitioService';
-import { Sitio, SitioFormValues } from '@/types/types/Sitio';
-import DefaultLayout from '@/layouts/default';
-import { PlusIcon } from 'lucide-react';
-import { getAreas } from '@/Api/AreasService';
-import { getTiposSitio } from '@/Api/Tipo_sitios';
+} from "@/Api/SitioService";
+import { getAreas } from "@/Api/AreasService";
+import { getTiposSitio } from "@/Api/Tipo_sitios";
+import { Sitio, SitioFormValues } from "@/types/types/Sitio";
+import { Area } from "@/types/types/typesArea";
+import { TipoSitio } from "@/types/types/tipo_sitios";
+import DefaultLayout from "@/layouts/default";
+import { PlusIcon, XIcon } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import toast, { Toaster } from "react-hot-toast";
 
-export default function SitioPage() {
+const sitioSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio").max(100),
+  ubicacion: z.string().min(1, "La ubicación es obligatoria").max(150),
+  idArea: z.object({ id: z.number().min(1, "Seleccione un área") }),
+  idTipoSitio: z.object({ id: z.number().min(1, "Seleccione un tipo de sitio") }),
+});
+
+export default function SitiosPage() {
   const [sitios, setSitios] = useState<Sitio[]>([]);
-  const [formData, setFormData] = useState<SitioFormValues>({
-    nombre: '',
-    ubicacion: '',
-    idArea: { id: 0 },
-    idTipoSitio: { id: 0 },
-  });
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [tiposSitio, setTiposSitio] = useState<TipoSitio[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [areas, setAreas] = useState<{ id: number; nombreArea: string }[]>([]);
-  const [tiposSitio, setTiposSitio] = useState<{ id: number; nombre: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<SitioFormValues>({
+    resolver: zodResolver(sitioSchema),
+    defaultValues: {
+      nombre: "",
+      ubicacion: "",
+      idArea: { id: 0 },
+      idTipoSitio: { id: 0 },
+    },
+  });
 
   useEffect(() => {
-    fetchSitios();
-    fetchAreas();
-    fetchTiposSitio();
+    fetchData();
   }, []);
 
-  const fetchSitios = async () => {
-    const data = await getSitios();
-    setSitios(data);
+  const fetchData = async () => {
+    const sitiosData = await getSitios();
+    const areasData = await getAreas();
+    const tiposData = await getTiposSitio();
+    setSitios(sitiosData);
+    setAreas(areasData);
+    setTiposSitio(tiposData);
   };
 
-  const fetchAreas = async () => {
-    const res = await getAreas();
-    setAreas(res);
-  };
-
-  const fetchTiposSitio = async () => {
-    const res = await getTiposSitio();
-    setTiposSitio(res);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: { id: parseInt(value, 10) } });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      await updateSitio(editingId, formData);
-    } else {
-      await createSitio(formData);
+  const onSubmit = async (data: SitioFormValues) => {
+    try {
+      if (editingId) {
+        await updateSitio(editingId, data);
+        toast.success("Sitio actualizado");
+      } else {
+        await createSitio(data);
+        toast.success("Sitio creado");
+      }
+      fetchData();
+      reset();
+      setIsModalOpen(false);
+      setEditingId(null);
+    } catch {
+      toast.error("Error al guardar el sitio");
     }
-    fetchSitios();
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleEdit = (sitio: Sitio) => {
-    setFormData({
-      nombre: sitio.nombre ?? '',
-      ubicacion: sitio.ubicacion ?? '',
-      idArea: { id: sitio.idArea.id },
-      idTipoSitio: { id: sitio.idTipoSitio.id },
-    });
     setEditingId(sitio.id);
+    setValue("nombre", sitio.nombre ?? "");
+    setValue("ubicacion", sitio.ubicacion ?? "");
+    setValue("idArea", { id: sitio.idArea?.id || 0 });
+    setValue("idTipoSitio", { id: sitio.idTipoSitio?.id || 0 });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
-    await deleteSitio(id);
-    fetchSitios();
+    if (confirm("¿Eliminar este sitio?")) {
+      await deleteSitio(id);
+      toast.success("Sitio eliminado");
+      fetchData();
+    }
   };
 
-  const resetForm = () => {
-    setFormData({
-      nombre: '',
-      ubicacion: '',
-      idArea: { id: 0 },
-      idTipoSitio: { id: 0 },
-    });
-    setEditingId(null);
-  };
+  const filteredSitios = sitios.filter((s) =>
+    s.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredSitios.length / itemsPerPage);
+  const currentItems = filteredSitios.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <DefaultLayout>
+      <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">📍 Gestión de Sitios</h1>
+          <h1 className="text-2xl font-bold">🏢 Gestión de Sitios</h1>
           <button
             onClick={() => {
+              reset();
+              setEditingId(null);
               setIsModalOpen(true);
-              resetForm();
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="inline-block w-4 h-4 mr-1" />
-            Crear
+            <PlusIcon className="w-4 h-4" /> Crear
           </button>
         </div>
 
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
+        <input
+          type="text"
+          placeholder="Buscar sitio por nombre..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4 w-full border px-4 py-2 rounded"
+        />
+
+        <div className="overflow-x-auto bg-white shadow rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
-                <th className="px-4 py-2">ID</th>
                 <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Ubicación</th>
                 <th className="px-4 py-2">Área</th>
@@ -122,21 +146,32 @@ export default function SitioPage() {
               </tr>
             </thead>
             <tbody>
-              {sitios.length === 0 ? (
+              {currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4">No hay registros.</td>
+                  <td colSpan={5} className="text-center py-6 text-gray-500">
+                    No hay resultados.
+                  </td>
                 </tr>
               ) : (
-                sitios.map((sitio) => (
-                  <tr key={sitio.id} className="border-t">
-                    <td className="px-4 py-2">{sitio.id}</td>
-                    <td className="px-4 py-2">{sitio.nombre}</td>
-                    <td className="px-4 py-2">{sitio.ubicacion}</td>
-                    <td className="px-4 py-2">{sitio.idArea.nombreArea}</td>
-                    <td className="px-4 py-2">{sitio.idTipoSitio.nombre}</td>
+                currentItems.map((s) => (
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2">{s.nombre}</td>
+                    <td className="px-4 py-2">{s.ubicacion}</td>
+                    <td className="px-4 py-2">{s.idArea?.nombreArea}</td>
+                    <td className="px-4 py-2">{s.idTipoSitio?.nombre}</td>
                     <td className="px-4 py-2 space-x-2">
-                      <button onClick={() => handleEdit(sitio)} className="text-blue-600 hover:underline">Editar</button>
-                      <button onClick={() => handleDelete(sitio.id)} className="text-red-600 hover:underline">Eliminar</button>
+                      <button
+                        onClick={() => handleEdit(s)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(s.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -145,74 +180,129 @@ export default function SitioPage() {
           </table>
         </div>
 
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <form onSubmit={handleSubmit} className="bg-white rounded p-6 w-full max-w-md shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">
-                {editingId ? 'Editar Sitio' : 'Crear Sitio'}
-              </h2>
-
-              <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre del sitio"
-                value={formData.nombre}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-              />
-              <input
-                type="text"
-                name="ubicacion"
-                placeholder="Ubicación"
-                value={formData.ubicacion}
-                onChange={handleChange}
-                className="w-full mb-4 p-2 border rounded"
-              />
-
-              <select
-                name="idArea"
-                value={formData.idArea.id}
-                onChange={handleSelect}
-                className="w-full mb-4 p-2 border rounded"
-              >
-                <option value={0}>Seleccione un área</option>
-                {areas.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nombreArea}</option>
-                ))}
-              </select>
-
-              <select
-                name="idTipoSitio"
-                value={formData.idTipoSitio.id}
-                onChange={handleSelect}
-                className="w-full mb-4 p-2 border rounded"
-              >
-                <option value={0}>Seleccione tipo de sitio</option>
-                {tiposSitio.map((t) => (
-                  <option key={t.id} value={t.id}>{t.nombre}</option>
-                ))}
-              </select>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
-                >
-                  {editingId ? 'Actualizar' : 'Crear'}
-                </button>
-              </div>
-            </form>
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4 gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <span className="text-sm">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            >
+              Siguiente
+            </button>
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                {editingId ? "Editar Sitio" : "Crear Sitio"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-600 hover:text-red-500"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Nombre</label>
+              <input
+                type="text"
+                {...register("nombre")}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.nombre && (
+                <p className="text-red-500 text-sm">{errors.nombre.message}</p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Ubicación</label>
+              <input
+                type="text"
+                {...register("ubicacion")}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.ubicacion && (
+                <p className="text-red-500 text-sm">{errors.ubicacion.message}</p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Área</label>
+              <select
+                {...register("idArea.id", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value={0}>Seleccione un área</option>
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.nombreArea}
+                  </option>
+                ))}
+              </select>
+              {errors.idArea?.id && (
+                <p className="text-red-500 text-sm">{errors.idArea.id.message}</p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Tipo de Sitio</label>
+              <select
+                {...register("idTipoSitio.id", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value={0}>Seleccione un tipo de sitio</option>
+                {tiposSitio.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id}>
+                    {tipo.nombre}
+                  </option>
+                ))}
+              </select>
+              {errors.idTipoSitio?.id && (
+                <p className="text-red-500 text-sm">
+                  {errors.idTipoSitio.id.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
+              >
+                {editingId ? "Actualizar" : "Crear"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </DefaultLayout>
   );
 }

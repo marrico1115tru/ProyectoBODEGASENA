@@ -12,7 +12,6 @@ import ViasView from "./components/organismos/pages/Inicio/vias";
 import TicView from "./components/organismos/pages/Inicio/tic";
 import ProductosTable from "./components/organismos/pages/productos/productosTable";
 import UsersView from "./components/organismos/pages/Admin/usuarios/UsersView.tsx";
-import Bodega from "./components/organismos/pages/Admin/bodegas/Bodega.tsx";
 import CentrosFormaciones from "./components/organismos/pages/Admin/centrosformacion/CentrosFormacion.tsx";
 import MovimientoInventarioPage from "./components/organismos/pages/Admin/Movimientoinventario/MovimientoInventarioPage.tsx";
 import VistaProductos from "./components/organismos/pages/estadisticas/VistaProductos.tsx";
@@ -58,7 +57,6 @@ function App() {
         <Route path="/escuelacafe" element={<EscuelaCafeView />} />
         <Route path="/usuarios" element={<UsersView />} />
         <Route path="/productos/listar" element={<ProductosTable />} />
-        <Route path="/Bodega" element={<Bodega />} />
         <Route path="/CentrosFormaciones" element={<CentrosFormaciones />} />
         <Route path="/MovimientoInventarioPage" element={<MovimientoInventarioPage />} />
         <Route path="/VistaProductos" element={<VistaProductos />} />

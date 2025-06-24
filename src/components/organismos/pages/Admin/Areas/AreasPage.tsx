@@ -1,3 +1,4 @@
+// pages/areas/AreasPage.tsx
 import { useEffect, useState } from "react";
 import {
   getAreas,
@@ -15,15 +16,13 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast, { Toaster } from "react-hot-toast";
 
-// Zod schema
+// Zod Schema
 const areaSchema = z.object({
   nombreArea: z
     .string()
     .min(1, "El nombre del área es obligatorio")
     .max(100, "Máximo 100 caracteres"),
-  idSede: z.object({
-    id: z.number().min(1, "Debe seleccionar una sede"),
-  }),
+  idSedeId: z.number().min(1, "Debe seleccionar una sede"),
 });
 
 type AreaFormValues = z.infer<typeof areaSchema>;
@@ -33,6 +32,7 @@ export default function AreasPage() {
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -44,10 +44,6 @@ export default function AreasPage() {
     formState: { errors },
   } = useForm<AreaFormValues>({
     resolver: zodResolver(areaSchema),
-    defaultValues: {
-      nombreArea: "",
-      idSede: { id: 0 },
-    },
   });
 
   useEffect(() => {
@@ -68,25 +64,31 @@ export default function AreasPage() {
   const onSubmit = async (data: AreaFormValues) => {
     try {
       if (editingId) {
-        await updateArea(editingId, data);
+        await updateArea(editingId, {
+          nombreArea: data.nombreArea,
+          idSede: { id: data.idSedeId },
+        });
         toast.success("Área actualizada");
       } else {
-        await createArea(data);
+        await createArea({
+          nombreArea: data.nombreArea,
+          idSede: { id: data.idSedeId },
+        });
         toast.success("Área creada");
       }
       fetchAreas();
-      setIsModalOpen(false);
       reset();
       setEditingId(null);
+      setIsModalOpen(false);
     } catch {
       toast.error("Error al guardar el área");
     }
   };
 
   const handleEdit = (area: Area) => {
-    setEditingId(area.id);
     setValue("nombreArea", area.nombreArea || "");
-    setValue("idSede", { id: area.idSede?.id || 0 });
+    setValue("idSedeId", area.idSede?.id || 0);
+    setEditingId(area.id);
     setIsModalOpen(true);
   };
 
@@ -98,59 +100,65 @@ export default function AreasPage() {
     }
   };
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = areas.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(areas.length / itemsPerPage);
+  const filtered = areas.filter((area) =>
+    area.nombreArea.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            🏬 Gestión de Áreas
-          </h1>
+          <h1 className="text-2xl font-bold">🏬 Áreas</h1>
           <button
             onClick={() => {
               reset();
               setEditingId(null);
               setIsModalOpen(true);
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4 mr-1" />
-            Crear
+            <PlusIcon className="w-4 h-4" /> Crear
           </button>
         </div>
 
-        {/* Tabla */}
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
+        <input
+          type="text"
+          placeholder="Buscar área..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="mb-4 w-full border px-4 py-2 rounded"
+        />
+
+        <div className="overflow-x-auto bg-white shadow rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
                 <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre del Área</th>
+                <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Sede</th>
                 <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {currentItems.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-4">
-                    No hay áreas registradas.
+                  <td colSpan={4} className="text-center py-6 text-gray-500">
+                    No hay resultados.
                   </td>
                 </tr>
               ) : (
-                currentItems.map((area) => (
-                  <tr key={area.id} className="border-t">
+                paginated.map((area) => (
+                  <tr key={area.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2">{area.id}</td>
                     <td className="px-4 py-2">{area.nombreArea}</td>
-                    <td className="px-4 py-2">
-                      {area.idSede?.nombre ?? "Sin sede"}
-                    </td>
+                    <td className="px-4 py-2">{area.idSede?.nombre ?? "Sin sede"}</td>
                     <td className="px-4 py-2 space-x-2">
                       <button
                         onClick={() => handleEdit(area)}
@@ -172,94 +180,93 @@ export default function AreasPage() {
           </table>
         </div>
 
-        {/* Paginación */}
-        <div className="flex justify-center mt-4 space-x-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+        {totalPages > 1 && (
+          <div className="flex justify-end mt-4 gap-2">
             <button
-              key={num}
-              onClick={() => setCurrentPage(num)}
-              className={`px-3 py-1 rounded ${
-                currentPage === num ? "bg-blue-600 text-white" : "bg-gray-200"
-              }`}
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >
-              {num}
+              Anterior
             </button>
-          ))}
-        </div>
-
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="bg-white rounded p-6 w-full max-w-md shadow-lg relative"
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
             >
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-
-              <h2 className="text-lg font-semibold mb-4">
-                {editingId ? "Editar Área" : "Crear Área"}
-              </h2>
-
-              <div className="mb-4">
-                <label className="block text-sm mb-1">Nombre del Área</label>
-                <input
-                  type="text"
-                  {...register("nombreArea")}
-                  className="w-full border px-3 py-2 rounded"
-                  placeholder="Ej: Laboratorio de TIC"
-                />
-                {errors.nombreArea && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {errors.nombreArea.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm mb-1">Sede</label>
-                <select
-                  {...register("idSede.id", { valueAsNumber: true })}
-                  className="w-full border px-3 py-2 rounded"
-                >
-                  <option value="0">Seleccione una sede</option>
-                  {sedes.map((sede) => (
-                    <option key={sede.id} value={sede.id}>
-                      {sede.nombre}
-                    </option>
-                  ))}
-                </select>
-                {errors.idSede?.id && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {errors.idSede.id.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
-                >
-                  {editingId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
+              Siguiente
+            </button>
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                {editingId ? "Editar Área" : "Crear Área"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-600 hover:text-red-500"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Nombre del Área</label>
+              <input
+                type="text"
+                {...register("nombreArea")}
+                className="w-full border px-3 py-2 rounded"
+              />
+              {errors.nombreArea && (
+                <p className="text-red-500 text-sm">{errors.nombreArea.message}</p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium">Sede</label>
+              <select
+                {...register("idSedeId", { valueAsNumber: true })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value={0}>Seleccione una sede</option>
+                {sedes.map((sede) => (
+                  <option key={sede.id} value={sede.id}>{sede.nombre}</option>
+                ))}
+              </select>
+              {errors.idSedeId && (
+                <p className="text-red-500 text-sm">{errors.idSedeId.message}</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
+              >
+                {editingId ? "Actualizar" : "Crear"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </DefaultLayout>
   );
 }
