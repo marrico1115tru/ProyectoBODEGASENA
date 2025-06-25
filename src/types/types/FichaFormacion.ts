@@ -10,6 +10,7 @@ export interface Usuario {
 }
 
 export interface FichaFormacion {
+  codigo: ReactNode;
   id: number;
   nombre: string | null;
   idTitulado: Titulado;

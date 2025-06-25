@@ -1,4 +1,3 @@
-// pages/areas/AreasPage.tsx
 import { useEffect, useState } from "react";
 import {
   getAreas,
@@ -15,8 +14,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast, { Toaster } from "react-hot-toast";
+import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 
-// Zod Schema
 const areaSchema = z.object({
   nombreArea: z
     .string()
@@ -36,6 +35,13 @@ export default function AreasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
   const {
     register,
     handleSubmit,
@@ -47,9 +53,21 @@ export default function AreasPage() {
   });
 
   useEffect(() => {
-    fetchAreas();
-    fetchSedes();
+    const idRol = localStorage.getItem("idRol");
+    if (idRol) {
+      obtenerPermisosPorRuta("/AreasPage", Number(idRol)).then((res) => {
+        console.log("🟢 Permisos obtenidos:", res);
+        setPermisos(res);
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    if (permisos.puedeVer) {
+      fetchAreas();
+      fetchSedes();
+    }
+  }, [permisos]);
 
   const fetchAreas = async () => {
     const data = await getAreas();
@@ -80,7 +98,7 @@ export default function AreasPage() {
       reset();
       setEditingId(null);
       setIsModalOpen(false);
-    } catch {
+    } catch (error) {
       toast.error("Error al guardar el área");
     }
   };
@@ -110,22 +128,34 @@ export default function AreasPage() {
     currentPage * itemsPerPage
   );
 
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-red-600 text-xl font-semibold">
+          ❌ No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">🏬 Áreas</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
+          {permisos.puedeCrear && (
+            <button
+              onClick={() => {
+                reset();
+                setEditingId(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              <PlusIcon className="w-4 h-4" /> Crear
+            </button>
+          )}
         </div>
 
         <input
@@ -143,7 +173,9 @@ export default function AreasPage() {
                 <th className="px-4 py-2">ID</th>
                 <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Sede</th>
-                <th className="px-4 py-2">Acciones</th>
+                {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                  <th className="px-4 py-2">Acciones</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -159,20 +191,26 @@ export default function AreasPage() {
                     <td className="px-4 py-2">{area.id}</td>
                     <td className="px-4 py-2">{area.nombreArea}</td>
                     <td className="px-4 py-2">{area.idSede?.nombre ?? "Sin sede"}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(area)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(area.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
+                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                      <td className="px-4 py-2 space-x-2">
+                        {permisos.puedeEditar && (
+                          <button
+                            onClick={() => handleEdit(area)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {permisos.puedeEliminar && (
+                          <button
+                            onClick={() => handleDelete(area.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -189,7 +227,9 @@ export default function AreasPage() {
             >
               Anterior
             </button>
-            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <span className="text-sm">
+              Página {currentPage} de {totalPages}
+            </span>
             <button
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(currentPage + 1)}
@@ -201,70 +241,64 @@ export default function AreasPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? "Editar Área" : "Crear Área"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-md w-full max-w-md relative">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-2 right-2 text-gray-600 hover:text-black"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-semibold mb-4">
+              {editingId ? "Editar Área" : "Crear Área"}
+            </h2>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre del Área</label>
-              <input
-                type="text"
-                {...register("nombreArea")}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombreArea && (
-                <p className="text-red-500 text-sm">{errors.nombreArea.message}</p>
-              )}
-            </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div>
+                <label className="block font-medium">Nombre del área</label>
+                <input
+                  {...register("nombreArea")}
+                  className="w-full border px-3 py-2 rounded"
+                />
+                {errors.nombreArea && (
+                  <p className="text-red-500 text-sm">
+                    {errors.nombreArea.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Sede</label>
-              <select
-                {...register("idSedeId", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione una sede</option>
-                {sedes.map((sede) => (
-                  <option key={sede.id} value={sede.id}>{sede.nombre}</option>
-                ))}
-              </select>
-              {errors.idSedeId && (
-                <p className="text-red-500 text-sm">{errors.idSedeId.message}</p>
-              )}
-            </div>
+              <div>
+                <label className="block font-medium">Sede</label>
+                <select
+                  {...register("idSedeId", { valueAsNumber: true })}
+                  className="w-full border px-3 py-2 rounded"
+                >
+                  <option value={0}>Seleccione una sede</option>
+                  {sedes.map((sede) => (
+                    <option key={sede.id} value={sede.id}>
+                      {sede.nombre}
+                    </option>
+                  ))}
+                </select>
+                {errors.idSedeId && (
+                  <p className="text-red-500 text-sm">
+                    {errors.idSedeId.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >
-                {editingId ? "Actualizar" : "Crear"}
-              </button>
-            </div>
-          </form>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  {editingId ? "Actualizar" : "Crear"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </DefaultLayout>

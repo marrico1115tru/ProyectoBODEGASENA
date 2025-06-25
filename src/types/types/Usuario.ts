@@ -20,8 +20,8 @@ export interface Usuario {
   cedula: string | null;
   email: string | null;
   telefono: string | null;
-  cargo: string | null;
-  password: string; // ✅ agregado
+  rol: string | null;
+  password: string; 
   idArea: Area;
   idFichaFormacion: FichaFormacion;
   idRol: Rol;
