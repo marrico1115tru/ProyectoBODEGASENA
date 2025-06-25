@@ -1,15 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart } from './Graficasbases/GraficasBaseProductos';
+import { ChartBase } from './Graficasbases/GraficasUsuarios';
 import DefaultLayout from '@/layouts/default';
 import axios from 'axios';
-
-// 👇 Utilidad para obtener cookies
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-}
 
 interface ProductosPorUsuario {
   nombreCompleto: string;
@@ -28,23 +22,18 @@ export default function VistaEstadisticasUsuarios() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getCookie('token');
+    // Ya no usamos getCookie, solo withCredentials
+    const fetchData = async () => {
+      try {
+        const [productosRes, rolesRes] = await Promise.all([
+          axios.get('http://localhost:3000/productos/solicitados-por-usuario', {
+            withCredentials: true,
+          }),
+          axios.get('http://localhost:3000/usuarios/estadisticas/por-rol', {
+            withCredentials: true,
+          }),
+        ]);
 
-    if (!token) {
-      setError('No hay token de autenticación en las cookies.');
-      setLoading(false);
-      return;
-    }
-
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-
-    Promise.all([
-      axios.get('http://localhost:3000/productos/solicitados-por-usuario', { headers }),
-      axios.get('http://localhost:3000/usuarios/estadisticas/por-rol', { headers }),
-    ])
-      .then(([productosRes, rolesRes]) => {
         const productosValidos = productosRes.data
           .filter(
             (p: any) =>
@@ -64,14 +53,15 @@ export default function VistaEstadisticasUsuarios() {
 
         setProductosPorUsuario(productosValidos);
         setUsuariosPorRol(rolesValidos);
-      })
-      .catch((err) => {
-        setError('Error al obtener datos de estadísticas.');
+      } catch (err) {
         console.error('❌ Error al cargar estadísticas:', err);
-      })
-      .finally(() => {
+        setError('Error al obtener datos de estadísticas. Verifica tu sesión.');
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
 
   return (
@@ -88,7 +78,8 @@ export default function VistaEstadisticasUsuarios() {
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Solicitudes por usuario</h3>
               {productosPorUsuario.length > 0 ? (
-                <BarChart
+                <ChartBase
+                  type="bar"
                   data={{
                     labels: productosPorUsuario.map((u) => u.nombreCompleto),
                     datasets: [
@@ -110,14 +101,20 @@ export default function VistaEstadisticasUsuarios() {
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Distribución de usuarios por rol</h3>
               {usuariosPorRol.length > 0 ? (
-                <BarChart
+                <ChartBase
+                  type="pie"
                   data={{
                     labels: usuariosPorRol.map((r) => r.nombreRol),
                     datasets: [
                       {
-                        label: 'Cantidad de Usuarios',
+                        label: 'Cantidad',
                         data: usuariosPorRol.map((r) => r.cantidad),
-                        backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                        backgroundColor: [
+                          'rgba(255, 99, 132, 0.6)',
+                          'rgba(54, 162, 235, 0.6)',
+                          'rgba(75, 192, 192, 0.6)',
+                          'rgba(255, 206, 86, 0.6)',
+                        ],
                       },
                     ],
                     title: 'Usuarios por Rol',

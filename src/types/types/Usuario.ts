@@ -21,6 +21,7 @@ export interface Usuario {
   email: string | null;
   telefono: string | null;
   cargo: string | null;
+  password: string; // ✅ agregado
   idArea: Area;
   idFichaFormacion: FichaFormacion;
   idRol: Rol;
@@ -35,7 +36,6 @@ export interface UsuarioLogin {
   permisos: Permiso[];
 }
 
-// Permiso recibido desde el backend
 export interface Permiso {
   ruta: string;
   puede_ver: boolean;
