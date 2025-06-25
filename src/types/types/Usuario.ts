@@ -25,3 +25,21 @@ export interface Usuario {
   idFichaFormacion: FichaFormacion;
   idRol: Rol;
 }
+
+// Usuario que viene del login (simplificado)
+export interface UsuarioLogin {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: string;
+  permisos: Permiso[];
+}
+
+// Permiso recibido desde el backend
+export interface Permiso {
+  ruta: string;
+  puede_ver: boolean;
+  puede_crear: boolean;
+  puede_editar: boolean;
+  puede_eliminar: boolean;
+}
