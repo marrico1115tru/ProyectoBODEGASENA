@@ -1,4 +1,3 @@
-// pages/categorias/CategoriasProductosPage.tsx
 import { useEffect, useState } from "react";
 import {
   getCategoriasProductos,

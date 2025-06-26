@@ -5,16 +5,18 @@ export async function login({ email, password }: { email: string; password: stri
     "/auth/login",
     { email, password },
     {
-      withCredentials: true, // ✅ asegurarse de que se guarden las cookies
+      withCredentials: true, // asegura que las cookies se guarden si las usas
     }
   );
 
-  // Validar que tenga los datos esperados (sin esperar el token directamente)
-  const { usuario, permisos } = res.data;
+  const { user } = res.data;
 
-  if (!usuario || !permisos) {
+  if (!user) {
     throw new Error("Respuesta del servidor incompleta");
   }
 
-  return res.data; // contiene { usuario, permisos }
+  return {
+    usuario: user, // lo renombramos para que el frontend lo maneje igual
+    permisos: [], // si no tienes permisos explícitos, retornas un array vacío o lo que necesites
+  };
 }
