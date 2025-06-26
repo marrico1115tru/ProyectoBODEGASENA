@@ -3,6 +3,7 @@ export interface Sitio {
   nombre: string | null;
   ubicacion: string | null;
   idArea: {
+    nombre: ReactNode;
     id: number;
     nombreArea: string;
   };

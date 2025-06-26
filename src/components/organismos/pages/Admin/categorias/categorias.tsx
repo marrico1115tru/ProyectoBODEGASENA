@@ -12,6 +12,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 
 const categoriaSchema = z.object({
   nombre: z.string().min(1, "El nombre es obligatorio"),
@@ -28,6 +29,15 @@ export default function CategoriasProductosPage() {
   const [page, setPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  const [loadingPermisos, setLoadingPermisos] = useState(true);
+
   const {
     register,
     handleSubmit,
@@ -40,8 +50,31 @@ export default function CategoriasProductosPage() {
   });
 
   useEffect(() => {
-    fetchCategorias();
+    const idRol = Number(localStorage.getItem("idRol"));
+    if (!idRol) {
+      console.warn("⚠️ idRol no encontrado en localStorage");
+      setLoadingPermisos(false);
+      return;
+    }
+
+    obtenerPermisosPorRuta("/CategoriasProductosPage", idRol)
+      .then((res) => {
+        console.log("🟢 Permisos obtenidos:", res);
+        setPermisos(res);
+      })
+      .catch(() => {
+        toast.error("Error al obtener permisos");
+      })
+      .finally(() => {
+        setLoadingPermisos(false);
+      });
   }, []);
+
+  useEffect(() => {
+    if (permisos.puedeVer) {
+      fetchCategorias();
+    }
+  }, [permisos]);
 
   const fetchCategorias = async () => {
     const data = await getCategoriasProductos();
@@ -98,21 +131,43 @@ export default function CategoriasProductosPage() {
     }
   };
 
+  if (loadingPermisos) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-gray-600 text-xl font-semibold">
+          Cargando permisos...
+        </div>
+      </DefaultLayout>
+    );
+  }
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-red-600 text-xl font-semibold">
+           🔒 No tiene permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">🏷️ Categorías de Productos</h1>
-          <button
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" /> Crear Categoría
-          </button>
+          {permisos.puedeCrear && (
+            <button
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" /> Crear Categoría
+            </button>
+          )}
         </div>
 
         <input
@@ -131,7 +186,9 @@ export default function CategoriasProductosPage() {
                 <th className="px-6 py-3 font-semibold">Nombre</th>
                 <th className="px-6 py-3 font-semibold">UNPSC</th>
                 <th className="px-6 py-3 font-semibold"># Productos</th>
-                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
+                {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                  <th className="px-6 py-3 font-semibold text-center">Acciones</th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -148,14 +205,20 @@ export default function CategoriasProductosPage() {
                     <td className="px-6 py-2">{cat.nombre}</td>
                     <td className="px-6 py-2">{cat.unpsc || "—"}</td>
                     <td className="px-6 py-2">{cat.productos?.length || 0}</td>
-                    <td className="px-6 py-2 flex justify-center gap-2">
-                      <button onClick={() => handleEdit(cat)} className="text-yellow-600 hover:text-yellow-800">
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleDelete(cat.id)} className="text-red-600 hover:text-red-800">
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </td>
+                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                      <td className="px-6 py-2 flex justify-center gap-2">
+                        {permisos.puedeEditar && (
+                          <button onClick={() => handleEdit(cat)} className="text-yellow-600 hover:text-yellow-800">
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                        )}
+                        {permisos.puedeEliminar && (
+                          <button onClick={() => handleDelete(cat.id)} className="text-red-600 hover:text-red-800">
+                            <TrashIcon className="w-5 h-5" />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

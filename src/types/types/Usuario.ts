@@ -37,6 +37,8 @@ export interface UsuarioLogin {
 }
 
 export interface Permiso {
+  id: Key | null | undefined;
+  opcion: any;
   ruta: string;
   puede_ver: boolean;
   puede_crear: boolean;

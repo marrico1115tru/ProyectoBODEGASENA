@@ -7,6 +7,7 @@ import {
 } from "@/Api/SitioService";
 import { getAreas } from "@/Api/AreasService";
 import { getTiposSitio } from "@/Api/Tipo_sitios";
+import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 import { Sitio, SitioFormValues } from "@/types/types/Sitio";
 import { Area } from "@/types/types/typesArea";
 import { TipoSitio } from "@/types/types/tipo_sitios";
@@ -32,6 +33,13 @@ export default function SitiosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
   const itemsPerPage = 5;
 
   const {
@@ -42,25 +50,33 @@ export default function SitiosPage() {
     formState: { errors },
   } = useForm<SitioFormValues>({
     resolver: zodResolver(sitioSchema),
-    defaultValues: {
-      nombre: "",
-      ubicacion: "",
-      idArea: { id: 0 },
-      idTipoSitio: { id: 0 },
-    },
   });
 
   useEffect(() => {
-    fetchData();
+    const rol = localStorage.getItem("idRol");
+    if (rol) {
+      obtenerPermisosPorRuta("/SitiosPage", Number(rol)).then((perms) => {
+        setPermisos(perms);
+        if (perms.puedeVer) {
+          fetchData();
+        }
+      });
+    }
   }, []);
 
   const fetchData = async () => {
-    const sitiosData = await getSitios();
-    const areasData = await getAreas();
-    const tiposData = await getTiposSitio();
-    setSitios(sitiosData);
-    setAreas(areasData);
-    setTiposSitio(tiposData);
+    try {
+      const [sitiosData, areasData, tiposData] = await Promise.all([
+        getSitios(),
+        getAreas(),
+        getTiposSitio(),
+      ]);
+      setSitios(sitiosData);
+      setAreas(areasData);
+      setTiposSitio(tiposData);
+    } catch {
+      toast.error("Error cargando datos");
+    }
   };
 
   const onSubmit = async (data: SitioFormValues) => {
@@ -85,8 +101,8 @@ export default function SitiosPage() {
     setEditingId(sitio.id);
     setValue("nombre", sitio.nombre ?? "");
     setValue("ubicacion", sitio.ubicacion ?? "");
-    setValue("idArea", { id: sitio.idArea?.id || 0 });
-    setValue("idTipoSitio", { id: sitio.idTipoSitio?.id || 0 });
+    setValue("idArea.id", sitio.idArea?.id ?? 0);
+    setValue("idTipoSitio.id", sitio.idTipoSitio?.id ?? 0);
     setIsModalOpen(true);
   };
 
@@ -99,7 +115,7 @@ export default function SitiosPage() {
   };
 
   const filteredSitios = sitios.filter((s) =>
-    s.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.nombre ?? "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredSitios.length / itemsPerPage);
@@ -108,27 +124,39 @@ export default function SitiosPage() {
     currentPage * itemsPerPage
   );
 
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-red-600 text-xl font-semibold">
+          ❌ No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">🏢 Gestión de Sitios</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
+          <h1 className="text-2xl font-bold">📍 Gestión de Sitios</h1>
+          {permisos.puedeCrear && (
+            <button
+              onClick={() => {
+                reset();
+                setEditingId(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              <PlusIcon className="w-4 h-4" /> Crear
+            </button>
+          )}
         </div>
 
         <input
           type="text"
-          placeholder="Buscar sitio por nombre..."
+          placeholder="Buscar sitio..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="mb-4 w-full border px-4 py-2 rounded"
@@ -138,41 +166,55 @@ export default function SitiosPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-blue-100 text-left">
               <tr>
+                <th className="px-4 py-2">ID</th>
                 <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Ubicación</th>
                 <th className="px-4 py-2">Área</th>
                 <th className="px-4 py-2">Tipo de Sitio</th>
-                <th className="px-4 py-2">Acciones</th>
+                {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                  <th className="px-4 py-2">Acciones</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-gray-500">
+                  <td colSpan={6} className="text-center py-6 text-gray-500">
                     No hay resultados.
                   </td>
                 </tr>
               ) : (
-                currentItems.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{s.nombre}</td>
-                    <td className="px-4 py-2">{s.ubicacion}</td>
-                    <td className="px-4 py-2">{s.idArea?.nombreArea}</td>
-                    <td className="px-4 py-2">{s.idTipoSitio?.nombre}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(s)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
+                currentItems.map((sitio) => (
+                  <tr key={sitio.id} className="hover:bg-gray-50 border-t">
+                    <td className="px-4 py-2">{sitio.id}</td>
+                    <td className="px-4 py-2">{sitio.nombre}</td>
+                    <td className="px-4 py-2">{sitio.ubicacion}</td>
+                    <td className="px-4 py-2">
+                      {sitio.idArea?.nombre ?? "Sin área"}
                     </td>
+                    <td className="px-4 py-2">
+                      {sitio.idTipoSitio?.nombre ?? "Sin tipo"}
+                    </td>
+                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                      <td className="px-4 py-2 space-x-2">
+                        {permisos.puedeEditar && (
+                          <button
+                            onClick={() => handleEdit(sitio)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {permisos.puedeEliminar && (
+                          <button
+                            onClick={() => handleDelete(sitio.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -203,9 +245,8 @@ export default function SitiosPage() {
         )}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
@@ -254,14 +295,16 @@ export default function SitiosPage() {
                 className="w-full border px-3 py-2 rounded"
               >
                 <option value={0}>Seleccione un área</option>
-                {areas.map((area) => (
-                  <option key={area.id} value={area.id}>
-                    {area.nombreArea}
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}
                   </option>
                 ))}
               </select>
               {errors.idArea?.id && (
-                <p className="text-red-500 text-sm">{errors.idArea.id.message}</p>
+                <p className="text-red-500 text-sm">
+                  {errors.idArea.id.message}
+                </p>
               )}
             </div>
 
@@ -271,10 +314,10 @@ export default function SitiosPage() {
                 {...register("idTipoSitio.id", { valueAsNumber: true })}
                 className="w-full border px-3 py-2 rounded"
               >
-                <option value={0}>Seleccione un tipo de sitio</option>
-                {tiposSitio.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.nombre}
+                <option value={0}>Seleccione un tipo</option>
+                {tiposSitio.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre}
                   </option>
                 ))}
               </select>
@@ -295,7 +338,7 @@ export default function SitiosPage() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
+                className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
               >
                 {editingId ? "Actualizar" : "Crear"}
               </button>

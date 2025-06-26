@@ -114,6 +114,7 @@ const Sidebar = () => {
             <Submenu>
               <SidebarButton to="/usuarios" icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/usuarios"]} />
               <SidebarButton to="/RolesPage" icon={<ShieldCheck className="w-4 h-4" />} label="Roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
+              <SidebarButton to="/PermisosPage" icon={<ShieldCheck className="w-4 h-4" />} label="Permisos" isOpen={isOpen} activePaths={["/PermisosPage"]} />
             </Submenu>
           )}
 

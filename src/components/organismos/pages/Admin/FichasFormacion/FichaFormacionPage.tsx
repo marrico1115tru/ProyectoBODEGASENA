@@ -1,4 +1,3 @@
-// pages/fichas/FichasFormacionPage.tsx
 import { useEffect, useState } from "react";
 import {
   getFichasFormacion,
@@ -8,6 +7,7 @@ import {
 } from "@/Api/fichasFormacion";
 import { getTitulados } from "@/Api/TituladosService";
 import { getUsuarios } from "@/Api/Usuariosform";
+import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 import { FichaFormacion } from "@/types/types/FichaFormacion";
 import { Titulados } from "@/types/types/typesTitulados";
 import { Usuario } from "@/types/types/Usuario";
@@ -34,7 +34,15 @@ export default function FichasFormacionPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loadingPermisos, setLoadingPermisos] = useState(true);
   const itemsPerPage = 5;
+
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
 
   const {
     register,
@@ -45,24 +53,51 @@ export default function FichasFormacionPage() {
   } = useForm<FichaSchema>({ resolver: zodResolver(fichaSchema) });
 
   useEffect(() => {
-    fetchFichas();
-    fetchTitulados();
-    fetchUsuarios();
+    const idRol = Number(localStorage.getItem("idRol"));
+    console.log("🔧 DEBUG idRol:", idRol);
+
+    if (!idRol) {
+      toast.error("ID de rol no encontrado");
+      setLoadingPermisos(false);
+      return;
+    }
+
+    obtenerPermisosPorRuta("/FichaFormacionPage", idRol)
+      .then((res) => {
+        console.log("🔧 DEBUG permisos retornados:", res);
+        setPermisos({
+          puedeVer: res.puedeVer ?? false,
+          puedeCrear: res.puedeCrear ?? false,
+          puedeEditar: res.puedeEditar ?? false,
+          puedeEliminar: res.puedeEliminar ?? false,
+        });
+      })
+      .catch((error) => {
+        toast.error("Error al obtener permisos");
+        console.error("🔴 Error de permisos:", error);
+      })
+      .finally(() => setLoadingPermisos(false));
   }, []);
 
-  const fetchFichas = async () => {
-    const data = await getFichasFormacion();
-    setFichas(data);
-  };
+  useEffect(() => {
+    if (permisos.puedeVer) {
+      fetchAllData();
+    }
+  }, [permisos]);
 
-  const fetchTitulados = async () => {
-    const data = await getTitulados();
-    setTitulados(data);
-  };
-
-  const fetchUsuarios = async () => {
-    const data = await getUsuarios();
-    setUsuarios(data);
+  const fetchAllData = async () => {
+    try {
+      const [fichasData, tituladosData, usuariosData] = await Promise.all([
+        getFichasFormacion(),
+        getTitulados(),
+        getUsuarios(),
+      ]);
+      setFichas(fichasData);
+      setTitulados(tituladosData);
+      setUsuarios(usuariosData);
+    } catch (error) {
+      toast.error("Error al cargar datos");
+    }
   };
 
   const onSubmit = async (data: FichaSchema) => {
@@ -74,9 +109,10 @@ export default function FichasFormacionPage() {
         await createFichaFormacion(data);
         toast.success("Ficha creada");
       }
-      fetchFichas();
+      fetchAllData();
       reset();
       setIsModalOpen(false);
+      setEditingId(null);
     } catch (err) {
       toast.error("Error al guardar ficha");
     }
@@ -92,9 +128,20 @@ export default function FichasFormacionPage() {
 
   const handleDelete = async (id: number) => {
     if (confirm("¿Eliminar esta ficha de formación?")) {
-      await deleteFichaFormacion(id);
-      fetchFichas();
+      try {
+        await deleteFichaFormacion(id);
+        toast.success("Ficha eliminada");
+        fetchAllData();
+      } catch {
+        toast.error("Error al eliminar");
+      }
     }
+  };
+
+  const handleCloseModal = () => {
+    reset();
+    setIsModalOpen(false);
+    setEditingId(null);
   };
 
   const filtered = fichas.filter((f) =>
@@ -106,22 +153,44 @@ export default function FichasFormacionPage() {
     currentPage * itemsPerPage
   );
 
+  if (loadingPermisos) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-gray-600 text-xl font-semibold">
+          Cargando permisos...
+        </div>
+      </DefaultLayout>
+    );
+  }
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-red-600 text-xl font-semibold">
+          🔒 No tiene permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">📘 Fichas de Formación</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
+          {permisos.puedeCrear && (
+            <button
+              onClick={() => {
+                reset();
+                setEditingId(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              <PlusIcon className="w-4 h-4" /> Crear
+            </button>
+          )}
         </div>
 
         <input
@@ -140,7 +209,9 @@ export default function FichasFormacionPage() {
                 <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Titulado</th>
                 <th className="px-4 py-2">Responsable</th>
-                <th className="px-4 py-2">Acciones</th>
+                {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                  <th className="px-4 py-2">Acciones</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -161,20 +232,26 @@ export default function FichasFormacionPage() {
                         ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido}`
                         : "Sin responsable"}
                     </td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(ficha)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ficha.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
+                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                      <td className="px-4 py-2 space-x-2">
+                        {permisos.puedeEditar && (
+                          <button
+                            onClick={() => handleEdit(ficha)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {permisos.puedeEliminar && (
+                          <button
+                            onClick={() => handleDelete(ficha.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -205,7 +282,6 @@ export default function FichasFormacionPage() {
         )}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <form
@@ -218,7 +294,7 @@ export default function FichasFormacionPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="text-gray-600 hover:text-red-500"
               >
                 <XIcon className="w-5 h-5" />
@@ -280,7 +356,7 @@ export default function FichasFormacionPage() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
               >
                 Cancelar

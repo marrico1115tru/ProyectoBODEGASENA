@@ -17,10 +17,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 
 const areaSchema = z.object({
-  nombreArea: z
-    .string()
-    .min(1, "El nombre del área es obligatorio")
-    .max(100, "Máximo 100 caracteres"),
+  nombreArea: z.string().min(1, "El nombre del área es obligatorio").max(100, "Máximo 100 caracteres"),
   idSedeId: z.number().min(1, "Debe seleccionar una sede"),
 });
 
@@ -42,6 +39,8 @@ export default function AreasPage() {
     puedeEliminar: false,
   });
 
+  const [loadingPermisos, setLoadingPermisos] = useState(true);
+
   const {
     register,
     handleSubmit,
@@ -53,13 +52,24 @@ export default function AreasPage() {
   });
 
   useEffect(() => {
-    const idRol = localStorage.getItem("idRol");
-    if (idRol) {
-      obtenerPermisosPorRuta("/AreasPage", Number(idRol)).then((res) => {
+    const idRol = Number(localStorage.getItem("idRol"));
+    if (!idRol) {
+      console.warn("⚠️ idRol no encontrado en localStorage");
+      setLoadingPermisos(false);
+      return;
+    }
+
+    obtenerPermisosPorRuta("/AreasPage", idRol)
+      .then((res) => {
         console.log("🟢 Permisos obtenidos:", res);
         setPermisos(res);
+      })
+      .catch(() => {
+        toast.error("Error al obtener permisos");
+      })
+      .finally(() => {
+        setLoadingPermisos(false);
       });
-    }
   }, []);
 
   useEffect(() => {
@@ -128,11 +138,21 @@ export default function AreasPage() {
     currentPage * itemsPerPage
   );
 
+  if (loadingPermisos) {
+    return (
+      <DefaultLayout>
+        <div className="p-10 text-center text-gray-600 text-xl font-semibold">
+          Cargando permisos...
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
         <div className="p-10 text-center text-red-600 text-xl font-semibold">
-          ❌ No tienes permisos para ver esta sección.
+           🔒 No tiene permisos para ver esta sección.
         </div>
       </DefaultLayout>
     );
@@ -190,7 +210,9 @@ export default function AreasPage() {
                   <tr key={area.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2">{area.id}</td>
                     <td className="px-4 py-2">{area.nombreArea}</td>
-                    <td className="px-4 py-2">{area.idSede?.nombre ?? "Sin sede"}</td>
+                    <td className="px-4 py-2">
+                      {area.idSede?.nombre ?? "Sin sede"}
+                    </td>
                     {(permisos.puedeEditar || permisos.puedeEliminar) && (
                       <td className="px-4 py-2 space-x-2">
                         {permisos.puedeEditar && (
@@ -263,9 +285,7 @@ export default function AreasPage() {
                   className="w-full border px-3 py-2 rounded"
                 />
                 {errors.nombreArea && (
-                  <p className="text-red-500 text-sm">
-                    {errors.nombreArea.message}
-                  </p>
+                  <p className="text-red-500 text-sm">{errors.nombreArea.message}</p>
                 )}
               </div>
 
@@ -283,9 +303,7 @@ export default function AreasPage() {
                   ))}
                 </select>
                 {errors.idSedeId && (
-                  <p className="text-red-500 text-sm">
-                    {errors.idSedeId.message}
-                  </p>
+                  <p className="text-red-500 text-sm">{errors.idSedeId.message}</p>
                 )}
               </div>
 
