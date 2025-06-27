@@ -1,47 +1,43 @@
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { FaUser, FaLock } from 'react-icons/fa';
-import { login } from '@/Api/auth/auth';
-import toast from 'react-hot-toast';
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { FaUser, FaLock } from "react-icons/fa";
+import { login } from "@/Api/auth/auth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    setError('');
-    setLoading(true);
+    setError("");
     try {
-      const res = await login({
+      const user = await login({
         email: email.trim(),
         password: password.trim(),
       });
 
-      // ✅ Aquí no guardes cookies manualmente: el backend ya guardó el token.
-      if (!res || !res.usuario || !res.permisos) {
-        setError('Respuesta inválida del servidor.');
-        return;
-      }
+      console.log("✅ Usuario autenticado:", user);
 
-      toast.success(`Bienvenido, ${res.usuario.nombre} 👋`);
-      navigate('/home');
+      // Opcional: guardar token si tu backend lo devuelve
+      // localStorage.setItem('token', user.token);
+
+      navigate("/Home");
     } catch (err) {
-      console.error('❌ Error al iniciar sesión:', err);
-      setError('Correo o contraseña incorrectos.');
-    } finally {
-      setLoading(false);
+      console.error("❌ Error de autenticación:", err);
+      setError("Credenciales incorrectas");
     }
   };
 
   return (
     <div
       className="h-screen w-full bg-cover bg-center flex items-center justify-center"
-      style={{ backgroundImage: `url('src/img/bodegas.jpeg')` }}
+      style={{
+        backgroundImage: `url('src/img/bodegas.jpeg')`,
+      }}
     >
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-10 rounded-xl shadow-2xl max-w-sm w-full text-gray-100">
         <div className="flex justify-center mb-6">
@@ -54,14 +50,15 @@ const Login = () => {
           <div>
             <label className="text-sm text-white/80">Correo electrónico</label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-gray-400"><FaUser /></span>
+              <span className="absolute left-3 top-2.5 text-gray-400">
+                <FaUser />
+              </span>
               <Input
                 type="email"
                 placeholder="Ingrese su correo"
                 className="pl-10 bg-slate-800 text-white placeholder-white/60 border border-slate-600"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
               />
             </div>
           </div>
@@ -69,14 +66,15 @@ const Login = () => {
           <div>
             <label className="text-sm text-white/80">Contraseña</label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-gray-400"><FaLock /></span>
+              <span className="absolute left-3 top-2.5 text-gray-400">
+                <FaLock />
+              </span>
               <Input
                 type="password"
                 placeholder="Ingrese su contraseña"
                 className="pl-10 bg-slate-800 text-white placeholder-white/60 border border-slate-600"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
               />
             </div>
           </div>
@@ -85,10 +83,9 @@ const Login = () => {
 
           <Button
             onClick={handleLogin}
-            disabled={loading}
             className="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold"
           >
-            {loading ? 'Ingresando...' : 'Iniciar'}
+            Iniciar
           </Button>
         </div>
 

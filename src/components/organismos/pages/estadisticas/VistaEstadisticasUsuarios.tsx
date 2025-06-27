@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { BarChart } from './Graficasbases/GraficasBaseProductos';
-import DefaultLayout from '@/layouts/default';
 import axios from 'axios';
-
-// 👇 Utilidad para obtener cookies
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-}
+import DefaultLayout from '@/layouts/default';
 
 interface ProductosPorUsuario {
   nombreCompleto: string;
@@ -28,21 +22,9 @@ export default function VistaEstadisticasUsuarios() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getCookie('token');
-
-    if (!token) {
-      setError('No hay token de autenticación en las cookies.');
-      setLoading(false);
-      return;
-    }
-
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-
     Promise.all([
-      axios.get('http://localhost:3000/productos/solicitados-por-usuario', { headers }),
-      axios.get('http://localhost:3000/usuarios/estadisticas/por-rol', { headers }),
+      axios.get('http://localhost:3000/productos/solicitados-por-usuario'),
+      axios.get('http://localhost:3000/usuarios/estadisticas/por-rol'),
     ])
       .then(([productosRes, rolesRes]) => {
         const productosValidos = productosRes.data
@@ -67,7 +49,7 @@ export default function VistaEstadisticasUsuarios() {
       })
       .catch((err) => {
         setError('Error al obtener datos de estadísticas.');
-        console.error('❌ Error al cargar estadísticas:', err);
+        console.error('❌', err);
       })
       .finally(() => {
         setLoading(false);
