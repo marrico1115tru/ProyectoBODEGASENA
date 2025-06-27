@@ -10,62 +10,20 @@ import {
   deleteMovimiento,
   MovimientoMaterial
 } from '@/Api/Movimientosform';
-import axios from 'axios';
-
-interface Permisos {
-  puedeVer: boolean;
-  puedeCrear: boolean;
-  puedeEditar: boolean;
-  puedeEliminar: boolean;
-}
 
 const MovimientosTable = () => {
   const [movimientos, setMovimientos] = useState<MovimientoMaterial[]>([]);
-  const [permisos, setPermisos] = useState<Permisos>({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-  const [loadingPermisos, setLoadingPermisos] = useState(true);
 
   useEffect(() => {
-    obtenerPermisos();
+    cargarMovimientos();
   }, []);
-
-  useEffect(() => {
-    if (permisos.puedeVer) {
-      cargarMovimientos();
-    }
-  }, [permisos]);
-
-  const obtenerPermisos = async () => {
-    try {
-      const idRol = localStorage.getItem("idRol");
-      if (!idRol) {
-        setLoadingPermisos(false);
-        return;
-      }
-
-      const ruta = "/MovimientoInventarioPage";
-      const res = await axios.get(
-        `http://localhost:3000/permisos/por-ruta?ruta=${ruta}&idRol=${idRol}`
-      );
-
-      setPermisos(res.data.data);
-    } catch (error) {
-      console.error("❌ Error obteniendo permisos:", error);
-    } finally {
-      setLoadingPermisos(false);
-    }
-  };
 
   const cargarMovimientos = async () => {
     try {
       const data = await fetchMovimientos();
       setMovimientos(data);
     } catch (error) {
-      console.error("❌ Error cargando movimientos:", error);
+      console.error("Error cargando movimientos:", error);
     }
   };
 
@@ -87,7 +45,7 @@ const MovimientosTable = () => {
         await cargarMovimientos();
         Swal.fire("¡Eliminado!", "El movimiento ha sido eliminado.", "success");
       } catch (error) {
-        console.error("❌ Error eliminando movimiento:", error);
+        console.error("Error eliminando movimiento:", error);
         Swal.fire("Error", "No se pudo eliminar el movimiento.", "error");
       }
     }
@@ -97,21 +55,21 @@ const MovimientosTable = () => {
     const { value: formValues } = await Swal.fire({
       title: "Editar Movimiento",
       html: `
-        <input id="tipo" class="swal2-input" placeholder="Tipo" value="${movimiento.tipo}">
+        <input id="tipo" class="swal2-input" placeholder="Tipo (Entrada o Salida)" value="${movimiento.tipo}">
         <input id="cantidad" type="number" class="swal2-input" placeholder="Cantidad" value="${movimiento.cantidad}">
-        <input id="fecha" type="date" class="swal2-input" value="${movimiento.fecha?.split('T')[0]}">
+        <input id="fecha" type="date" class="swal2-input" value="${movimiento.fecha.split('T')[0]}">
         <input id="id_producto" type="number" class="swal2-input" placeholder="ID Producto" value="${movimiento.id_producto}">
         <input id="id_usuario" type="number" class="swal2-input" placeholder="ID Usuario" value="${movimiento.id_usuario}">
       `,
       focusConfirm: false,
       preConfirm: () => {
-        const get = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+        const getInput = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
         return {
-          tipo: get("tipo"),
-          cantidad: Number(get("cantidad")),
-          fecha: get("fecha"),
-          id_producto: Number(get("id_producto")),
-          id_usuario: Number(get("id_usuario")),
+          tipo: getInput('tipo'),
+          cantidad: Number(getInput('cantidad')),
+          fecha: getInput('fecha'),
+          id_producto: Number(getInput('id_producto')),
+          id_usuario: Number(getInput('id_usuario')),
         };
       },
     });
@@ -122,7 +80,7 @@ const MovimientosTable = () => {
         await cargarMovimientos();
         Swal.fire("Actualizado", "Movimiento actualizado exitosamente.", "success");
       } catch (error) {
-        console.error("❌ Error actualizando movimiento:", error);
+        console.error("Error actualizando movimiento:", error);
         Swal.fire("Error", "No se pudo actualizar el movimiento.", "error");
       }
     }
@@ -132,7 +90,7 @@ const MovimientosTable = () => {
     const { value: formValues } = await Swal.fire({
       title: "Crear Movimiento",
       html: `
-        <input id="tipo" class="swal2-input" placeholder="Tipo">
+        <input id="tipo" class="swal2-input" placeholder="Tipo (Entrada o Salida)">
         <input id="cantidad" type="number" class="swal2-input" placeholder="Cantidad">
         <input id="fecha" type="date" class="swal2-input">
         <input id="id_producto" type="number" class="swal2-input" placeholder="ID Producto">
@@ -140,13 +98,13 @@ const MovimientosTable = () => {
       `,
       focusConfirm: false,
       preConfirm: () => {
-        const get = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+        const getInput = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
         return {
-          tipo: get("tipo"),
-          cantidad: Number(get("cantidad")),
-          fecha: get("fecha"),
-          id_producto: Number(get("id_producto")),
-          id_usuario: Number(get("id_usuario")),
+          tipo: getInput('tipo'),
+          cantidad: Number(getInput('cantidad')),
+          fecha: getInput('fecha'),
+          id_producto: Number(getInput('id_producto')),
+          id_usuario: Number(getInput('id_usuario')),
         };
       },
     });
@@ -157,34 +115,18 @@ const MovimientosTable = () => {
         await cargarMovimientos();
         Swal.fire("Creado", "Movimiento creado exitosamente.", "success");
       } catch (error) {
-        console.error("❌ Error creando movimiento:", error);
+        console.error("Error creando movimiento:", error);
         Swal.fire("Error", "No se pudo crear el movimiento.", "error");
       }
     }
   };
 
   const getTipoTexto = (tipo: any) => {
-    if (tipo === 1 || tipo === "1" || tipo.toLowerCase() === "entrada") return "Entrada";
+    if (tipo === 1 || tipo === "1" || tipo === "Entrada") {
+      return "Entrada";
+    }
     return "Salida";
   };
-
-  if (loadingPermisos) {
-    return (
-      <DefaultLayout>
-        <div className="text-center py-10 text-gray-500 text-lg">⏳ Cargando permisos...</div>
-      </DefaultLayout>
-    );
-  }
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="text-center py-10 text-red-600 text-xl font-semibold">
-          🔒 No tienes permiso para ver esta página.
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   return (
     <DefaultLayout>
@@ -192,28 +134,23 @@ const MovimientosTable = () => {
         <Card className="w-full rounded-2xl shadow-md p-6 bg-white">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Movimientos de Materiales</h1>
-            {permisos.puedeCrear && (
-              <Button
-                onClick={handleCreate}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-              >
-                Nuevo Movimiento
-              </Button>
-            )}
+            <Button 
+              onClick={handleCreate} 
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+            >
+              Nuevo Movimiento
+            </Button>
           </div>
-
           <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="min-w-full table-auto text-sm">
               <thead className="bg-gray-700 text-white">
                 <tr>
-                  <th className="px-4 py-3">Tipo</th>
-                  <th className="px-4 py-3">Cantidad</th>
-                  <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">ID Producto</th>
-                  <th className="px-4 py-3">ID Usuario</th>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <th className="px-4 py-3">Acciones</th>
-                  )}
+                  {["Tipo", "Cantidad", "Fecha", "Producto ID", "Usuario ID", "Acciones"].map((header) => (
+                    <th key={header} className="px-4 py-3 text-center font-semibold">
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -225,32 +162,28 @@ const MovimientosTable = () => {
                   </tr>
                 ) : (
                   movimientos.map((movimiento) => (
-                    <tr key={movimiento.id} className="border-b hover:bg-gray-100">
-                      <td className="text-center py-2">{getTipoTexto(movimiento.tipo)}</td>
-                      <td className="text-center py-2">{movimiento.cantidad}</td>
-                      <td className="text-center py-2">{new Date(movimiento.fecha).toLocaleDateString()}</td>
-                      <td className="text-center py-2">{movimiento.id_producto}</td>
-                      <td className="text-center py-2">{movimiento.id_usuario}</td>
-                      {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                        <td className="text-center py-2 flex justify-center gap-2">
-                          {permisos.puedeEditar && (
-                            <Button
-                              onClick={() => handleEdit(movimiento)}
-                              className="bg-yellow-500 text-white"
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {permisos.puedeEliminar && (
-                            <Button
-                              onClick={() => handleDelete(movimiento.id)}
-                              className="bg-red-600 text-white"
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </td>
-                      )}
+                    <tr key={movimiento.id} className="hover:bg-gray-100 border-b">
+                      <td className="px-4 py-3 text-center">{getTipoTexto(movimiento.tipo)}</td>
+                      <td className="px-4 py-3 text-center">{movimiento.cantidad}</td>
+                      <td className="px-4 py-3 text-center">{new Date(movimiento.fecha).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-center">{movimiento.id_producto}</td>
+                      <td className="px-4 py-3 text-center">{movimiento.id_usuario}</td>
+                      <td className="px-4 py-3 flex justify-center gap-2">
+                        <Button 
+                          onClick={() => handleEdit(movimiento)} 
+                          size="sm"
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg transition"
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          onClick={() => handleDelete(movimiento.id)} 
+                          size="sm"
+                          className="bg-red-500 hover:bg-red-600 text-white rounded-lg transition"
+                        >
+                          Eliminar
+                        </Button>
+                      </td>
                     </tr>
                   ))
                 )}

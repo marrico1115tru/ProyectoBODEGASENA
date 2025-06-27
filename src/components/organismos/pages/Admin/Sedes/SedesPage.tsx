@@ -1,3 +1,4 @@
+// pages/sedes/SedesPage.tsx
 import { useEffect, useState } from "react";
 import {
   getSedes,
@@ -6,7 +7,6 @@ import {
   deleteSede,
 } from "@/Api/SedesService";
 import { getCentrosFormacion } from "@/Api/centrosformacionTable";
-import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 import { Sede } from "@/types/types/Sede";
 import { CentroFormacion } from "@/types/types/typesCentroFormacion";
 import DefaultLayout from "@/layouts/default";
@@ -33,14 +33,6 @@ export default function SedesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rol, setRol] = useState<number | null>(null); // 👉 nuevo estado
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const itemsPerPage = 5;
 
   const {
@@ -51,30 +43,10 @@ export default function SedesPage() {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(sedeSchema) });
 
-  // 🟡 Obtener rol desde localStorage al montar
   useEffect(() => {
-    const storedRol = localStorage.getItem("idRol");
-    if (storedRol) {
-      setRol(Number(storedRol));
-    } else {
-      toast.error("No se encontró el rol en localStorage");
-    }
+    fetchSedes();
+    fetchCentros();
   }, []);
-
-  // 🔵 Obtener permisos una vez que el rol esté definido
-  useEffect(() => {
-    if (rol !== null) {
-      obtenerPermisosPorRuta("/SedesPage", rol)
-        .then((perms) => {
-          setPermisos(perms);
-          if (perms.puedeVer) {
-            fetchSedes();
-            fetchCentros();
-          }
-        })
-        .catch(() => toast.error("Error al obtener permisos"));
-    }
-  }, [rol]);
 
   const fetchSedes = async () => {
     const data = await getSedes();
@@ -105,8 +77,8 @@ export default function SedesPage() {
   };
 
   const handleEdit = (sede: Sede) => {
-    setValue("nombre", sede.nombre ?? "");
-    setValue("ubicacion", sede.ubicacion ?? "");
+    setValue("nombre", sede.nombre);
+    setValue("ubicacion", sede.ubicacion);
     setValue("idCentroFormacion.id", sede.idCentroFormacion?.id ?? 0);
     setEditingId(sede.id);
     setIsModalOpen(true);
@@ -121,7 +93,7 @@ export default function SedesPage() {
   };
 
   const filtered = sedes.filter((s) =>
-    (s.nombre ?? "").toLowerCase().includes(search.toLowerCase())
+    s.nombre.toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -130,34 +102,22 @@ export default function SedesPage() {
     currentPage * itemsPerPage
   );
 
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-10 text-center text-red-600 text-xl font-semibold">
-          ❌ No tienes permisos para ver esta sección.
-        </div>
-      </DefaultLayout>
-    );
-  }
-
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">🏢 Gestión de Sedes</h1>
-          {permisos.puedeCrear && (
-            <button
-              onClick={() => {
-                reset();
-                setEditingId(null);
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              <PlusIcon className="w-4 h-4" /> Crear
-            </button>
-          )}
+          <button
+            onClick={() => {
+              reset();
+              setEditingId(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <PlusIcon className="w-4 h-4" /> Crear
+          </button>
         </div>
 
         <input
@@ -176,9 +136,7 @@ export default function SedesPage() {
                 <th className="px-4 py-2">Nombre</th>
                 <th className="px-4 py-2">Ubicación</th>
                 <th className="px-4 py-2">Centro Formación</th>
-                {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                  <th className="px-4 py-2">Acciones</th>
-                )}
+                <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -197,26 +155,20 @@ export default function SedesPage() {
                     <td className="px-4 py-2">
                       {sede.idCentroFormacion?.nombre ?? "Sin centro"}
                     </td>
-                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                      <td className="px-4 py-2 space-x-2">
-                        {permisos.puedeEditar && (
-                          <button
-                            onClick={() => handleEdit(sede)}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {permisos.puedeEliminar && (
-                          <button
-                            onClick={() => handleDelete(sede.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Eliminar
-                          </button>
-                        )}
-                      </td>
-                    )}
+                    <td className="px-4 py-2 space-x-2">
+                      <button
+                        onClick={() => handleEdit(sede)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(sede.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

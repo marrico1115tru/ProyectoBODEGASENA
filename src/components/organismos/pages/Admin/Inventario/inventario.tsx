@@ -1,3 +1,4 @@
+// pages/inventario/InventarioPage.tsx
 import { useEffect, useState } from "react";
 import {
   getInventarios,
@@ -7,7 +8,6 @@ import {
 } from "@/Api/inventario";
 import { getProductos } from "@/Api/Productosform";
 import { getSitios } from "@/Api/SitioService";
-import { obtenerPermisosPorRuta } from "@/Api/PermisosService";
 import { Producto } from "@/types/types/typesProductos";
 import { Sitio } from "@/types/types/Sitio";
 import { Inventario } from "@/types/types/inventario";
@@ -36,14 +36,6 @@ export default function InventarioPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-  const [loadingPermisos, setLoadingPermisos] = useState(true);
-
   const {
     register,
     handleSubmit,
@@ -55,45 +47,24 @@ export default function InventarioPage() {
   });
 
   useEffect(() => {
-    const idRol = Number(localStorage.getItem("idRol"));
-    if (!idRol) {
-      console.warn("⚠️ idRol no encontrado en localStorage");
-      setLoadingPermisos(false);
-      return;
-    }
-
-    obtenerPermisosPorRuta("/InventarioPage", idRol)
-      .then((res) => {
-        console.log("🛡️ Permisos obtenidos:", res);
-        setPermisos(res);
-      })
-      .catch(() => {
-        toast.error("Error al obtener permisos");
-      })
-      .finally(() => {
-        setLoadingPermisos(false);
-      });
+    fetchInventarios();
+    fetchProductos();
+    fetchSitios();
   }, []);
 
-  useEffect(() => {
-    if (permisos.puedeVer) {
-      fetchDatos();
-    }
-  }, [permisos]);
+  const fetchInventarios = async () => {
+    const data = await getInventarios();
+    setInventarios(data);
+  };
 
-  const fetchDatos = async () => {
-    try {
-      const [inv, prods, sites] = await Promise.all([
-        getInventarios(),
-        getProductos(),
-        getSitios(),
-      ]);
-      setInventarios(inv);
-      setProductos(prods);
-      setSitios(sites);
-    } catch {
-      toast.error("Error al cargar datos");
-    }
+  const fetchProductos = async () => {
+    const data = await getProductos();
+    setProductos(data);
+  };
+
+  const fetchSitios = async () => {
+    const data = await getSitios();
+    setSitios(data);
   };
 
   const onSubmit = async (data: InventarioSchema) => {
@@ -105,8 +76,9 @@ export default function InventarioPage() {
         await createInventario(data);
         toast.success("Inventario creado");
       }
-      fetchDatos();
-      handleCloseModal();
+      fetchInventarios();
+      reset();
+      setIsModalOpen(false);
     } catch {
       toast.error("Error al guardar inventario");
     }
@@ -122,26 +94,14 @@ export default function InventarioPage() {
 
   const handleDelete = async (id: number) => {
     if (confirm("¿Eliminar este registro?")) {
-      try {
-        await deleteInventario(id);
-        toast.success("Inventario eliminado");
-        fetchDatos();
-      } catch {
-        toast.error("Error al eliminar inventario");
-      }
+      await deleteInventario(id);
+      fetchInventarios();
     }
-  };
-
-  const handleCloseModal = () => {
-    reset();
-    setIsModalOpen(false);
-    setEditingId(null);
   };
 
   const filtered = inventarios.filter((inv) =>
     inv.idProducto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const paginated = filtered.slice(
     (currentPage - 1) * itemsPerPage,
@@ -159,44 +119,22 @@ export default function InventarioPage() {
     return `${Math.min((stock / 100) * 100, 100)}%`;
   };
 
-  if (loadingPermisos) {
-    return (
-      <DefaultLayout>
-        <div className="p-10 text-center text-gray-600 text-xl font-semibold">
-          Cargando permisos...
-        </div>
-      </DefaultLayout>
-    );
-  }
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-10 text-center text-red-600 text-xl font-semibold">
-          🔒 No tiene permisos para ver esta sección.
-        </div>
-      </DefaultLayout>
-    );
-  }
-
   return (
     <DefaultLayout>
       <Toaster />
       <div className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">📦 Inventario</h1>
-          {permisos.puedeCrear && (
-            <button
-              onClick={() => {
-                reset();
-                setEditingId(null);
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              <PlusIcon className="w-4 h-4" /> Crear
-            </button>
-          )}
+          <button
+            onClick={() => {
+              reset();
+              setEditingId(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <PlusIcon className="w-4 h-4" /> Crear
+          </button>
         </div>
 
         <input
@@ -216,9 +154,7 @@ export default function InventarioPage() {
                 <th className="px-4 py-2">Stock</th>
                 <th className="px-4 py-2">Sitio</th>
                 <th className="px-4 py-2">Ubicación</th>
-                {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                  <th className="px-4 py-2">Acciones</th>
-                )}
+                <th className="px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -230,22 +166,15 @@ export default function InventarioPage() {
                 </tr>
               ) : (
                 paginated.map((inv) => (
-                  <tr
-                    key={inv.idProductoInventario}
-                    className="hover:bg-gray-50"
-                  >
+                  <tr key={inv.idProductoInventario} className="hover:bg-gray-50">
                     <td className="px-4 py-2">{inv.idProducto.nombre}</td>
                     <td className="px-4 py-2">{inv.idProducto.descripcion}</td>
                     <td className="px-4 py-2">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium">
-                          {inv.stock} unidades
-                        </span>
+                        <span className="text-sm font-medium">{inv.stock} unidades</span>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full ${getStockBarColor(
-                              inv.stock
-                            )}`}
+                            className={`h-2 rounded-full ${getStockBarColor(inv.stock)}`}
                             style={{ width: getStockPercentage(inv.stock) }}
                           ></div>
                         </div>
@@ -253,28 +182,20 @@ export default function InventarioPage() {
                     </td>
                     <td className="px-4 py-2">{inv.fkSitio.nombre}</td>
                     <td className="px-4 py-2">{inv.fkSitio.ubicacion}</td>
-                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                      <td className="px-4 py-2 space-x-2">
-                        {permisos.puedeEditar && (
-                          <button
-                            onClick={() => handleEdit(inv)}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {permisos.puedeEliminar && (
-                          <button
-                            onClick={() =>
-                              handleDelete(inv.idProductoInventario)
-                            }
-                            className="text-red-600 hover:underline"
-                          >
-                            Eliminar
-                          </button>
-                        )}
-                      </td>
-                    )}
+                    <td className="px-4 py-2 space-x-2">
+                      <button
+                        onClick={() => handleEdit(inv)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(inv.idProductoInventario)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -288,23 +209,18 @@ export default function InventarioPage() {
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(currentPage - 1)}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm">
-              Página {currentPage} de {totalPages}
-            </span>
+            >Anterior</button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
             <button
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(currentPage + 1)}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
+            >Siguiente</button>
           </div>
         )}
       </div>
 
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <form
@@ -317,7 +233,7 @@ export default function InventarioPage() {
               </h2>
               <button
                 type="button"
-                onClick={handleCloseModal}
+                onClick={() => setIsModalOpen(false)}
                 className="text-gray-600 hover:text-red-500"
               >
                 <XIcon className="w-5 h-5" />
@@ -331,9 +247,7 @@ export default function InventarioPage() {
                 {...register("stock", { valueAsNumber: true })}
                 className="w-full border px-3 py-2 rounded"
               />
-              {errors.stock && (
-                <p className="text-red-500 text-sm">{errors.stock.message}</p>
-              )}
+              {errors.stock && <p className="text-red-500 text-sm">{errors.stock.message}</p>}
             </div>
 
             <div className="mb-4">
@@ -344,16 +258,10 @@ export default function InventarioPage() {
               >
                 <option value={0}>Seleccione un sitio</option>
                 {sitios.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
+                  <option key={s.id} value={s.id}>{s.nombre}</option>
                 ))}
               </select>
-              {errors.fkSitioId && (
-                <p className="text-red-500 text-sm">
-                  {errors.fkSitioId.message}
-                </p>
-              )}
+              {errors.fkSitioId && <p className="text-red-500 text-sm">{errors.fkSitioId.message}</p>}
             </div>
 
             <div className="mb-4">
@@ -364,32 +272,22 @@ export default function InventarioPage() {
               >
                 <option value={0}>Seleccione un producto</option>
                 {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
               </select>
-              {errors.idProductoId && (
-                <p className="text-red-500 text-sm">
-                  {errors.idProductoId.message}
-                </p>
-              )}
+              {errors.idProductoId && <p className="text-red-500 text-sm">{errors.idProductoId.message}</p>}
             </div>
 
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={handleCloseModal}
+                onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancelar
-              </button>
+              >Cancelar</button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >
-                {editingId ? "Actualizar" : "Crear"}
-              </button>
+              >{editingId ? "Actualizar" : "Crear"}</button>
             </div>
           </form>
         </div>

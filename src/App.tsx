@@ -37,7 +37,6 @@ import Perfil from "./components/organismos/pages/Perfil/Perfil.tsx"
 import CategoriasProductosPage from "./components/organismos/pages/Admin/categorias/categorias.tsx";
 import InventarioPage from "./components/organismos/pages/Admin/Inventario/inventario.tsx";
 import DetalleSolicitudPage from "./components/organismos/pages/Admin/detalles_solicitud/detalles_solicitud.tsx";
-import PermisosPage from "./components/organismos/pages/Admin/Permisos/permisosPorRol.tsx"
 const queryClient = new QueryClient();
 
 function App() {
@@ -82,7 +81,6 @@ function App() {
         <Route path ="/CategoriasProductosPage" element={<CategoriasProductosPage/>} />
         <Route path="/InventarioPage" element={<InventarioPage/>}/>
         <Route path="/DetalleSolicitudPage" element={<DetalleSolicitudPage/>}/>
-        <Route path="/PermisosPage" element={<PermisosPage />} />
       </Routes>
     </QueryClientProvider>
   );
