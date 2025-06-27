@@ -36,7 +36,6 @@ const Sidebar = () => {
 
   return (
     <aside className={`transition-all duration-300 flex flex-col shadow-lg border-r border-slate-700 ${isOpen ? "w-64" : "w-20"} min-h-screen bg-slate-900 text-white`}>
-
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
         {isOpen && <h1 className="text-xl font-bold tracking-wide text-cyan-400">INNOVASOFT</h1>}
@@ -49,7 +48,7 @@ const Sidebar = () => {
       <div className="flex-1 overflow-y-auto px-2 py-4 custom-scrollbar">
         <nav className="flex flex-col gap-1 text-sm font-medium">
           {/* Enlaces directos */}
-          <SidebarButton to="/" icon={<Home className="w-5 h-5" />} label="Home" isOpen={isOpen} activePaths={["/"]} />
+          <SidebarButton to="/inicio" icon={<Home className="w-5 h-5" />} label="Home" isOpen={isOpen} activePaths={["/inicio"]} />
           <SidebarButton to="/inicio" icon={<FileText className="w-5 h-5" />} label="Inicio" isOpen={isOpen} activePaths={["/inicio"]} />
 
           {/* Productos */}
