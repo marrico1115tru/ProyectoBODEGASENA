@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DefaultLayout from "@/layouts/default";
 import { Pencil, Upload } from "lucide-react";
 
 export default function Perfil() {
-  const [nombre, setNombre] = useState("Maria Rico");
-  const [rol, setRol] = useState("Administrador");
-  const [correo, setCorreo] = useState("maria.rico@example.com");
-  const [telefono, setTelefono] = useState("+57 300 123 4567");
-  const [centro, setCentro] = useState("SENA CBA");
+  const [nombre, setNombre] = useState("");
+  const [rol, setRol] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [centro, setCentro] = useState("");
   const [foto, setFoto] = useState<string | null>(null);
   const [modoEdicion, setModoEdicion] = useState(false);
+
+  // 🔄 Cargar datos del usuario desde localStorage
+  useEffect(() => {
+    const userString = localStorage.getItem("user");
+    if (userString) {
+      const user = JSON.parse(userString);
+      setNombre(user.nombre || "Sin nombre");
+      setCorreo(user.email || "");
+      setRol(user.rol || "Usuario");
+      setTelefono(user.telefono || "No registrado");
+      setCentro(user.centroFormacion || "No registrado");
+    }
+  }, []);
 
   const handleImagen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,7 +40,10 @@ export default function Perfil() {
             <div className="relative group">
               <img
                 src={
-                  foto || "https://ui-avatars.com/api/?name=Maria+Rico&background=0f172a&color=fff&size=128"
+                  foto ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    nombre
+                  )}&background=0f172a&color=fff&size=128`
                 }
                 alt="Avatar"
                 className="w-28 h-28 rounded-full border-4 border-cyan-500 shadow-lg object-cover"
@@ -52,15 +68,25 @@ export default function Perfil() {
               ) : (
                 <>
                   <h1 className="text-4xl font-bold text-slate-800 mb-1">{nombre}</h1>
-                  <p className="text-slate-500 text-lg">Desarrolladora Frontend</p>
+                  <p className="text-slate-500 text-lg">Mi perfil</p>
                 </>
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Campo label="Correo electrónico" value={correo} onChange={setCorreo} edit={modoEdicion} />
-            <Campo label="Teléfono" value={telefono} onChange={setTelefono} edit={modoEdicion} />
+            <Campo
+              label="Correo electrónico"
+              value={correo}
+              onChange={setCorreo}
+              edit={modoEdicion}
+            />
+            <Campo
+              label="Teléfono"
+              value={telefono}
+              onChange={setTelefono}
+              edit={modoEdicion}
+            />
             <Campo label="Rol" value={rol} onChange={setRol} edit={modoEdicion} />
             <Campo
               label="Centro de formación"

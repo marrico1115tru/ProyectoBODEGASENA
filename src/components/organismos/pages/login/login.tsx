@@ -15,18 +15,21 @@ const Login = () => {
   const handleLogin = async () => {
     setError("");
     try {
-      // ✅ Llamamos con los argumentos correctos
-      const { access_token } = await login(email.trim(), password.trim());
+      const { access_token, user } = await login(email.trim(), password.trim());
 
       console.log("✅ Token recibido:", access_token);
 
-      // ✅ Guardamos el token en cookies
+      // ✅ Guardar el token en cookies
       Cookies.set("accessToken", access_token, {
         expires: 1,
         secure: true,
         sameSite: "strict",
       });
 
+      // ✅ Guardar usuario en localStorage
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // ✅ Navegar al dashboard
       navigate("/Home");
     } catch (err) {
       console.error("❌ Error de autenticación:", err);

@@ -1,19 +1,35 @@
-// src/layouts/DefaultLayout.tsx
 import Sidebar from "@/components/organismos/Sidebar/Sidebar";
 import { User, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+
+interface Usuario {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: string;
+}
 
 export default function DefaultLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const token = Cookies.get("accessToken");
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+
+  useEffect(() => {
+    const userString = localStorage.getItem("user");
+    if (userString) {
+      setUsuario(JSON.parse(userString));
+    }
+  }, []);
 
   const handleLogout = () => {
     Cookies.remove("accessToken", {
       secure: true,
       sameSite: "strict",
     });
+    localStorage.clear(); // También limpiamos el usuario
     navigate("/login");
   };
 
@@ -22,6 +38,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
       <Sidebar />
 
       <div className="flex flex-col flex-1 overflow-auto">
+        {/* Header */}
         <header className="bg-[#0f172a] px-6 py-4 shadow-md border-b border-slate-700 flex items-center justify-between">
           {/* Logo y nombre */}
           <div className="flex items-center space-x-3">
@@ -33,7 +50,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
             <span className="text-2xl font-bold tracking-wide text-cyan-400">INNOVASOFT</span>
           </div>
 
-          {/* Botones de perfil y logout */}
+          {/* Perfil y logout */}
           <div className="flex items-center space-x-4">
             <Link to="/Perfil">
               <div
@@ -41,14 +58,13 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
                 title="Ver perfil"
               >
                 <User className="h-5 w-5" />
-                <span className="hidden sm:inline">Perfil</span>
+                {usuario && <span className="hidden sm:inline">{usuario.nombre}</span>}
               </div>
             </Link>
 
             {token && (
               <Button
-                variant="destructive"
-                className="flex gap-2 items-center text-sm"
+                className="flex gap-2 items-center text-sm bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-md transition"
                 onClick={handleLogout}
                 title="Cerrar sesión"
               >
@@ -59,8 +75,10 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
+        {/* Contenido */}
         <main className="flex-1 overflow-auto px-6 py-8 bg-slate-100">{children}</main>
 
+        {/* Footer */}
         <footer className="w-full bg-[#0f172a] border-t border-slate-700 py-4 text-center text-sm text-white">
           <a
             href="https://heroui.com"
