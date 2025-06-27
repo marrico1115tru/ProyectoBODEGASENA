@@ -1,9 +1,22 @@
 // src/layouts/DefaultLayout.tsx
 import Sidebar from "@/components/organismos/Sidebar/Sidebar";
-import { User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { User, LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { Button } from "@/components/ui/button";
 
 export default function DefaultLayout({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const token = Cookies.get("accessToken");
+
+  const handleLogout = () => {
+    Cookies.remove("accessToken", {
+      secure: true,
+      sameSite: "strict",
+    });
+    navigate("/login");
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-100 text-slate-900 font-sans overflow-hidden">
       <Sidebar />
@@ -20,16 +33,30 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
             <span className="text-2xl font-bold tracking-wide text-cyan-400">INNOVASOFT</span>
           </div>
 
-          {/* Botón de perfil */}
-          <Link to="/Perfil">
-            <div
-              className="flex items-center space-x-2 text-white hover:text-cyan-300 transition-colors cursor-pointer"
-              title="Ver perfil"
-            >
-              <User className="h-5 w-5" />
-              <span className="hidden sm:inline">Perfil</span>
-            </div>
-          </Link>
+          {/* Botones de perfil y logout */}
+          <div className="flex items-center space-x-4">
+            <Link to="/Perfil">
+              <div
+                className="flex items-center space-x-2 text-white hover:text-cyan-300 transition-colors cursor-pointer"
+                title="Ver perfil"
+              >
+                <User className="h-5 w-5" />
+                <span className="hidden sm:inline">Perfil</span>
+              </div>
+            </Link>
+
+            {token && (
+              <Button
+                variant="destructive"
+                className="flex gap-2 items-center text-sm"
+                onClick={handleLogout}
+                title="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Cerrar sesión</span>
+              </Button>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto px-6 py-8 bg-slate-100">{children}</main>

@@ -21,6 +21,7 @@
     "@heroui/kbd": "^2.2.12",
     "@heroui/link": "^2.2.13",
     "@heroui/navbar": "^2.2.14",
+    "@heroui/react": "^2.7.11",
     "@heroui/snippet": "^2.2.17",
     "@heroui/switch": "^2.2.14",
     "@heroui/system": "2.4.12",
@@ -44,6 +45,7 @@
     "framer-motion": "11.15.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
+    "js-cookie": "^3.0.5",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "keen-slider": "^6.8.6",
@@ -67,6 +69,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "20.5.7",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",

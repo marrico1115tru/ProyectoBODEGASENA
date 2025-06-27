@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Cookies from "js-cookie";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaUser, FaLock } from "react-icons/fa";
@@ -7,7 +8,6 @@ import { login } from "@/Api/auth/auth";
 
 const Login = () => {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,15 +15,17 @@ const Login = () => {
   const handleLogin = async () => {
     setError("");
     try {
-      const user = await login({
-        email: email.trim(),
-        password: password.trim(),
+      // ✅ Llamamos con los argumentos correctos
+      const { access_token } = await login(email.trim(), password.trim());
+
+      console.log("✅ Token recibido:", access_token);
+
+      // ✅ Guardamos el token en cookies
+      Cookies.set("accessToken", access_token, {
+        expires: 1,
+        secure: true,
+        sameSite: "strict",
       });
-
-      console.log("✅ Usuario autenticado:", user);
-
-      // Opcional: guardar token si tu backend lo devuelve
-      // localStorage.setItem('token', user.token);
 
       navigate("/Home");
     } catch (err) {
@@ -35,9 +37,7 @@ const Login = () => {
   return (
     <div
       className="h-screen w-full bg-cover bg-center flex items-center justify-center"
-      style={{
-        backgroundImage: `url('src/img/bodegas.jpeg')`,
-      }}
+      style={{ backgroundImage: `url('src/img/bodegas.jpeg')` }}
     >
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-10 rounded-xl shadow-2xl max-w-sm w-full text-gray-100">
         <div className="flex justify-center mb-6">

@@ -1,17 +1,23 @@
-import axios from "axios";
+import axios from 'axios';
 
-const API_URL = "http://localhost:3000/auth";
-
-export interface LoginRequest {
-  email: string;
-  password: string;
+interface LoginResponse {
+  access_token: string;
+  user: {
+    id: number;
+    nombre: string;
+    email: string;
+    rol: string;
+  };
 }
 
-export const login = async (data: LoginRequest) => {
-  const res = await axios.post(`${API_URL}/login`, data, {
-    headers: {
-      "Content-Type": "application/json",
-    },
+// ✅ Cambiado a recibir email y password como parámetros individuales
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
+  const response = await axios.post('http://localhost:3000/auth/login', {
+    email,
+    password,
+  }, {
+    withCredentials: true,
   });
-  return res.data;
+
+  return response.data;
 };
