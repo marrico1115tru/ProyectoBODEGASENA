@@ -20,8 +20,7 @@ export interface Usuario {
   cedula: string | null;
   email: string | null;
   telefono: string | null;
-  rol: string | null;
-  password: string; 
+  cargo: string | null;
   idArea: Area;
   idFichaFormacion: FichaFormacion;
   idRol: Rol;
@@ -36,6 +35,7 @@ export interface UsuarioLogin {
   permisos: Permiso[];
 }
 
+// Permiso recibido desde el backend
 export interface Permiso {
   ruta: string;
   puede_ver: boolean;

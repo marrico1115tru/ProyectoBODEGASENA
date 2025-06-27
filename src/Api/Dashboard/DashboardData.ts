@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import api from "@/lib/axios"; // Instancia de Axios con cookies
+import axios from "axios";
 
-// Interfaces
 interface Usuario {
   id: number;
   nombre: string;
@@ -47,26 +46,24 @@ export const useDashboardData = () => {
     const fetchDashboardData = async () => {
       try {
         const [usuariosRes, productosRes, areasRes] = await Promise.all([
-          api.get("/usuarios"),
-          api.get("/productos"),
-          api.get("/areas"),
+          axios.get("http://localhost:3000/usuarios"),
+          axios.get("http://localhost:3000/productos"),
+          axios.get("http://localhost:3000/areas"),
         ]);
 
-        const totalUsuarios = usuariosRes.data.length;
-        const totalProductos = productosRes.data.length;
-        const totalAreas = areasRes.data.length;
-
         setData({
-          totalUsuarios,
-          totalProductos,
-          totalAreas,
-          resumen: Math.floor(((totalUsuarios + totalProductos + totalAreas) / 500) * 100),
+          totalUsuarios: usuariosRes.data.length,
+          totalProductos: productosRes.data.length,
+          totalAreas: areasRes.data.length,
+          resumen: Math.floor(
+            ((usuariosRes.data.length + productosRes.data.length + areasRes.data.length) / 500) * 100
+          ),
           usuarios: usuariosRes.data,
           productos: productosRes.data,
           areas: areasRes.data,
         });
       } catch (error) {
-        console.error("❌ Error al cargar el dashboard:", error);
+        console.error("Error al cargar el dashboard", error);
       } finally {
         setLoading(false);
       }

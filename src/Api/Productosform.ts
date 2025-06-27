@@ -1,16 +1,15 @@
-// src/Api/Productosform.ts
-import api from "@/lib/axios"; // Usa la instancia que maneja cookies
+import axios from "axios";
 import { Producto, ProductoFormValues } from "@/types/types/typesProductos";
 
-const API_URL = "/productos"; // SIN localhost
+const API_URL = "http://localhost:3000/productos";
 
 export const getProductos = async (): Promise<Producto[]> => {
-  const res = await api.get(API_URL);
+  const res = await axios.get(API_URL);
   return res.data;
 };
 
 export const createProducto = async (data: ProductoFormValues): Promise<Producto> => {
-  const res = await api.post(API_URL, {
+  const res = await axios.post(API_URL, {
     ...data,
     idCategoria: { id: data.idCategoriaId },
   });
@@ -18,7 +17,7 @@ export const createProducto = async (data: ProductoFormValues): Promise<Producto
 };
 
 export const updateProducto = async (id: number, data: ProductoFormValues): Promise<Producto> => {
-  const res = await api.put(`${API_URL}/${id}`, {
+  const res = await axios.put(`${API_URL}/${id}`, {
     ...data,
     idCategoria: { id: data.idCategoriaId },
   });
@@ -26,5 +25,5 @@ export const updateProducto = async (id: number, data: ProductoFormValues): Prom
 };
 
 export const deleteProducto = async (id: number): Promise<void> => {
-  await api.delete(`${API_URL}/${id}`);
+  await axios.delete(`${API_URL}/${id}`);
 };

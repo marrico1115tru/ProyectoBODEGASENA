@@ -119,7 +119,7 @@ export default function AreasPage() {
   };
 
   const filtered = areas.filter((area) =>
-    (area.nombreArea ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+    area.nombreArea.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);

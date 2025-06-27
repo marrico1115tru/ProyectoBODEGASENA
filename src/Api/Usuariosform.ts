@@ -3,7 +3,7 @@ import { Usuario } from "@/types/types/Usuario";
 
 const API_URL = "http://localhost:3000/usuarios";
 
-// ✅ Obtener token de autorización
+// ✅ Función para obtener el token
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
   return {
@@ -19,7 +19,7 @@ export const getUsuarios = async (): Promise<Usuario[]> => {
   return res.data;
 };
 
-// ✅ Crear usuario
+// ✅ Crear un usuario
 export const createUsuario = async (
   data: Partial<Usuario>
 ): Promise<Usuario> => {
