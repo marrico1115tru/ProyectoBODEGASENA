@@ -1,9 +1,9 @@
 import Sidebar from "@/components/organismos/Sidebar/Sidebar";
 import { User, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { logout as cerrarSesionApi, getProfile } from "@/Api/auth/auth";
 
 interface Usuario {
   id: number;
@@ -14,23 +14,31 @@ interface Usuario {
 
 export default function DefaultLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const token = Cookies.get("accessToken");
   const [usuario, setUsuario] = useState<Usuario | null>(null);
 
+  // 🔐 Obtener usuario desde backend usando la cookie
   useEffect(() => {
-    const userString = localStorage.getItem("user");
-    if (userString) {
-      setUsuario(JSON.parse(userString));
-    }
-  }, []);
+    const cargarUsuario = async () => {
+      try {
+        const user = await getProfile(); // 🍪 usa token desde cookie
+        setUsuario(user);
+      } catch (err) {
+        console.error("🔴 Usuario no autenticado, redirigiendo...");
+        navigate("/login"); // redirigir si no hay sesión
+      }
+    };
 
-  const handleLogout = () => {
-    Cookies.remove("accessToken", {
-      secure: true,
-      sameSite: "strict",
-    });
-    localStorage.clear(); // También limpiamos el usuario
-    navigate("/login");
+    cargarUsuario();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    try {
+      await cerrarSesionApi(); // ❌ Eliminar cookie httpOnly desde backend
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    } finally {
+      navigate("/login"); // 🔁 Redirige al login
+    }
   };
 
   return (
@@ -62,16 +70,14 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
               </div>
             </Link>
 
-            {token && (
-              <Button
-                className="flex gap-2 items-center text-sm bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-md transition"
-                onClick={handleLogout}
-                title="Cerrar sesión"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Cerrar sesión</span>
-              </Button>
-            )}
+            <Button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800 text-white px-4 py-2 rounded-xl shadow-md transition duration-200"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">Cerrar sesión</span>
+            </Button>
           </div>
         </header>
 

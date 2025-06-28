@@ -1,6 +1,4 @@
-
 export interface Area {
-  nombre: ReactNode;
   id: number;
   nombreArea: string | null;
   idSede: {
