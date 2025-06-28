@@ -1,303 +1,262 @@
+/* -------------------------------------------------------------------------- */
+/*  src/pages/InventarioPage.tsx                                              */
+/* -------------------------------------------------------------------------- */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Button,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  DropdownTrigger,
-  Pagination,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Checkbox,
-  Select,
-  SelectItem,
-  useDisclosure,
-  type SortDescriptor,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+  Input, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
+  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+  Checkbox, Select, SelectItem, useDisclosure, type SortDescriptor,
 } from '@heroui/react';
+
 import {
-  getInventarios,
-  createInventario,
-  updateInventario,
-  deleteInventario,
+  getInventarios, createInventario, updateInventario, deleteInventario,
 } from '@/Api/inventario';
-import { getProductos } from '@/Api/Productosform';        // 👈 utilízalo si ya lo tienes
-import { getSitios } from '@/Api/SitioService';                 // 👈 idem para sitios
+import { getProductos, createProducto }      from '@/Api/Productosform';
+import { getSitios, createSitio }            from '@/Api/SitioService';
+import { getCategoriasProductos }            from '@/Api/Categorias';
+import { getAreas }                          from '@/Api/AreasService';
+import { getTiposSitio }                     from '@/Api/Tipo_sitios';
+
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { InventarioFormValues } from '@/types/types/inventario';
 
-/* ✅ Toast ---------------------------------------------------------------- */
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
+import type { InventarioFormValues } from '@/types/types/inventario';
+import type { ProductoFormValues }   from '@/types/types/typesProductos';
+import type { SitioFormValues }      from '@/types/types/Sitio';
+
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                   */
+/* -------------------------------------------------------------------------- */
+const primaryBtn =
+  'bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow';
+
+const Toast = ({ msg }: { msg: string }) => (
+  <div className="fixed bottom-4 right-4 z-50 rounded bg-green-600 px-4 py-2 text-white shadow">
+    {msg}
   </div>
 );
 
-/* ✅ Columnas ------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*  Columnas tabla                                                            */
+/* -------------------------------------------------------------------------- */
 const columns = [
-  { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Producto', uid: 'producto', sortable: false },
-  { name: 'Sitio', uid: 'sitio', sortable: false },
-  { name: 'Stock', uid: 'stock', sortable: true },
+  { name: 'ID',       uid: 'id',       sortable: true },
+  { name: 'Producto', uid: 'producto' },
+  { name: 'Sitio',    uid: 'sitio' },
+  { name: 'Stock',    uid: 'stock',    sortable: true },
   { name: 'Acciones', uid: 'actions' },
 ] as const;
 type ColumnKey = (typeof columns)[number]['uid'];
-const INITIAL_VISIBLE_COLUMNS = new Set<ColumnKey>([
-  'id',
-  'producto',
-  'sitio',
-  'stock',
-  'actions',
-]);
+const DEFAULT_VISIBLE = new Set<ColumnKey>(['id', 'producto', 'sitio', 'stock', 'actions']);
 
-/* ───────────────────────────────────────────────────────────────────────── */
-const InventarioPage = () => {
-  /* Estado ---------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*  Componente                                                                */
+/* -------------------------------------------------------------------------- */
+export default function InventarioPage() {
+  /* ---------------------------- datos ----------------------------------- */
   const [inventarios, setInventarios] = useState<any[]>([]);
-  const [productos, setProductos] = useState<any[]>([]);
-  const [sitios, setSitios] = useState<any[]>([]);
+  const [productos,   setProductos]   = useState<any[]>([]);
+  const [sitios,      setSitios]      = useState<any[]>([]);
+  const [areas,       setAreas]       = useState<any[]>([]);
+  const [tiposSitio,  setTipos]       = useState<any[]>([]);
+  const [categorias,  setCategorias]  = useState<any[]>([]);
 
-  /* Tabla, filtros, orden ------------------------------------------------- */
-  const [filter, setFilter] = useState('');
-  const [visibleCols, setVisibleCols] = useState(INITIAL_VISIBLE_COLUMNS);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
-  });
+  /* ---------------------------- tabla / filtros ------------------------- */
+  const [filter,  setFilter]  = useState('');
+  const [visible, setVisible] = useState(DEFAULT_VISIBLE);
+  const [rows,    setRows]    = useState(5);
+  const [page,    setPage]    = useState(1);
+  const [sort,    setSort]    = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
-  /* Formulario modal ------------------------------------------------------ */
-  const [form, setForm] = useState({
-    stock: '',
-    idProductoId: '',
-    fkSitioId: '',
-  });
-  const [editId, setEditId] = useState<number | null>(null);
-  const {
-    isOpen: isModalOpen,
-    onOpenChange,
-    onOpen,
-    onClose,
-  } = useDisclosure();
+  /* ---------------------------- formularios ----------------------------- */
+  const [inv, setInv]   = useState({ stock: '', idProductoId: '', fkSitioId: '' });
+  const [invId, setInvId] = useState<number | null>(null);
+  const invModal = useDisclosure();
 
-  /* Toast ----------------------------------------------------------------- */
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
+  const [prod, setProd] = useState({ nombre: '', descripcion: '', idCategoriaId: '' });
+  const prodModal = useDisclosure();
 
-  /* Obtener datos --------------------------------------------------------- */
-  const cargarDatos = async () => {
-    const [inv, prod, sit] = await Promise.all([
-      getInventarios(),
-      getProductos(),
-      getSitios(),
-    ]);
-    setInventarios(inv);
-    setProductos(prod);
-    setSitios(sit);
-  };
-  useEffect(() => { cargarDatos(); }, []);
+  const [sit, setSit]   = useState({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
+  const sitModal = useDisclosure();
 
-  /* CRUD ------------------------------------------------------------------ */
-  const guardar = async () => {
+  /* ---------------------------- toast ----------------------------------- */
+  const [toast, setToast] = useState('');
+  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000); };
+
+  /* ---------------------------- carga inicial --------------------------- */
+  useEffect(() => {
+    (async () => {
+      const [invD, prodD, sitD, catD, areaD, tipoD] = await Promise.all([
+        getInventarios(), getProductos(), getSitios(),
+        getCategoriasProductos(), getAreas(), getTiposSitio(),
+      ]);
+      setInventarios(invD); setProductos(prodD); setSitios(sitD);
+      setCategorias(catD);  setAreas(areaD);    setTipos(tipoD);
+    })();
+  }, []);
+
+  /* ---------------------------- CRUD inventario ------------------------- */
+  const saveInv = async () => {
+    if (!inv.stock || !inv.idProductoId || !inv.fkSitioId) { notify('Completa todos los campos'); return; }
     const payload: InventarioFormValues = {
-      stock: Number(form.stock),
-      idProductoId: Number(form.idProductoId),
-      fkSitioId: Number(form.fkSitioId),
+      stock: Number(inv.stock), idProductoId: +inv.idProductoId, fkSitioId: +inv.fkSitioId,
     };
-    if (editId) await updateInventario(editId, payload);
-    else await createInventario(payload);
-
-    onClose();
-    setEditId(null);
-    setForm({ stock: '', idProductoId: '', fkSitioId: '' });
-    cargarDatos();
+    try {
+      invId ? await updateInventario(invId, payload) : await createInventario(payload);
+      notify(invId ? 'Inventario actualizado' : 'Inventario creado');
+      invModal.onClose(); setInv({ stock: '', idProductoId: '', fkSitioId: '' }); setInvId(null);
+      setInventarios(await getInventarios());
+    } catch { notify('Error al guardar inventario'); }
+  };
+  const delInv = async (id: number) => {
+    if (!confirm('¿Eliminar registro?')) return;
+    await deleteInventario(id); notify('Inventario eliminado');
+    setInventarios(await getInventarios());
   };
 
-  const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar registro de inventario?')) return;
-    await deleteInventario(id);
-    cargarDatos();
-    notify(🗑️ Inventario eliminado: ID ${id});
+  /* ---------------------------- CRUD producto rápido -------------------- */
+  const saveProd = async () => {
+    if (!prod.nombre || !prod.idCategoriaId) { notify('Nombre y categoría requeridos'); return; }
+    const payload: ProductoFormValues = {
+      nombre: prod.nombre, descripcion: prod.descripcion || null, idCategoriaId: +prod.idCategoriaId,
+    };
+    try {
+      const nuevo = await createProducto(payload);
+      setProductos(await getProductos());
+      setInv(f => ({ ...f, idProductoId: String(nuevo.id) }));
+      prodModal.onClose(); setProd({ nombre: '', descripcion: '', idCategoriaId: '' });
+      notify('Producto creado');
+    } catch { notify('Error al crear producto'); }
   };
 
-  const abrirEditar = (row: any) => {
-    setEditId(row.idProductoInventario);
-    setForm({
-      stock: row.stock.toString(),
-      idProductoId: row.idProducto?.id.toString() || '',
-      fkSitioId: row.fkSitio?.id.toString() || '',
-    });
-    onOpen();
+  /* ---------------------------- CRUD sitio rápido ----------------------- */
+  const saveSit = async () => {
+    if (!sit.nombre || !sit.ubicacion || !sit.idAreaId || !sit.idTipoSitioId) {
+      notify('Completa todos los campos'); return;
+    }
+    const payload: SitioFormValues = {
+      nombre: sit.nombre,
+      ubicacion: sit.ubicacion,
+      idArea:      { id: +sit.idAreaId },
+      idTipoSitio: { id: +sit.idTipoSitioId },
+    };
+    try {
+      const nuevo = await createSitio(payload);
+      setSitios(await getSitios());
+      setInv(f => ({ ...f, fkSitioId: String(nuevo.id) }));
+      sitModal.onClose(); setSit({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
+      notify('Sitio creado');
+    } catch { notify('Error al crear sitio'); }
   };
 
-  const abrirNuevo = () => {
-    setEditId(null);
-    setForm({ stock: '', idProductoId: '', fkSitioId: '' });
-    onOpen();
-  };
-
-  /* Filtrar, ordenar, paginar -------------------------------------------- */
+  /* ---------------------------- datos tabla ----------------------------- */
   const filtered = useMemo(
-    () =>
-      filter
-        ? inventarios.filter((i) =>
-            ${i.idProducto?.nombre ?? ''} ${i.fkSitio?.nombre ?? ''}
-              .toLowerCase()
-              .includes(filter.toLowerCase()),
-          )
-        : inventarios,
+    () => filter
+      ? inventarios.filter(i =>
+          `${i.idProducto?.nombre ?? ''} ${i.fkSitio?.nombre ?? ''}`
+            .toLowerCase().includes(filter.toLowerCase()))
+      : inventarios,
     [inventarios, filter],
   );
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
-  const sliced = useMemo(
-    () => filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage),
-    [filtered, page, rowsPerPage],
-  );
-  const sorted = useMemo(() => {
-    const items = [...sliced];
-    const { column, direction } = sortDescriptor;
-    items.sort((a, b) => {
-      const x = column === 'id' ? a.idProductoInventario : a[column];
-      const y = column === 'id' ? b.idProductoInventario : b[column];
-      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / rows));
+  const list = useMemo(() => {
+    const slice = filtered.slice((page - 1) * rows, page * rows);
+    const dir = sort.direction === 'ascending' ? 1 : -1;
+    return [...slice].sort((a, b) => {
+      const xa = sort.column === 'id' ? a.idProductoInventario : a[sort.column];
+      const xb = sort.column === 'id' ? b.idProductoInventario : b[sort.column];
+      return xa === xb ? 0 : xa > xb ? dir : -dir;
     });
-    return items;
-  }, [sliced, sortDescriptor]);
+  }, [filtered, page, rows, sort]);
 
-  /* Render cell ----------------------------------------------------------- */
-  const renderCell = (item: any, key: ColumnKey) => {
+  /* ---------------------------- render celdas --------------------------- */
+  const cell = (row: any, key: ColumnKey) => {
     switch (key) {
-      case 'id':
-        return item.idProductoInventario;
-      case 'producto':
-        return item.idProducto?.nombre ?? '—';
-      case 'sitio':
-        return item.fkSitio?.nombre ?? '—';
-      case 'stock':
-        return item.stock;
+      case 'id':       return row.idProductoInventario;
+      case 'producto': return row.idProducto?.nombre ?? '—';
+      case 'sitio':    return row.fkSitio?.nombre    ?? '—';
+      case 'stock':    return row.stock;
       case 'actions':
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+              <Button isIconOnly variant="light" size="sm" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.idProductoInventario)} key={''}>Eliminar</DropdownItem>
+              <DropdownItem onPress={() => {
+                setInvId(row.idProductoInventario);
+                setInv({
+                  stock: row.stock.toString(),
+                  idProductoId: row.idProducto?.id.toString() || '',
+                  fkSitioId: row.fkSitio?.id.toString() || '',
+                });
+                invModal.onOpen();
+              } } key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => delInv(row.idProductoInventario)} key={''}>Eliminar</DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
-      default:
-        return item[key];
+      default: return row[key];
     }
   };
 
-  /* Top content ----------------------------------------------------------- */
-  const topContent = (
+  /* ---------------------------- topContent ------------------------------ */
+  const topContent =
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <Input
-          isClearable
-          radius="lg"
+          radius="lg" isClearable value={filter}
           placeholder="Buscar por producto o sitio"
           startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filter}
-          onValueChange={setFilter}
-          onClear={() => setFilter('')}
+          onValueChange={setFilter} onClear={() => setFilter('')}
         />
+
         <div className="flex gap-3">
           <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid}>
-                    <Checkbox
-                      isSelected={visibleCols.has(col.uid)}
-                      onValueChange={() =>
-                        setVisibleCols((prev) => {
-                          const copy = new Set(prev);
-                          copy.has(col.uid) ? copy.delete(col.uid) : copy.add(col.uid);
-                          return copy;
-                        })
-                      }
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
+            <DropdownTrigger><Button variant="flat">Columnas</Button></DropdownTrigger>
+            <DropdownMenu>
+              {columns.filter(c => c.uid !== 'actions').map(c => (
+                <DropdownItem key={c.uid}>
+                  <Checkbox size="sm" isSelected={visible.has(c.uid)}
+                    onValueChange={() => setVisible(v => {
+                      const n = new Set(v); n.has(c.uid) ? n.delete(c.uid) : n.add(c.uid); return n;
+                    })}>
+                    {c.name}
+                  </Checkbox>
+                </DropdownItem>
+              ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={abrirNuevo}
-          >
+          <Button className={primaryBtn} endContent={<PlusIcon />} onPress={() => {
+            setInv({ stock: '', idProductoId: '', fkSitioId: '' }); setInvId(null); invModal.onOpen();
+          }}>
             Nuevo Inventario
           </Button>
         </div>
       </div>
+
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {inventarios.length} registros</span>
-        <label className="flex items-center text-default-400 text-sm">
+        <span className="text-sm text-default-400">Total {inventarios.length} registros</span>
+        <label className="flex items-center text-sm text-default-400">
           Filas:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n}>{n}</option>
-            ))}
+          <select value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}
+                  className="ml-1 bg-transparent outline-none text-default-600">
+            {[5, 10, 15].map(n => <option key={n}>{n}</option>)}
           </select>
         </label>
       </div>
-    </div>
-  );
+    </div>;
 
-  /* Bottom content -------------------------------------------------------- */
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
-      <Pagination isCompact showControls page={page} total={Math.max(pages, 1)} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
-        Siguiente
-      </Button>
-    </div>
-  );
-
-  /* ─────────────────────────────────────────────────────────────────────── */
+  /* ---------------------------------------------------------------------- */
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
+      {toast && <Toast msg={toast} />}
+
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📦 Gestión de Inventario
@@ -305,135 +264,159 @@ const InventarioPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra stock por sitio y producto.</p>
         </header>
 
-        {/* Tabla desktop */}
-        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+        {/* tabla (desktop) */}
+        <div className="hidden md:block overflow-x-auto rounded-xl bg-white shadow-sm">
           <Table
-            aria-label="Tabla de inventario"
+            aria-label="Inventario"
             isHeaderSticky
-            sortDescriptor={sortDescriptor}
-            onSortChange={setSortDescriptor}
             topContent={topContent}
-            bottomContent={bottomContent}
-            classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
-            }}
+            bottomContent={
+              <div className="flex items-center justify-center gap-2 p-2">
+                <Button size="sm" variant="flat" disabled={page === 1} onPress={() => setPage(p => p - 1)}>Anterior</Button>
+                <Pagination isCompact page={page} total={totalPages} onChange={setPage} showControls />
+                <Button size="sm" variant="flat" disabled={page === totalPages} onPress={() => setPage(p => p + 1)}>Siguiente</Button>
+              </div>
+            }
+            sortDescriptor={sort} onSortChange={setSort}
+            classNames={{ th: 'bg-[#e8ecf4] py-3 px-4 text-sm font-semibold text-[#0D1324]', td: 'py-3 px-4 align-middle' }}
           >
-            <TableHeader columns={columns.filter((c) => visibleCols.has(c.uid))}>
-              {(col) => (
-                <TableColumn
-                  key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'producto' ? 260 : undefined}
-                >
-                  {col.name}
-                </TableColumn>
-              )}
+            <TableHeader columns={columns.filter(c => visible.has(c.uid))}>
+              {col => <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}>{col.name}</TableColumn>}
             </TableHeader>
-            <TableBody items={sorted} emptyContent="No se encontraron registros">
-              {(row) => (
-                <TableRow key={row.idProductoInventario}>
-                  {(key) => <TableCell>{renderCell(row, key as ColumnKey)}</TableCell>}
-                </TableRow>
-              )}
+            <TableBody items={list} emptyContent="No se encontraron registros">
+              {row => <TableRow key={row.idProductoInventario}>{key => <TableCell>{cell(row, key as ColumnKey)}</TableCell>}</TableRow>}
             </TableBody>
           </Table>
         </div>
 
-        {/* Cards móvil */}
+        {/* cards móvil */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length ? (
-            sorted.map((i) => (
-              <Card key={i.idProductoInventario} className="shadow-sm">
-                <CardContent className="space-y-2 p-4">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-lg break-words">
-                      {i.idProducto?.nombre ?? 'Producto'}
-                    </h3>
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        <DropdownItem onPress={() => abrirEditar(i)} key={''}>Editar</DropdownItem>
-                        <DropdownItem onPress={() => eliminar(i.idProductoInventario)} key={''}>Eliminar</DropdownItem>
-                      </DropdownMenu>
-                    </Dropdown>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Sitio:</span> {i.fkSitio?.nombre ?? '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Stock:</span> {i.stock}
-                  </p>
-                  <p className="text-xs text-gray-400">ID: {i.idProductoInventario}</p>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <p className="text-center text-gray-500">No se encontraron registros</p>
-          )}
+          {list.length ? list.map(i => (
+            <Card key={i.idProductoInventario} className="shadow-sm">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-lg font-semibold break-words">{i.idProducto?.nombre ?? 'Producto'}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button isIconOnly variant="light" size="sm" className="rounded-full text-[#0D1324]">
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => {
+                        setInvId(i.idProductoInventario);
+                        setInv({
+                          stock: i.stock.toString(),
+                          idProductoId: i.idProducto?.id.toString() || '',
+                          fkSitioId: i.fkSitio?.id.toString() || '',
+                        });
+                        invModal.onOpen();
+                      } } key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => delInv(i.idProductoInventario)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600"><span className="font-medium">Sitio:</span> {i.fkSitio?.nombre ?? '—'}</p>
+                <p className="text-sm text-gray-600"><span className="font-medium">Stock:</span> {i.stock}</p>
+                <p className="text-xs text-gray-400">ID: {i.idProductoInventario}</p>
+              </CardContent>
+            </Card>
+          )) : <p className="text-center text-gray-500">No se encontraron registros</p>}
         </div>
 
-        {/* Modal CRUD inventario ------------------------------------------- */}
-        <Modal
-          isOpen={isModalOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {() => (
-              <>
-                <ModalHeader>{editId ? 'Editar Inventario' : 'Nuevo Inventario'}</ModalHeader>
-                <ModalBody className="space-y-4">
-                  <Input
-                    label="Stock"
-                    type="number"
-                    min={0}
-                    value={form.stock}
-                    onValueChange={(v) => setForm((p) => ({ ...p, stock: v }))}
-                  />
-                  <Select
-                    label="Producto"
-                    selectedKeys={form.idProductoId ? new Set([form.idProductoId]) : new Set()}
-                    onSelectionChange={(k) =>
-                      setForm((p) => ({ ...p, idProductoId: Array.from(k)[0] as string }))
-                    }
-                  >
-                    {productos.map((p) => (
-                      <SelectItem key={p.id}>{p.nombre}</SelectItem>
-                    ))}
-                  </Select>
-                  <Select
-                    label="Sitio"
-                    selectedKeys={form.fkSitioId ? new Set([form.fkSitioId]) : new Set()}
-                    onSelectionChange={(k) =>
-                      setForm((p) => ({ ...p, fkSitioId: Array.from(k)[0] as string }))
-                    }
-                  >
-                    {sitios.map((s) => (
-                      <SelectItem key={s.id}>{s.nombre}</SelectItem>
-                    ))}
-                  </Select>
-                </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
-                </ModalFooter>
-              </>
-            )}
+        {/* ---------------- Modal Inventario ---------------- */}
+        <Modal isOpen={invModal.isOpen} onOpenChange={o => o || invModal.onClose()}   /* solo cierra explícito */
+               isDismissable={false} placement="center">
+          <ModalContent className="backdrop-blur bg-white/60 rounded-xl shadow-xl">
+            <ModalHeader>{invId ? 'Editar Inventario' : 'Nuevo Inventario'}</ModalHeader>
+            <ModalBody className="space-y-4">
+              <Input label="Stock" type="number" min={0} value={inv.stock}
+                     onValueChange={v => setInv(f => ({ ...f, stock: v }))} />
+
+              {/* producto */}
+              <div className="flex items-end gap-2">
+                <Select label="Producto" className="flex-1"
+                        selectedKeys={inv.idProductoId ? new Set([inv.idProductoId]) : new Set()}
+                        onSelectionChange={k => setInv(f => ({ ...f, idProductoId: [...k][0] as string }))}>
+                  {productos.map(p => <SelectItem key={p.id}>{p.nombre}</SelectItem>)}
+                </Select>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={prodModal.onOpen}>
+                  <PlusIcon size={18} />
+                </Button>
+              </div>
+
+              {/* sitio */}
+              <div className="flex items-end gap-2">
+                <Select label="Sitio" className="flex-1"
+                        selectedKeys={inv.fkSitioId ? new Set([inv.fkSitioId]) : new Set()}
+                        onSelectionChange={k => setInv(f => ({ ...f, fkSitioId: [...k][0] as string }))}>
+                  {sitios.map(s => <SelectItem key={s.id}>{s.nombre}</SelectItem>)}
+                </Select>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={sitModal.onOpen}>
+                  <PlusIcon size={18} />
+                </Button>
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" onPress={invModal.onClose}>Cancelar</Button>
+              <Button variant="flat" onPress={saveInv}>{invId ? 'Actualizar' : 'Crear'}</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* ---------------- Modal Producto rápido ------------- */}
+        <Modal isOpen={prodModal.isOpen} onOpenChange={o => o || prodModal.onClose()}
+               isDismissable={false} placement="center">
+          <ModalContent className="backdrop-blur bg-white/60 rounded-xl shadow-xl">
+            <ModalHeader>Nuevo Producto</ModalHeader>
+            <ModalBody className="space-y-4">
+              <Input label="Nombre" value={prod.nombre}
+                     onValueChange={v => setProd(p => ({ ...p, nombre: v }))} />
+              <Input label="Descripción (opcional)" value={prod.descripcion}
+                     onValueChange={v => setProd(p => ({ ...p, descripcion: v }))} />
+              <Select label="Categoría"
+                      selectedKeys={prod.idCategoriaId ? new Set([prod.idCategoriaId]) : new Set()}
+                      onSelectionChange={k => setProd(p => ({ ...p, idCategoriaId: [...k][0] as string }))}>
+                {categorias.map(c => <SelectItem key={c.id}>{c.nombre}</SelectItem>)}
+              </Select>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" onPress={prodModal.onClose}>Cancelar</Button>
+              <Button variant="flat" onPress={saveProd}>Crear</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* ---------------- Modal Sitio rápido ---------------- */}
+        <Modal isOpen={sitModal.isOpen} onOpenChange={o => o || sitModal.onClose()}
+               isDismissable={false} placement="center">
+          <ModalContent className="backdrop-blur bg-white/60 rounded-xl shadow-xl">
+            <ModalHeader>Nuevo Sitio</ModalHeader>
+            <ModalBody className="space-y-4">
+              <Input label="Nombre" value={sit.nombre}
+                     onValueChange={v => setSit(s => ({ ...s, nombre: v }))} />
+              <Input label="Ubicación" value={sit.ubicacion}
+                     onValueChange={v => setSit(s => ({ ...s, ubicacion: v }))} />
+
+              <Select label="Área"
+                      selectedKeys={sit.idAreaId ? new Set([sit.idAreaId]) : new Set()}
+                      onSelectionChange={k => setSit(s => ({ ...s, idAreaId: [...k][0] as string }))}>
+                {areas.map(a => <SelectItem key={a.id}>{a.nombreArea}</SelectItem>)}
+              </Select>
+
+              <Select label="Tipo de Sitio"
+                      selectedKeys={sit.idTipoSitioId ? new Set([sit.idTipoSitioId]) : new Set()}
+                      onSelectionChange={k => setSit(s => ({ ...s, idTipoSitioId: [...k][0] as string }))}>
+                {tiposSitio.map(t => <SelectItem key={t.id}>{t.nombre}</SelectItem>)}
+              </Select>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" onPress={sitModal.onClose}>Cancelar</Button>
+              <Button variant="flat" onPress={saveSit}>Crear</Button>
+            </ModalFooter>
           </ModalContent>
         </Modal>
       </div>
     </DefaultLayout>
   );
-};
-
-export default InventarioPage;
+}
