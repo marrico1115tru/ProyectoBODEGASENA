@@ -1,6 +1,6 @@
-// src/pages/Login.tsx
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Cookies from "js-cookie";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaUser, FaLock } from "react-icons/fa";
@@ -15,24 +15,21 @@ const Login = () => {
   const handleLogin = async () => {
     setError("");
     try {
-      // 🔐 Hacer login → guarda token en cookie httpOnly automáticamente
-      const response = await login(email.trim(), password.trim());
-      console.log("✅ Login exitoso:", response.message);
+      const { access_token, user } = await login(email.trim(), password.trim());
 
-      // 🧠 Consultar el usuario autenticado desde /auth/me
-      const me = await fetch("http://localhost:3000/auth/me", {
-        method: "GET",
-        credentials: "include", // 🔥 Enviar cookies al backend
+      console.log("✅ Token recibido:", access_token);
+
+      // ✅ Guardar el token en cookies
+      Cookies.set("accessToken", access_token, {
+        expires: 1,
+        secure: true,
+        sameSite: "strict",
       });
 
-      if (!me.ok) {
-        throw new Error("Fallo al consultar /auth/me");
-      }
+      // ✅ Guardar usuario en localStorage
+      localStorage.setItem("user", JSON.stringify(user));
 
-      const user = await me.json();
-      console.log("🧠 Usuario autenticado:", user);
-
-      // 🚀 Redirigir al dashboard (ya tenemos usuario y token en cookies)
+      // ✅ Navegar al dashboard
       navigate("/Home");
     } catch (err) {
       console.error("❌ Error de autenticación:", err);

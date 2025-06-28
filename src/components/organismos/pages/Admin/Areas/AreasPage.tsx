@@ -1,164 +1,179 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  getAreas,
-  createArea,
-  updateArea,
-  deleteArea,
-} from "@/Api/AreasService";
-import { Area, AreaFormValues, Sede } from "@/types/types";
-import {
-  PlusIcon,
-  EditIcon,
-  DeleteIcon,
-  SearchIcon,
-} from "@/components/icons/Icons";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
   Input,
-  Select,
-  SelectItem,
-} from "@nextui-org/react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { areaSchema } from "@/schemas/areaSchema";
+  Button,
+  DropdownTrigger,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  Pagination,
+} from "@heroui/react";
+import { Eye, MoreVertical, Plus, Search } from "lucide-react";
+import { getAreas } from "@/Api/AreasService";
+import { Area } from "@/types/types/typesArea";
+import DefaultLayout from "@/layouts/default";
+
+const columns = [
+  { name: "ID", uid: "id" },
+  { name: "NOMBRE", uid: "nombreArea" },
+  { name: "ACCIONES", uid: "actions" },
+];
 
 export default function AreasPage() {
   const [areas, setAreas] = useState<Area[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editArea, setEditArea] = useState<Area | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<AreaFormValues>({
-    resolver: zodResolver(areaSchema),
-  });
-
-  const fetchAreas = async () => {
-    const res = await getAreas();
-    setAreas(res);
-  };
+  const [filterValue, setFilterValue] = useState("");
+  const [visibleColumns, setVisibleColumns] = useState(new Set(["nombreArea", "actions"]));
+  const [selectedKeys] = useState(new Set<string>());
+  const [page, setPage] = useState(1);
+  const [rowsPerPage] = useState(5);
 
   useEffect(() => {
-    fetchAreas();
+    const fetchData = async () => {
+      const res = await getAreas();
+      setAreas(res);
+    };
+    fetchData();
   }, []);
 
-  const onSubmit = async (data: AreaFormValues) => {
-    if (editArea) {
-      await updateArea(editArea.id, data);
-    } else {
-      await createArea(data);
+  const filteredItems = useMemo(() => {
+    if (!filterValue) return areas;
+    return areas.filter((area) =>
+      area.nombreArea?.toLowerCase().includes(filterValue.toLowerCase())
+    );
+  }, [areas, filterValue]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    return filteredItems.slice(start, end);
+  }, [filteredItems, page, rowsPerPage]);
+
+  const renderCell = (area: Area, columnKey: string) => {
+    switch (columnKey) {
+      case "nombreArea":
+        return <span className="capitalize">{area.nombreArea}</span>;
+      case "actions":
+        return (
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="light">
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button isIconOnly size="sm" variant="light">
+                  <MoreVertical className="w-4 h-4 text-default-400" />
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Acciones">
+                <DropdownItem key="edit">Editar</DropdownItem>
+                <DropdownItem key="delete" className="text-danger" color="danger">
+                  Eliminar
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        );
+      default: {
+        const value = area[columnKey as keyof Area];
+        if (
+          typeof value === "string" ||
+          typeof value === "number" ||
+          value === null ||
+          value === undefined
+        ) {
+          return value ?? "";
+        }
+        // For objects or other types, convert to JSON string or display a placeholder
+        return JSON.stringify(value);
+      }
     }
-    fetchAreas();
-    reset();
-    setModalOpen(false);
-    setEditArea(null);
   };
-
-  const handleEdit = (area: Area) => {
-    setEditArea(area);
-    reset({
-      nombreArea: area.nombreArea,
-      idSede: area.idSede,
-    });
-    setModalOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    await deleteArea(id);
-    fetchAreas();
-  };
-
-  const filteredAreas = areas.filter((area) =>
-    area.nombreArea.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Gestión de Áreas</h1>
-        <Button onClick={() => setModalOpen(true)} startContent={<PlusIcon />}>Agregar área</Button>
-      </div>
+    <DefaultLayout>
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between gap-3 items-end">
+          <Input
+            isClearable
+            className="w-full sm:max-w-[44%]"
+            placeholder="Buscar por nombre..."
+            startContent={<Search className="w-4 h-4" />}
+            value={filterValue}
+            onClear={() => setFilterValue("")}
+            onValueChange={setFilterValue}
+          />
 
-      <div className="flex items-center gap-2 mb-4">
-        <Input
-          placeholder="Buscar área..."
-          startContent={<SearchIcon />}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <table className="min-w-full table-auto border border-gray-200">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="p-2 text-left border">ID</th>
-            <th className="p-2 text-left border">Nombre</th>
-            <th className="p-2 text-left border">Sede</th>
-            <th className="p-2 text-left border">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAreas.map((area) => (
-            <tr key={area.id} className="border-b hover:bg-gray-50">
-              <td className="p-2 border">{area.id}</td>
-              <td className="p-2 border">{area.nombreArea}</td>
-              <td className="p-2 border">{area.idSede?.nombreSede}</td>
-              <td className="p-2 border flex gap-2">
-                <Button size="sm" variant="light" onClick={() => handleEdit(area)} startContent={<EditIcon />}>
-                  Editar
-                </Button>
-                <Button size="sm" variant="light" color="danger" onClick={() => handleDelete(area.id)} startContent={<DeleteIcon />}>
-                  Eliminar
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen} placement="center">
-        <ModalContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <ModalHeader>{editArea ? "Editar Área" : "Agregar Área"}</ModalHeader>
-            <ModalBody>
-              <Input
-                {...register("nombreArea")}
-                label="Nombre del Área"
-                placeholder="Ingrese el nombre"
-                isInvalid={!!errors.nombreArea}
-                errorMessage={errors.nombreArea?.message}
-              />
-              <Select
-                label="Sede"
-                {...register("idSede.id")}
-                isInvalid={!!errors.idSede?.id}
-                errorMessage={errors.idSede?.id?.message}
+          <div className="flex gap-3">
+            <Dropdown>
+              <DropdownTrigger className="hidden sm:flex">
+                <Button variant="flat">Columnas</Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                disallowEmptySelection
+                closeOnSelect={false}
+                selectedKeys={visibleColumns}
+                selectionMode="multiple"
+                onSelectionChange={(keys) => setVisibleColumns(new Set(Array.from(keys) as string[]))}
               >
-                <SelectItem key="1" value="1">
-                  Sede Principal
-                </SelectItem>
-                <SelectItem key="2" value="2">
-                  Sede Alterna
-                </SelectItem>
-              </Select>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="light" onClick={() => { setModalOpen(false); setEditArea(null); reset(); }}>Cancelar</Button>
-              <Button color="primary" type="submit">
-                {editArea ? "Actualizar" : "Crear"}
-              </Button>
-            </ModalFooter>
-          </form>
-        </ModalContent>
-      </Modal>
-    </div>
+                {columns.map((column) => (
+                  <DropdownItem key={column.uid} className="capitalize">
+                    {column.name}
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
+            <Button color="primary" endContent={<Plus className="w-4 h-4" />}>
+              Crear Área
+            </Button>
+          </div>
+        </div>
+
+        <Table
+          isHeaderSticky
+          aria-label="Tabla de Áreas"
+          classNames={{
+            wrapper: "max-h-[500px]",
+            th: "bg-blue-100",
+          }}
+          selectedKeys={selectedKeys}
+          selectionMode="multiple"
+        >
+          <TableHeader columns={columns.filter((col) => visibleColumns.has(col.uid))}>
+            {(column) => (
+              <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
+                {column.name}
+              </TableColumn>
+            )}
+          </TableHeader>
+          <TableBody emptyContent={"No hay áreas"} items={paginatedItems}>
+            {(item) => (
+              <TableRow key={item.id}>
+                {(columnKey) => <TableCell>{renderCell(item, columnKey as string)}</TableCell>}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        <div className="py-2 flex justify-between items-center">
+          <span className="text-sm text-default-400">
+            Total {filteredItems.length} áreas
+          </span>
+          <Pagination
+            isCompact
+            showControls
+            color="primary"
+            page={page}
+            total={Math.ceil(filteredItems.length / rowsPerPage)}
+            onChange={setPage}
+          />
+        </div>
+      </div>
+    </DefaultLayout>
   );
 }
