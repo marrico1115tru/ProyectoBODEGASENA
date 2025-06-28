@@ -15,7 +15,7 @@ export interface Producto {
 
 export interface ProductoFormValues {
   nombre: string;
-  descripcion?: string;
+  descripcion: string | null; 
   tipoMateria?: string;
   fechaVencimiento?: string;
   idCategoriaId: number;
