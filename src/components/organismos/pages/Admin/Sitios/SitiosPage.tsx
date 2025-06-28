@@ -1,308 +1,550 @@
-import { useEffect, useState } from "react";
+// src/pages/SitiosPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getSitios,
   createSitio,
   updateSitio,
   deleteSitio,
-} from "@/Api/SitioService";
-import { getAreas } from "@/Api/AreasService";
-import { getTiposSitio } from "@/Api/Tipo_sitios";
-import { Sitio, SitioFormValues } from "@/types/types/Sitio";
-import { Area } from "@/types/types/typesArea";
-import { TipoSitio } from "@/types/types/tipo_sitios";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, XIcon } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast, { Toaster } from "react-hot-toast";
+} from '@/Api/SitioService';
+import { getAreas } from '@/Api/AreasService';
+import { getTiposSitio } from '@/Api/Tipo_sitios';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const sitioSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio").max(100),
-  ubicacion: z.string().min(1, "La ubicación es obligatoria").max(150),
-  idArea: z.object({ id: z.number().min(1, "Seleccione un área") }),
-  idTipoSitio: z.object({ id: z.number().min(1, "Seleccione un tipo de sitio") }),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-export default function SitiosPage() {
-  const [sitios, setSitios] = useState<Sitio[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [tiposSitio, setTiposSitio] = useState<TipoSitio[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'Ubicación', uid: 'ubicacion', sortable: false },
+  { name: 'Estado', uid: 'estado', sortable: false },
+  { name: 'Área', uid: 'area', sortable: false },
+  { name: 'Tipo', uid: 'tipo', sortable: false },
+  { name: '# Inventarios', uid: 'inventarios', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'nombre',
+  'ubicacion',
+  'estado',
+  'area',
+  'tipo',
+  'inventarios',
+  'actions',
+];
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<SitioFormValues>({
-    resolver: zodResolver(sitioSchema),
-    defaultValues: {
-      nombre: "",
-      ubicacion: "",
-      idArea: { id: 0 },
-      idTipoSitio: { id: 0 },
-    },
+const SitiosPage = () => {
+  /* Estado */
+  const [sitios, setSitios] = useState<any[]>([]);
+  const [areas, setAreas] = useState<any[]>([]);
+  const [tipos, setTipos] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario */
+  const [nombre, setNombre] = useState('');
+  const [ubicacion, setUbicacion] = useState('');
+  const [estado, setEstado] = useState<'ACTIVO' | 'INACTIVO'>('ACTIVO');
+  const [idArea, setIdArea] = useState<number | ''>('');
+  const [idTipo, setIdTipo] = useState<number | ''>('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [s, a, t] = await Promise.all([
+        getSitios(),
+        getAreas(),
+        getTiposSitio(),
+      ]);
+      setSitios(s);
+      setAreas(a);
+      setTipos(t);
+    } catch (err) {
+      console.error('Error cargando sitios', err);
+    }
+  };
   useEffect(() => {
-    fetchData();
+    cargarDatos();
   }, []);
 
-  const fetchData = async () => {
-    const sitiosData = await getSitios();
-    const areasData = await getAreas();
-    const tiposData = await getTiposSitio();
-    setSitios(sitiosData);
-    setAreas(areasData);
-    setTiposSitio(tiposData);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar sitio? No se podrá recuperar.')) return;
+    await deleteSitio(id);
+    cargarDatos();
+    notify(`🗑️ Sitio eliminado: ID ${id}`);
   };
 
-  const onSubmit = async (data: SitioFormValues) => {
-    try {
-      if (editingId) {
-        await updateSitio(editingId, data);
-        toast.success("Sitio actualizado");
-      } else {
-        await createSitio(data);
-        toast.success("Sitio creado");
-      }
-      fetchData();
-      reset();
-      setIsModalOpen(false);
-      setEditingId(null);
-    } catch {
-      toast.error("Error al guardar el sitio");
+  const guardar = async () => {
+    const payload = {
+      nombre,
+      ubicacion,
+      estado,
+      id_area: idArea || undefined,
+      id_tipo_sitio: idTipo || undefined,
+    };
+    editId ? await updateSitio(editId, payload) : await createSitio(payload);
+    onClose();
+    limpiarForm();
+    cargarDatos();
+  };
+
+  const abrirModalEditar = (s: any) => {
+    setEditId(s.id);
+    setNombre(s.nombre || '');
+    setUbicacion(s.ubicacion || '');
+    setEstado(s.estado === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO');
+    setIdArea(s.idArea?.id || '');
+    setIdTipo(s.idTipoSitio?.id || '');
+    onOpen();
+  };
+
+  const limpiarForm = () => {
+    setEditId(null);
+    setNombre('');
+    setUbicacion('');
+    setEstado('ACTIVO');
+    setIdArea('');
+    setIdTipo('');
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? sitios.filter((s) =>
+            (
+              `${s.nombre} ${s.ubicacion} ${s.idArea?.nombreArea || ''} ${
+                s.idTipoSitio?.nombre || ''
+              }`
+            )
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : sitios,
+    [sitios, filterValue]
+  );
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 break-words max-w-[16rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'ubicacion':
+        return <span className="text-sm text-gray-600">{item.ubicacion}</span>;
+      case 'estado':
+        return (
+          <span
+            className={`text-sm font-medium ${
+              item.estado === 'ACTIVO' ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            {item.estado}
+          </span>
+        );
+      case 'area':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.idArea?.nombreArea || '—'}
+          </span>
+        );
+      case 'tipo':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.idTipoSitio?.nombre || '—'}
+          </span>
+        );
+      case 'inventarios':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.inventarios?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const handleEdit = (sitio: Sitio) => {
-    setEditingId(sitio.id);
-    setValue("nombre", sitio.nombre ?? "");
-    setValue("ubicacion", sitio.ubicacion ?? "");
-    setValue("idArea", { id: sitio.idArea?.id || 0 });
-    setValue("idTipoSitio", { id: sitio.idTipoSitio?.id || 0 });
-    setIsModalOpen(true);
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar este sitio?")) {
-      await deleteSitio(id);
-      toast.success("Sitio eliminado");
-      fetchData();
-    }
-  };
-
-  const filteredSitios = sitios.filter((s) =>
-    s.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre, ubicación, área o tipo"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Sitio
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {sitios.length} sitios
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
   );
 
-  const totalPages = Math.ceil(filteredSitios.length / itemsPerPage);
-  const currentItems = filteredSitios.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">🏢 Gestión de Sitios</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🏷️ Gestión de Sitios
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra bodegas, ambientes y otros sitios.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de sitios"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'nombre' ? 260 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron sitios">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        <input
-          type="text"
-          placeholder="Buscar sitio por nombre..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Ubicación</th>
-                <th className="px-4 py-2">Área</th>
-                <th className="px-4 py-2">Tipo de Sitio</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                currentItems.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{s.nombre}</td>
-                    <td className="px-4 py-2">{s.ubicacion}</td>
-                    <td className="px-4 py-2">{s.idArea?.nombreArea}</td>
-                    <td className="px-4 py-2">{s.idTipoSitio?.nombre}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(s)}
-                        className="text-blue-600 hover:underline"
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron sitios</p>
+          )}
+          {sorted.map((s) => (
+            <Card key={s.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">{s.nombre}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
                       >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm">
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? "Editar Sitio" : "Crear Sitio"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                type="text"
-                {...register("nombre")}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombre && (
-                <p className="text-red-500 text-sm">{errors.nombre.message}</p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Ubicación</label>
-              <input
-                type="text"
-                {...register("ubicacion")}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.ubicacion && (
-                <p className="text-red-500 text-sm">{errors.ubicacion.message}</p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Área</label>
-              <select
-                {...register("idArea.id", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un área</option>
-                {areas.map((area) => (
-                  <option key={area.id} value={area.id}>
-                    {area.nombreArea}
-                  </option>
-                ))}
-              </select>
-              {errors.idArea?.id && (
-                <p className="text-red-500 text-sm">{errors.idArea.id.message}</p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Tipo de Sitio</label>
-              <select
-                {...register("idTipoSitio.id", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un tipo de sitio</option>
-                {tiposSitio.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.nombre}
-                  </option>
-                ))}
-              </select>
-              {errors.idTipoSitio?.id && (
-                <p className="text-red-500 text-sm">
-                  {errors.idTipoSitio.id.message}
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(s)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(s.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Ubicación:</span> {s.ubicacion}
                 </p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >
-                {editingId ? "Actualizar" : "Crear"}
-              </button>
-            </div>
-          </form>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Estado:</span>{' '}
+                  <span
+                    className={s.estado === 'INACTIVO' ? 'text-red-600' : 'text-green-600'}
+                  >
+                    {s.estado}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Área:</span> {s.idArea?.nombreArea || '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Inventarios:</span>{' '}
+                  {s.inventarios?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {s.id}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Sitio' : 'Nuevo Sitio'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    placeholder="Ej: Bodega Norte"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                  <Input
+                    label="Ubicación"
+                    placeholder="Descripción de la ubicación"
+                    value={ubicacion}
+                    onValueChange={setUbicacion}
+                    radius="sm"
+                  />
+                  {/* Estado */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Estado
+                    </label>
+                    <select
+                      value={estado}
+                      onChange={(e) => setEstado(e.target.value as 'ACTIVO' | 'INACTIVO')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ACTIVO">ACTIVO</option>
+                      <option value="INACTIVO">INACTIVO</option>
+                    </select>
+                  </div>
+                  {/* Área */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Área
+                    </label>
+                    <select
+                      value={idArea}
+                      onChange={(e) => setIdArea(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un área</option>
+                      {areas.map((a: any) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nombreArea}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Tipo sitio */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Tipo de Sitio
+                    </label>
+                    <select
+                      value={idTipo}
+                      onChange={(e) => setIdTipo(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un tipo</option>
+                      {tipos.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      </div>
     </DefaultLayout>
   );
-}
+};
+
+export default SitiosPage;

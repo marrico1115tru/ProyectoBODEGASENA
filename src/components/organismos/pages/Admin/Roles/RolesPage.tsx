@@ -1,197 +1,418 @@
-import { useEffect, useState } from "react";
+// src/pages/RolesPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getRoles,
   createRol,
   updateRol,
   deleteRol,
-} from "@/Api/RolService";
-import { Rol } from "@/types/types/Rol";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, XIcon } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast, { Toaster } from "react-hot-toast";
+} from '@/Api/RolService';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-// Esquema Zod
-const rolSchema = z.object({
-  nombreRol: z
-    .string()
-    .min(1, "El nombre del rol es obligatorio")
-    .max(50, "Máximo 50 caracteres"),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type RolFormValues = z.infer<typeof rolSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Rol', uid: 'rol', sortable: false },
+  { name: 'Usuarios', uid: 'usuarios', sortable: false },
+  { name: 'Permisos', uid: 'permisos', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'rol',
+  'usuarios',
+  'permisos',
+  'actions',
+];
 
-export default function RolPage() {
-  const [roles, setRoles] = useState<Rol[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<RolFormValues>({
-    resolver: zodResolver(rolSchema),
+const RolesPage = () => {
+  /* Estado */
+  const [roles, setRoles] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario */
+  const [nombreRol, setNombreRol] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarRoles = async () => {
+    try {
+      const data = await getRoles();
+      setRoles(data);
+    } catch (err) {
+      console.error('Error cargando roles', err);
+    }
+  };
   useEffect(() => {
-    fetchRoles();
+    cargarRoles();
   }, []);
 
-  const fetchRoles = async () => {
-    const data = await getRoles();
-    setRoles(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar rol? No se podrá recuperar.')) return;
+    await deleteRol(id);
+    cargarRoles();
+    notify(`🗑️ Rol eliminado: ID ${id}`);
   };
 
-  const onSubmit = async (data: RolFormValues) => {
-    try {
-      if (editingId) {
-        await updateRol(editingId, data);
-        toast.success("Rol actualizado");
-      } else {
-        await createRol(data);
-        toast.success("Rol creado");
-      }
-      fetchRoles();
-      setIsModalOpen(false);
-      setEditingId(null);
-      reset();
-    } catch (err) {
-      toast.error("Error al guardar");
+  const guardar = async () => {
+    const payload = { nombreRol };
+    editId ? await updateRol(editId, payload) : await createRol(payload);
+    onClose();
+    limpiarForm();
+    cargarRoles();
+  };
+
+  const abrirModalEditar = (r: any) => {
+    setEditId(r.id);
+    setNombreRol(r.nombreRol);
+    onOpen();
+  };
+
+  const limpiarForm = () => {
+    setEditId(null);
+    setNombreRol('');
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? roles.filter((r) =>
+            `${r.nombreRol}`.toLowerCase().includes(filterValue.toLowerCase())
+          )
+        : roles,
+    [roles, filterValue]
+  );
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'rol':
+        return (
+          <span className="font-medium text-gray-800 break-words max-w-[18rem]">
+            {item.nombreRol}
+          </span>
+        );
+      case 'usuarios':
+        return (
+          <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>
+        );
+      case 'permisos':
+        return (
+          <span className="text-sm text-gray-600">{item.permisos?.length || 0}</span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const handleEdit = (rol: Rol) => {
-    setEditingId(rol.id);
-    setValue("nombreRol", rol.nombreRol);
-    setIsModalOpen(true);
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar este rol?")) {
-      await deleteRol(id);
-      fetchRoles();
-      toast.success("Rol eliminado");
-    }
-  };
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre de rol"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Rol
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {roles.length} roles
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
+  );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            🎖️ Gestión de Roles
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🛡️ Gestión de Roles
           </h1>
-          <button
-            onClick={() => {
-              setIsModalOpen(true);
-              setEditingId(null);
-              reset();
+          <p className="text-sm text-gray-600">
+            Consulta y administra los roles y sus permisos.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de roles"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
           >
-            <PlusIcon className="w-4 h-4 mr-1" />
-            Crear
-          </button>
-        </div>
-
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre del Rol</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-center py-4">
-                    No hay registros.
-                  </td>
-                </tr>
-              ) : (
-                roles.map((rol) => (
-                  <tr key={rol.id} className="border-t">
-                    <td className="px-4 py-2">{rol.id}</td>
-                    <td className="px-4 py-2">{rol.nombreRol}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(rol)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(rol.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'rol' ? 300 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron roles">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {/* Modal de formulario */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg relative">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-              <h2 className="text-lg font-semibold mb-4">
-                {editingId ? "Editar Rol" : "Crear Rol"}
-              </h2>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Nombre del rol
-                  </label>
-                  <input
-                    type="text"
-                    {...register("nombreRol")}
-                    className="w-full border px-3 py-2 rounded"
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron roles</p>
+          )}
+          {sorted.map((r) => (
+            <Card key={r.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
+                    {r.nombreRol}
+                  </h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(r)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(r.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Usuarios:</span> {r.usuarios?.length || 0}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Permisos:</span> {r.permisos?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {r.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Rol' : 'Nuevo Rol'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre del rol"
                     placeholder="Ej: Administrador"
+                    value={nombreRol}
+                    onValueChange={setNombreRol}
+                    radius="sm"
                   />
-                  {errors.nombreRol && (
-                    <p className="text-red-600 text-sm mt-1">
-                      {errors.nombreRol.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border rounded"
-                  >
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    {editingId ? "Actualizar" : "Crear"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
     </DefaultLayout>
   );
-}
+};
+
+export default RolesPage;

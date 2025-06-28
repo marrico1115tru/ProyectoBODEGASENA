@@ -1,300 +1,538 @@
-// pages/fichas/FichasFormacionPage.tsx
-import { useEffect, useState } from "react";
+// src/pages/FichasFormacionPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getFichasFormacion,
   createFichaFormacion,
   updateFichaFormacion,
   deleteFichaFormacion,
-} from "@/Api/fichasFormacion";
-import { getTitulados } from "@/Api/TituladosService";
-import { getUsuarios } from "@/Api/Usuariosform";
-import { FichaFormacion } from "@/types/types/FichaFormacion";
-import { Titulados } from "@/types/types/typesTitulados";
-import { Usuario } from "@/types/types/Usuario";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, XIcon } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+} from '@/Api/fichasFormacion';
+import { getTitulados } from '@/Api/TituladosService';
+import { getUsuarios } from '@/Api/Usuariosform';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const fichaSchema = z.object({
-  nombre: z.string().min(3, "El nombre es obligatorio"),
-  idTitulado: z.number().min(1, "Seleccione un titulado"),
-  idUsuarioResponsable: z.number().min(1, "Seleccione un responsable"),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type FichaSchema = z.infer<typeof fichaSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'Titulado', uid: 'titulado', sortable: false },
+  { name: 'Responsable', uid: 'responsable', sortable: false },
+  { name: '# Usuarios', uid: 'usuarios', sortable: false },
+  { name: '# Entregas', uid: 'entregas', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'nombre',
+  'titulado',
+  'responsable',
+  'usuarios',
+  'entregas',
+  'actions',
+];
 
-export default function FichasFormacionPage() {
-  const [fichas, setFichas] = useState<FichaFormacion[]>([]);
-  const [titulados, setTitulados] = useState<Titulados[]>([]);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+const FichasFormacionPage = () => {
+  /* Estado */
+  const [fichas, setFichas] = useState<any[]>([]);
+  const [titulados, setTitulados] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
+  });
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<FichaSchema>({ resolver: zodResolver(fichaSchema) });
+  /* Formulario */
+  const [nombre, setNombre] = useState('');
+  const [idTitulado, setIdTitulado] = useState<number | ''>('');
+  const [idResponsable, setIdResponsable] = useState<number | ''>('');
+  const [editId, setEditId] = useState<number | null>(null);
 
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [fs, ts, us] = await Promise.all([
+        getFichasFormacion(),
+        getTitulados(),
+        getUsuarios(),
+      ]);
+      setFichas(fs);
+      setTitulados(ts);
+      setUsuarios(us);
+    } catch (err) {
+      console.error('Error cargando fichas', err);
+    }
+  };
   useEffect(() => {
-    fetchFichas();
-    fetchTitulados();
-    fetchUsuarios();
+    cargarDatos();
   }, []);
 
-  const fetchFichas = async () => {
-    const data = await getFichasFormacion();
-    setFichas(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar ficha? No se podrá recuperar.')) return;
+    await deleteFichaFormacion(id);
+    cargarDatos();
+    notify(`🗑️ Ficha eliminada: ID ${id}`);
   };
 
-  const fetchTitulados = async () => {
-    const data = await getTitulados();
-    setTitulados(data);
+  const guardar = async () => {
+    const payload = {
+      nombre,
+      idTitulado: idTitulado ? { id: Number(idTitulado) } : null,
+      idUsuarioResponsable: idResponsable ? { id: Number(idResponsable) } : null,
+    };
+    editId
+      ? await updateFichaFormacion(editId, payload)
+      : await createFichaFormacion(payload);
+    onClose();
+    limpiarForm();
+    cargarDatos();
   };
 
-  const fetchUsuarios = async () => {
-    const data = await getUsuarios();
-    setUsuarios(data);
+  const abrirModalEditar = (f: any) => {
+    setEditId(f.id);
+    setNombre(f.nombre || '');
+    setIdTitulado(f.idTitulado?.id || '');
+    setIdResponsable(f.idUsuarioResponsable?.id || '');
+    onOpen();
   };
 
-  const onSubmit = async (data: FichaSchema) => {
-    try {
-      if (editingId) {
-        await updateFichaFormacion(editingId, data);
-        toast.success("Ficha actualizada");
-      } else {
-        await createFichaFormacion(data);
-        toast.success("Ficha creada");
-      }
-      fetchFichas();
-      reset();
-      setIsModalOpen(false);
-    } catch (err) {
-      toast.error("Error al guardar ficha");
-    }
+  const limpiarForm = () => {
+    setEditId(null);
+    setNombre('');
+    setIdTitulado('');
+    setIdResponsable('');
   };
 
-  const handleEdit = (ficha: FichaFormacion) => {
-    setValue("nombre", ficha.nombre);
-    setValue("idTitulado", ficha.idTitulado?.id || 0);
-    setValue("idUsuarioResponsable", ficha.idUsuarioResponsable?.id || 0);
-    setEditingId(ficha.id);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar esta ficha de formación?")) {
-      await deleteFichaFormacion(id);
-      fetchFichas();
-    }
-  };
-
-  const filtered = fichas.filter((f) =>
-    f.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? fichas.filter((f) =>
+            (
+              `${f.nombre} ${f.idTitulado?.nombre || ''} ${
+                f.idUsuarioResponsable?.nombre || ''
+              }`
+            )
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : fichas,
+    [fichas, filterValue]
   );
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 break-words max-w-[18rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'titulado':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.idTitulado?.nombre || '—'}
+          </span>
+        );
+      case 'responsable':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.idUsuarioResponsable
+              ? `${item.idUsuarioResponsable.nombre} ${item.idUsuarioResponsable.apellido ?? ''}`
+              : '—'}
+          </span>
+        );
+      case 'usuarios':
+        return (
+          <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>
+        );
+      case 'entregas':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.entregaMaterials?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
+    }
+  };
+
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre, titulado o responsable"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nueva Ficha
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {fichas.length} fichas
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === 1}
+        onPress={() => setPage(page - 1)}
+      >
+        Anterior
+      </Button>
+      <Pagination
+        isCompact
+        showControls
+        page={page}
+        total={pages}
+        onChange={setPage}
+      />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">📘 Fichas de Formación</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🎓 Gestión de Fichas de Formación
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra las fichas académicas.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de fichas"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'nombre' ? 300 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron fichas">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        <input
-          type="text"
-          placeholder="Buscar ficha..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Titulado</th>
-                <th className="px-4 py-2">Responsable</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((ficha) => (
-                  <tr key={ficha.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{ficha.id}</td>
-                    <td className="px-4 py-2">{ficha.nombre}</td>
-                    <td className="px-4 py-2">{ficha.idTitulado?.nombre}</td>
-                    <td className="px-4 py-2">
-                      {ficha.idUsuarioResponsable
-                        ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido}`
-                        : "Sin responsable"}
-                    </td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(ficha)}
-                        className="text-blue-600 hover:underline"
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron fichas</p>
+          )}
+          {sorted.map((f) => (
+            <Card key={f.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
+                    {f.nombre}
+                  </h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
                       >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(f)} key={''}>
                         Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ficha.id)}
-                        className="text-red-600 hover:underline"
-                      >
+                      </DropdownItem>
+                      <DropdownItem onPress={() => eliminar(f.id)} key={''}>
                         Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Titulado:</span>{' '}
+                  {f.idTitulado?.nombre || '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Responsable:</span>{' '}
+                  {f.idUsuarioResponsable
+                    ? `${f.idUsuarioResponsable.nombre} ${f.idUsuarioResponsable.apellido ?? ''}`
+                    : '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Usuarios:</span>{' '}
+                  {f.usuarios?.length || 0}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Entregas:</span>{' '}
+                  {f.entregaMaterials?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {f.id}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm">
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>
+                  {editId ? 'Editar Ficha' : 'Nueva Ficha'}
+                </ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    placeholder="Ej: Ficha 2567890 - ADSI"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                  {/* Titulado */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Titulado
+                    </label>
+                    <select
+                      value={idTitulado}
+                      onChange={(e) => setIdTitulado(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un titulado</option>
+                      {titulados.map((t: any) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Responsable */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Responsable
+                    </label>
+                    <select
+                      value={idResponsable}
+                      onChange={(e) =>
+                        setIdResponsable(Number(e.target.value) || '')
+                      }
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un responsable</option>
+                      {usuarios.map((u: any) => (
+                        <option key={u.id} value={u.id}>
+                          {`${u.nombre} ${u.apellido ?? ''}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? "Editar Ficha" : "Crear Ficha"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                type="text"
-                {...register("nombre")}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombre && (
-                <p className="text-red-500 text-sm">{errors.nombre.message}</p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Titulado</label>
-              <select
-                {...register("idTitulado", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un titulado</option>
-                {titulados.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre}
-                  </option>
-                ))}
-              </select>
-              {errors.idTitulado && (
-                <p className="text-red-500 text-sm">
-                  {errors.idTitulado.message}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Responsable</label>
-              <select
-                {...register("idUsuarioResponsable", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un usuario</option>
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre} {u.apellido}
-                  </option>
-                ))}
-              </select>
-              {errors.idUsuarioResponsable && (
-                <p className="text-red-500 text-sm">
-                  {errors.idUsuarioResponsable.message}
-                </p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >
-                {editingId ? "Actualizar" : "Crear"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default FichasFormacionPage;

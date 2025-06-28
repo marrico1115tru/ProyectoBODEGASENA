@@ -1,217 +1,401 @@
-import { useEffect, useState } from 'react';
+// src/pages/TipoSitiosPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getTiposSitio,
   createTipoSitio,
   updateTipoSitio,
   deleteTipoSitio,
 } from '@/Api/Tipo_sitios';
-import { TipoSitio } from '@/types/types/tipo_sitios';
 import DefaultLayout from '@/layouts/default';
-import { PlusIcon, XIcon } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const tipoSitioSchema = z.object({
-  nombre: z.string().min(1, 'El nombre es obligatorio'),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type TipoSitioSchema = z.infer<typeof tipoSitioSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: '# Sitios', uid: 'sitios', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'sitios', 'actions'];
 
-export default function TipoSitioPage() {
-  const [tipos, setTipos] = useState<TipoSitio[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<TipoSitioSchema>({
-    resolver: zodResolver(tipoSitioSchema),
+const TipoSitiosPage = () => {
+  /* Estado principal */
+  const [tipos, setTipos] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario modal */
+  const [nombre, setNombre] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const data = await getTiposSitio();
+      setTipos(data);
+    } catch (err) {
+      console.error('Error cargando tipos de sitio', err);
+    }
+  };
   useEffect(() => {
-    fetchTipos();
+    cargarDatos();
   }, []);
 
-  const fetchTipos = async () => {
-    const data = await getTiposSitio();
-    setTipos(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar tipo de sitio?  No se podrá recuperar.')) return;
+    await deleteTipoSitio(id);
+    cargarDatos();
+    notify(`🗑️ Tipo eliminado: ID ${id}`);
   };
 
-  const onSubmit = async (data: TipoSitioSchema) => {
-    try {
-      if (editingId) {
-        await updateTipoSitio(editingId, data);
-        toast.success('Tipo de sitio actualizado');
-      } else {
-        await createTipoSitio(data);
-        toast.success('Tipo de sitio creado');
-      }
-      fetchTipos();
-      reset();
-      setEditingId(null);
-      setIsModalOpen(false);
-    } catch (error) {
-      toast.error('Error al guardar el tipo de sitio');
-    }
+  const guardar = async () => {
+    const payload = { nombre };
+    editId ? await updateTipoSitio(editId, payload) : await createTipoSitio(payload);
+    onClose();
+    setNombre('');
+    setEditId(null);
+    cargarDatos();
   };
 
-  const handleEdit = (tipo: TipoSitio) => {
-    setValue('nombre', tipo.nombre);
-    setEditingId(tipo.id);
-    setIsModalOpen(true);
+  const abrirModalEditar = (t: any) => {
+    setEditId(t.id);
+    setNombre(t.nombre || '');
+    onOpen();
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Eliminar este tipo de sitio?')) {
-      await deleteTipoSitio(id);
-      fetchTipos();
-    }
-  };
-
-  const filteredTipos = tipos.filter((tipo) =>
-    tipo.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? tipos.filter((t) =>
+            `${t.id} ${t.nombre}`.toLowerCase().includes(filterValue.toLowerCase())
+          )
+        : tipos,
+    [tipos, filterValue]
   );
-  const totalPages = Math.ceil(filteredTipos.length / itemsPerPage);
-  const paginatedTipos = filteredTipos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column];
+      const y = b[column];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 break-words max-w-[16rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'sitios':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.sitios?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
+    }
+  };
+
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre o ID"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              setEditId(null);
+              setNombre('');
+              onOpen();
+            }}
+          >
+            Nuevo Tipo
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {tipos.length} tipos
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">🏷️ Tipos de Sitio</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🏷️ Gestión de Tipos de Sitio
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra los tipos de sitio registrados.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de tipos de sitio"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
           >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar tipo de sitio..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedTipos.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                paginatedTipos.map((tipo) => (
-                  <tr key={tipo.id} className="hover:bg-gray-50 border-b">
-                    <td className="px-4 py-2">{tipo.id}</td>
-                    <td className="px-4 py-2">{tipo.nombre}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(tipo)}
-                        className="text-blue-600 hover:underline"
-                      >Editar</button>
-                      <button
-                        onClick={() => handleDelete(tipo.id)}
-                        className="text-red-600 hover:underline"
-                      >Eliminar</button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'nombre' ? 260 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron tipos de sitio">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-center mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Anterior</button>
-            <span className="text-sm">Página {currentPage} de {totalPages}</span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Siguiente</button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron tipos de sitio</p>
+          )}
+          {sorted.map((t) => (
+            <Card key={t.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">{t.nombre}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(t)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(t.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Sitios:</span> {t.sitios?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {t.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Tipo' : 'Nuevo Tipo'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    placeholder="Ej: Bodega Central"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? 'Editar Tipo de Sitio' : 'Crear Tipo de Sitio'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                type="text"
-                {...register('nombre')}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombre && (
-                <p className="text-red-500 text-sm">{errors.nombre.message}</p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >Cancelar</button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >{editingId ? 'Actualizar' : 'Crear'}</button>
-            </div>
-          </form>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default TipoSitiosPage;

@@ -1,231 +1,402 @@
-import { useEffect, useState } from "react";
+// src/pages/TituladosPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getTitulados,
   createTitulado,
   updateTitulado,
   deleteTitulado,
-} from "@/Api/TituladosService";
-import { Titulado } from "@/types/types/typesTitulados";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, PencilIcon, XIcon } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+} from '@/Api/TituladosService';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const tituladoSchema = z.object({
-  nombre: z.string().min(3, "El nombre es obligatorio"),
-});
-type TituladoSchema = z.infer<typeof tituladoSchema>;
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-export default function TituladosPage() {
-  const [titulados, setTitulados] = useState<Titulado[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'Fichas', uid: 'fichas', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'fichas', 'actions'];
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<TituladoSchema>({
-    resolver: zodResolver(tituladoSchema),
+const TituladosPage = () => {
+  /* Estado */
+  const [titulados, setTitulados] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  const [nombre, setNombre] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  const [toastMsg, setToastMsg] = useState('');
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
+  /* Toast helper */
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Cargar datos */
+  const cargarTitulados = async () => {
+    try {
+      const data = await getTitulados();
+      setTitulados(data);
+    } catch (err) {
+      console.error('Error cargando titulados', err);
+    }
+  };
+
   useEffect(() => {
-    fetchTitulados();
+    cargarTitulados();
   }, []);
 
-  const fetchTitulados = async () => {
-    const data = await getTitulados();
-    setTitulados(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar titulado? No se podrá recuperar.')) return;
+    await deleteTitulado(id);
+    cargarTitulados();
+    notify(`🗑️ Titulado eliminado: ID ${id}`);
   };
 
-  const onSubmit = async (data: TituladoSchema) => {
-    try {
-      if (editingId) {
-        await updateTitulado(editingId, data);
-        toast.success("Titulado actualizado");
-      } else {
-        await createTitulado(data);
-        toast.success("Titulado creado");
-      }
-      fetchTitulados();
-      reset();
-      setIsModalOpen(false);
-    } catch {
-      toast.error("Error al guardar titulado");
-    }
+  const guardar = async () => {
+    const payload = { nombre };
+    editId ? await updateTitulado(editId, payload) : await createTitulado(payload);
+    onClose();
+    setNombre('');
+    setEditId(null);
+    cargarTitulados();
   };
 
-  const handleEdit = (titulado: Titulado) => {
-    setValue("nombre", titulado.nombre);
-    setEditingId(titulado.id);
-    setIsModalOpen(true);
+  const abrirModalEditar = (t: any) => {
+    setEditId(t.id);
+    setNombre(t.nombre);
+    onOpen();
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar este titulado?")) {
-      await deleteTitulado(id);
-      fetchTitulados();
-    }
-  };
-
-  const filtered = titulados.filter((t) =>
-    t.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? titulados.filter((t) =>
+            t.nombre.toLowerCase().includes(filterValue.toLowerCase()),
+          )
+        : titulados,
+    [titulados, filterValue],
   );
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 capitalize break-words max-w-[18rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'fichas':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.fichasFormacions?.length ?? 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
+    }
+  };
+
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar titulado por nombre"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              setEditId(null);
+              setNombre('');
+              onOpen();
+            }}
+          >
+            Nuevo Titulado
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {titulados.length} titulados
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">🎓 Titulados</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🎓 Gestión de Titulados
+          </h1>
+          <p className="text-sm text-gray-600">Consulta y administra los programas titulados.</p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de titulados"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" />
-            Crear
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar titulado..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((titulado) => (
-                  <tr key={titulado.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{titulado.id}</td>
-                    <td className="px-4 py-2">{titulado.nombre}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(titulado)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(titulado.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'nombre' ? 320 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron titulados">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm">
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron titulados</p>
+          )}
+          {sorted.map((t) => (
+            <Card key={t.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
+                    {t.nombre}
+                  </h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(t)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(t.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Fichas:</span> {t.fichasFormacions?.length ?? 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {t.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Titulado' : 'Nuevo Titulado'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? "Editar Titulado" : "Crear Titulado"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                type="text"
-                {...register("nombre")}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombre && (
-                <p className="text-red-500 text-sm">{errors.nombre.message}</p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >
-                {editingId ? "Actualizar" : "Crear"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default TituladosPage;

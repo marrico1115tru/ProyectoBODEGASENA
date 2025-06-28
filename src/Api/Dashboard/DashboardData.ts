@@ -29,6 +29,11 @@ interface DashboardData {
   areas: Area[];
 }
 
+// Configuración global para permitir envío de cookies/sesión
+const config = {
+  withCredentials: true,
+};
+
 export const useDashboardData = () => {
   const [data, setData] = useState<DashboardData>({
     totalUsuarios: 0,
@@ -46,9 +51,9 @@ export const useDashboardData = () => {
     const fetchDashboardData = async () => {
       try {
         const [usuariosRes, productosRes, areasRes] = await Promise.all([
-          axios.get("http://localhost:3000/usuarios"),
-          axios.get("http://localhost:3000/productos"),
-          axios.get("http://localhost:3000/areas"),
+          axios.get("http://localhost:3000/usuarios", config),
+          axios.get("http://localhost:3000/productos", config),
+          axios.get("http://localhost:3000/areas", config),
         ]);
 
         setData({
@@ -56,7 +61,11 @@ export const useDashboardData = () => {
           totalProductos: productosRes.data.length,
           totalAreas: areasRes.data.length,
           resumen: Math.floor(
-            ((usuariosRes.data.length + productosRes.data.length + areasRes.data.length) / 500) * 100
+            ((usuariosRes.data.length +
+              productosRes.data.length +
+              areasRes.data.length) /
+              500) *
+              100
           ),
           usuarios: usuariosRes.data,
           productos: productosRes.data,

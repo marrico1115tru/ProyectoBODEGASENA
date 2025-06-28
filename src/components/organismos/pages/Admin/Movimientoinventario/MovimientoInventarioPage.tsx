@@ -1,233 +1,488 @@
-import { useEffect, useState } from "react";
-import DefaultLayout from "@/layouts/default";
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getMovimientos,
   createMovimiento,
   updateMovimiento,
   deleteMovimiento,
-} from "@/Api/Movimientosform";
-import { getInventarios } from "@/Api/inventario";
-import { Movimiento } from "@/types/types/movimientos";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast, { Toaster } from "react-hot-toast";
-import {
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/solid";
+} from '@/Api/Movimientosform';
+import { getInventarios } from '@/Api/inventario';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const movimientoSchema = z.object({
-  tipoMovimiento: z.enum(["ENTRADA", "SALIDA"], { errorMap: () => ({ message: "Seleccione tipo" }) }),
-  cantidad: z.coerce.number().min(1, "Cantidad debe ser mayor que cero"),
-  fechaMovimiento: z.string().min(1, "Fecha obligatoria"),
-  idProductoInventario: z.coerce.number().min(1, "Seleccione un producto"),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type MovimientoForm = z.infer<typeof movimientoSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Tipo', uid: 'tipo', sortable: false },
+  { name: 'Cantidad', uid: 'cantidad', sortable: false },
+  { name: 'Fecha', uid: 'fecha', sortable: false },
+  { name: 'Inventario', uid: 'inventario', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'tipo',
+  'cantidad',
+  'fecha',
+  'inventario',
+  'actions',
+];
 
-export default function MovimientosPage() {
-  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
+const MovimientosPage = () => {
+  /* Estado */
+  const [movimientos, setMovimientos] = useState<any[]>([]);
   const [inventarios, setInventarios] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
+  });
+
+  /* Formulario modal */
+  const [tipoMovimiento, setTipoMovimiento] = useState('ENTRADA');
+  const [cantidad, setCantidad] = useState<number | ''>('');
+  const [fecha, setFecha] = useState('');
+  const [idInventario, setIdInventario] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } =
-    useForm<MovimientoForm>({ resolver: zodResolver(movimientoSchema) });
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
 
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [movs, invs] = await Promise.all([getMovimientos(), getInventarios()]);
+      setMovimientos(movs);
+      setInventarios(invs);
+    } catch (err) {
+      console.error('Error cargando datos', err);
+    }
+  };
   useEffect(() => {
-    fetchAll();
+    cargarDatos();
   }, []);
 
-  const fetchAll = async () => {
-    const [movs, invs] = await Promise.all([getMovimientos(), getInventarios()]);
-    setMovimientos(movs);
-    setInventarios(invs);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar movimiento? No se podrá recuperar.')) return;
+    await deleteMovimiento(id);
+    cargarDatos();
+    notify(`🗑️ Movimiento eliminado: ID ${id}`);
   };
 
-  const onSubmit = async (data: MovimientoForm) => {
+  const guardar = async () => {
     const payload = {
-      tipoMovimiento: data.tipoMovimiento,
-      cantidad: data.cantidad,
-      fechaMovimiento: data.fechaMovimiento,
-      idProductoInventario: { idProductoInventario: data.idProductoInventario },
+      tipoMovimiento,
+      cantidad,
+      fechaMovimiento: fecha,
+      idProductoInventario: idInventario
+        ? { idProductoInventario: Number(idInventario) }
+        : null,
     };
-
-    try {
-      if (editId) {
-        await updateMovimiento(editId, payload);
-        toast.success("Movimiento actualizado");
-      } else {
-        await createMovimiento(payload);
-        toast.success("Movimiento creado");
-      }
-      reset();
-      setShowForm(false);
-      setEditId(null);
-      fetchAll();
-    } catch {
-      toast.error("Error al guardar");
-    }
+    editId
+      ? await updateMovimiento(editId, payload)
+      : await createMovimiento(payload);
+    onClose();
+    limpiarForm();
+    cargarDatos();
   };
 
-  const handleEdit = (m: Movimiento) => {
-    setValue("tipoMovimiento", m.tipoMovimiento);
-    setValue("cantidad", m.cantidad);
-    setValue("fechaMovimiento", m.fechaMovimiento);
-    setValue("idProductoInventario", m.idProductoInventario.idProductoInventario);
+  const abrirModalEditar = (m: any) => {
     setEditId(m.id);
-    setShowForm(true);
+    setTipoMovimiento(m.tipoMovimiento);
+    setCantidad(m.cantidad);
+    setFecha(m.fechaMovimiento);
+    setIdInventario(m.idProductoInventario?.idProductoInventario || '');
+    onOpen();
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar este movimiento?")) {
-      await deleteMovimiento(id);
-      toast.success("Movimiento eliminado");
-      fetchAll();
-    }
+  const limpiarForm = () => {
+    setEditId(null);
+    setTipoMovimiento('ENTRADA');
+    setCantidad('');
+    setFecha('');
+    setIdInventario('');
   };
 
-  const filtered = movimientos.filter((m) =>
-    m.idProductoInventario?.nombre?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
-    m.idProductoInventario.idProductoInventario.toString().includes(searchTerm)
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? movimientos.filter((m) =>
+            (
+              `${m.tipoMovimiento} ${m.cantidad} ${m.fechaMovimiento} ${m.idProductoInventario?.idProductoInventario || ''
+              }`
+            )
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : movimientos,
+    [movimientos, filterValue]
   );
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'tipo':
+        return <span className="text-sm text-gray-800">{item.tipoMovimiento}</span>;
+      case 'cantidad':
+        return <span className="text-sm text-gray-800">{item.cantidad}</span>;
+      case 'fecha':
+        return <span className="text-sm text-gray-600">{item.fechaMovimiento}</span>;
+      case 'inventario':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.idProductoInventario?.idProductoInventario ?? '—'}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
+    }
+  };
+
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por tipo, fecha o inventario"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Movimiento
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {movimientos.length} movimientos
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">📦 Movimientos</h1>
-          <button
-            onClick={() => { reset(); setEditId(null); setShowForm(true); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🔄 Movimientos de Inventario
+          </h1>
+          <p className="text-sm text-gray-600">
+            Registra y gestiona entradas y salidas de inventario.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de movimientos"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
+            }}
           >
-            <PlusIcon className="w-5 h-5 mr-2" /> Nuevo
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar producto o ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Tipo</th>
-                <th className="px-4 py-2">Cantidad</th>
-                <th className="px-4 py-2">Fecha</th>
-                <th className="px-4 py-2">Producto</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((m) => (
-                  <tr key={m.id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-2">{m.id}</td>
-                    <td className="px-4 py-2">{m.tipoMovimiento}</td>
-                    <td className="px-4 py-2">{m.cantidad}</td>
-                    <td className="px-4 py-2">{m.fechaMovimiento}</td>
-                    <td className="px-4 py-2">{m.idProductoInventario.nombre || `Producto #${m.idProductoInventario.idProductoInventario}`}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button onClick={() => handleEdit(m)} className="text-blue-600 hover:underline">Editar</button>
-                      <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:underline">Eliminar</button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron movimientos">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Anterior</button>
-            <span className="text-sm">Página {currentPage} de {totalPages}</span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Siguiente</button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron movimientos</p>
+          )}
+          {sorted.map((m) => (
+            <Card key={m.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">
+                    {m.tipoMovimiento}: {m.cantidad}
+                  </h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(m)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(m.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Fecha:</span> {m.fechaMovimiento}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Inventario:</span>{' '}
+                  {m.idProductoInventario?.idProductoInventario ?? '—'}
+                </p>
+                <p className="text-xs text-gray-400">ID: {m.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-        {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-              <XMarkIcon
-                className="absolute top-3 right-3 w-6 h-6 cursor-pointer text-gray-500"
-                onClick={() => setShowForm(false)}
-              />
-              <h2 className="text-xl font-bold mb-4">{editId ? "Editar Movimiento" : "Crear Movimiento"}</h2>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                  <label className="block text-sm">Tipo Movimiento</label>
-                  <select {...register("tipoMovimiento")} className="w-full border px-3 py-2 rounded">
-                    <option value="">Seleccione</option>
-                    <option value="ENTRADA">ENTRADA</option>
-                    <option value="SALIDA">SALIDA</option>
-                  </select>
-                  {errors.tipoMovimiento && <p className="text-red-600 text-sm mt-1">{errors.tipoMovimiento.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm">Cantidad</label>
-                  <input type="number" {...register("cantidad")} className="w-full border px-3 py-2 rounded" />
-                  {errors.cantidad && <p className="text-red-600 text-sm mt-1">{errors.cantidad.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm">Fecha</label>
-                  <input type="date" {...register("fechaMovimiento")} className="w-full border px-3 py-2 rounded" />
-                  {errors.fechaMovimiento && <p className="text-red-600 text-sm mt-1">{errors.fechaMovimiento.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm">Producto</label>
-                  <select {...register("idProductoInventario")} className="w-full border px-3 py-2 rounded">
-                    <option value="">Seleccione producto</option>
-                    {inventarios.map((inv) => (
-                      <option key={inv.idProductoInventario} value={inv.idProductoInventario}>
-                        {inv.nombre || `Producto ${inv.idProductoInventario}`}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.idProductoInventario && <p className="text-red-600 text-sm mt-1">{errors.idProductoInventario.message}</p>}
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
-                  <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{editId ? "Actualizar" : "Crear"}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  {/* Tipo movimiento */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Tipo de movimiento
+                    </label>
+                    <select
+                      value={tipoMovimiento}
+                      onChange={(e) => setTipoMovimiento(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ENTRADA">ENTRADA</option>
+                      <option value="SALIDA">SALIDA</option>
+                    </select>
+                  </div>
+                  {/* Cantidad */}
+                  <Input
+                    label="Cantidad"
+                    placeholder="Ej: 100"
+                    type="number"
+                    value={cantidad.toString()}
+                    onValueChange={(v) => setCantidad(v ? Number(v) : '')}
+                    radius="sm"
+                  />
+                  {/* Fecha */}
+                  <Input
+                    label="Fecha (YYYY-MM-DD)"
+                    placeholder="2025-06-21"
+                    value={fecha}
+                    onValueChange={setFecha}
+                    radius="sm"
+                  />
+                  {/* Inventario */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Producto Inventario
+                    </label>
+                    <select
+                      value={idInventario}
+                      onChange={(e) => setIdInventario(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un inventario</option>
+                      {inventarios.map((inv) => (
+                        <option key={inv.idProductoInventario} value={inv.idProductoInventario}>
+                          {inv.idProductoInventario} - Stock: {inv.stock}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
     </DefaultLayout>
   );
-}
+};
+
+export default MovimientosPage;

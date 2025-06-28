@@ -1,297 +1,487 @@
-// pages/inventario/InventarioPage.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getInventarios,
   createInventario,
   updateInventario,
   deleteInventario,
-} from "@/Api/inventario";
-import { getProductos } from "@/Api/Productosform";
-import { getSitios } from "@/Api/SitioService";
-import { Producto } from "@/types/types/typesProductos";
-import { Sitio } from "@/types/types/Sitio";
-import { Inventario } from "@/types/types/inventario";
-import DefaultLayout from "@/layouts/default";
-import { PlusIcon, XIcon } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+} from '@/Api/inventario';
+import { getSitios } from '@/Api/SitioService';
+import { getProductos } from '@/Api/Productosform';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const inventarioSchema = z.object({
-  stock: z.number().min(1, "Debe ser mayor a 0"),
-  fkSitioId: z.number().min(1, "Seleccione un sitio"),
-  idProductoId: z.number().min(1, "Seleccione un producto"),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type InventarioSchema = z.infer<typeof inventarioSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Producto', uid: 'producto', sortable: false },
+  { name: 'Sitio', uid: 'sitio', sortable: false },
+  { name: 'Stock', uid: 'stock', sortable: false },
+  { name: '# Mov', uid: 'movimientos', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'producto',
+  'sitio',
+  'stock',
+  'movimientos',
+  'actions',
+];
 
-export default function InventarioPage() {
-  const [inventarios, setInventarios] = useState<Inventario[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [sitios, setSitios] = useState<Sitio[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<InventarioSchema>({
-    resolver: zodResolver(inventarioSchema),
+const InventarioPage = () => {
+  /* Estado principal */
+  const [inventarios, setInventarios] = useState<any[]>([]);
+  const [sitios, setSitios] = useState<any[]>([]);
+  const [productos, setProductos] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario modal */
+  const [stock, setStock] = useState<number | ''>('');
+  const [idProducto, setIdProducto] = useState<number | ''>('');
+  const [idSitio, setIdSitio] = useState<number | ''>('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [invs, sits, prods] = await Promise.all([
+        getInventarios(),
+        getSitios(),
+        getProductos(),
+      ]);
+      setInventarios(invs);
+      setSitios(sits);
+      setProductos(prods);
+    } catch (err) {
+      console.error('Error cargando inventario', err);
+    }
+  };
   useEffect(() => {
-    fetchInventarios();
-    fetchProductos();
-    fetchSitios();
+    cargarDatos();
   }, []);
 
-  const fetchInventarios = async () => {
-    const data = await getInventarios();
-    setInventarios(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar registro? No se podrá recuperar.')) return;
+    await deleteInventario(id);
+    cargarDatos();
+    notify(`🗑️ Inventario eliminado: ID ${id}`);
   };
 
-  const fetchProductos = async () => {
-    const data = await getProductos();
-    setProductos(data);
+  const guardar = async () => {
+    const payload = {
+      stock,
+      fkSitioId: idSitio ? Number(idSitio) : undefined,
+      idProductoId: idProducto ? Number(idProducto) : undefined,
+    };
+    editId
+      ? await updateInventario(editId, payload)
+      : await createInventario(payload);
+    onClose();
+    limpiarForm();
+    cargarDatos();
   };
 
-  const fetchSitios = async () => {
-    const data = await getSitios();
-    setSitios(data);
+  const abrirModalEditar = (inv: any) => {
+    setEditId(inv.idProductoInventario);
+    setStock(inv.stock);
+    setIdProducto(inv.idProducto?.id || '');
+    setIdSitio(inv.fkSitio?.id || '');
+    onOpen();
   };
 
-  const onSubmit = async (data: InventarioSchema) => {
-    try {
-      if (editingId) {
-        await updateInventario(editingId, data);
-        toast.success("Inventario actualizado");
-      } else {
-        await createInventario(data);
-        toast.success("Inventario creado");
-      }
-      fetchInventarios();
-      reset();
-      setIsModalOpen(false);
-    } catch {
-      toast.error("Error al guardar inventario");
+  const limpiarForm = () => {
+    setEditId(null);
+    setStock('');
+    setIdProducto('');
+    setIdSitio('');
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? inventarios.filter((i) =>
+            (
+              `${i.idProducto?.nombre || ''} ${i.fkSitio?.nombre || ''}`
+            )
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : inventarios,
+    [inventarios, filterValue]
+  );
+
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column === 'id' ? 'idProductoInventario' : column];
+      const y = b[column === 'id' ? 'idProductoInventario' : column];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'producto':
+        return <span className="text-sm text-gray-800">{item.idProducto?.nombre}</span>;
+      case 'sitio':
+        return <span className="text-sm text-gray-600">{item.fkSitio?.nombre}</span>;
+      case 'stock':
+        return <span className="text-sm text-gray-800">{item.stock}</span>;
+      case 'movimientos':
+        return (
+          <span className="text-sm text-gray-600">{item.movimientos?.length || 0}</span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.idProductoInventario)} key={''}>
+                Eliminar
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const handleEdit = (inv: Inventario) => {
-    setValue("stock", inv.stock);
-    setValue("fkSitioId", inv.fkSitio.id);
-    setValue("idProductoId", inv.idProducto.id);
-    setEditingId(inv.idProductoInventario);
-    setIsModalOpen(true);
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar este registro?")) {
-      await deleteInventario(id);
-      fetchInventarios();
-    }
-  };
-
-  const filtered = inventarios.filter((inv) =>
-    inv.idProducto.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por producto o sitio"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Inventario
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {inventarios.length} registros
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
   );
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
-
-  const getStockBarColor = (stock: number) => {
-    if (stock === 0) return "bg-red-500";
-    if (stock <= 10) return "bg-orange-400";
-    if (stock <= 50) return "bg-yellow-400";
-    return "bg-green-500";
-  };
-
-  const getStockPercentage = (stock: number) => {
-    return `${Math.min((stock / 100) * 100, 100)}%`;
-  };
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">📦 Inventario</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditingId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            📦 Inventario
+          </h1>
+          <p className="text-sm text-gray-600">Consulta y administra el stock disponible.</p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de inventario"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar producto..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">Producto</th>
-                <th className="px-4 py-2">Descripción</th>
-                <th className="px-4 py-2">Stock</th>
-                <th className="px-4 py-2">Sitio</th>
-                <th className="px-4 py-2">Ubicación</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500">
-                    No hay resultados.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((inv) => (
-                  <tr key={inv.idProductoInventario} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{inv.idProducto.nombre}</td>
-                    <td className="px-4 py-2">{inv.idProducto.descripcion}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium">{inv.stock} unidades</span>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${getStockBarColor(inv.stock)}`}
-                            style={{ width: getStockPercentage(inv.stock) }}
-                          ></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">{inv.fkSitio.nombre}</td>
-                    <td className="px-4 py-2">{inv.fkSitio.ubicacion}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(inv)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(inv.idProductoInventario)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron registros">
+              {(item) => (
+                <TableRow key={item.idProductoInventario}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Anterior</button>
-            <span className="text-sm">Página {currentPage} de {totalPages}</span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Siguiente</button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron registros</p>
+          )}
+          {sorted.map((i) => (
+            <Card key={i.idProductoInventario} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">{i.idProducto?.nombre}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(i)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(i.idProductoInventario)} key={''}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Sitio:</span> {i.fkSitio?.nombre}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Stock:</span> {i.stock}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Movimientos:</span>{' '}
+                  {i.movimientos?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {i.idProductoInventario}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>
+                  {editId ? 'Editar Inventario' : 'Nuevo Inventario'}
+                </ModalHeader>
+                <ModalBody className="space-y-4">
+                  {/* Producto */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Producto
+                    </label>
+                    <select
+                      value={idProducto}
+                      onChange={(e) => setIdProducto(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un producto</option>
+                      {productos.map((p: any) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Sitio */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Sitio
+                    </label>
+                    <select
+                      value={idSitio}
+                      onChange={(e) => setIdSitio(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un sitio</option>
+                      {sitios.map((s: any) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Stock */}
+                  <Input
+                    label="Stock"
+                    placeholder="Ej: 100"
+                    type="number"
+                    value={stock.toString()}
+                    onValueChange={(v) => setStock(v ? Number(v) : '')}
+                    radius="sm"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editingId ? "Editar Inventario" : "Crear Inventario"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Stock</label>
-              <input
-                type="number"
-                {...register("stock", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.stock && <p className="text-red-500 text-sm">{errors.stock.message}</p>}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Sitio</label>
-              <select
-                {...register("fkSitioId", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un sitio</option>
-                {sitios.map((s) => (
-                  <option key={s.id} value={s.id}>{s.nombre}</option>
-                ))}
-              </select>
-              {errors.fkSitioId && <p className="text-red-500 text-sm">{errors.fkSitioId.message}</p>}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Producto</label>
-              <select
-                {...register("idProductoId", { valueAsNumber: true })}
-                className="w-full border px-3 py-2 rounded"
-              >
-                <option value={0}>Seleccione un producto</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
-              {errors.idProductoId && <p className="text-red-500 text-sm">{errors.idProductoId.message}</p>}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >Cancelar</button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >{editingId ? "Actualizar" : "Crear"}</button>
-            </div>
-          </form>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default InventarioPage;

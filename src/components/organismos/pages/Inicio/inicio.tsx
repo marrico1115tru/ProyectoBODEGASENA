@@ -63,7 +63,7 @@ export default function Dashboard() {
     <DefaultLayout>
       <div className="space-y-8 px-4 py-6 bg-gray-50 min-h-screen">
         <div>
-          <h1 className="text-3xl font-bold text-primary mb-1">¡Bienvenida, María!</h1>
+          <h1 className="text-3xl font-bold text-primary mb-1">¡Bienvenido!</h1>
           <p className="text-muted-foreground text-sm">Aquí puedes visualizar el resumen del sistema de inventario.</p>
         </div>
 

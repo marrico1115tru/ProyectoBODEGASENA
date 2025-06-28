@@ -27,7 +27,6 @@ import MunicipioPage from "./components/organismos/pages/Admin/municipios/Munici
 import AreasPage from "./components/organismos/pages/Admin/Areas/AreasPage.tsx";
 import SedesPage from "./components/organismos/pages/Admin/Sedes/SedesPage.tsx";
 import RolesPage from "./components/organismos/pages/Admin/Roles/RolesPage.tsx";
-import OpcionPage from "./components/organismos/pages/Admin/opciones/OpcionPage.tsx";
 import FichaFormacionPage from "./components/organismos/pages/Admin/FichasFormacion/FichaFormacionPage.tsx";
 import SolicitudesPage from "./components/organismos/pages/Admin/Solicitudes/SolicitudesPage.tsx";
 import EntregaMaterialPage from "./components/organismos/pages/Admin/EntregaMaterial/EntregaMaterialPage.tsx";
@@ -71,7 +70,6 @@ function App() {
         <Route path="/AreasPage" element={<AreasPage />} />
         <Route path="/SedesPage" element={<SedesPage />} />
         <Route path="/RolesPage" element={<RolesPage />} />
-        <Route path="/OpcionPage" element={<OpcionPage />} />
         <Route path="/FichaFormacionPage" element={<FichaFormacionPage />} />
         <Route path="/SolicitudesPage" element={<SolicitudesPage />} />
         <Route path="/EntregaMaterialPage" element={<EntregaMaterialPage />} />

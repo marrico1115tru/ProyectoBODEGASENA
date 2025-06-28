@@ -1,233 +1,442 @@
-// pages/categorias/CategoriasProductosPage.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getCategoriasProductos,
   createCategoriaProducto,
   updateCategoriaProducto,
   deleteCategoriaProducto,
-} from "@/Api/Categorias";
-import { CategoriaProducto } from "@/types/types/categorias";
-import DefaultLayout from "@/layouts/default";
-import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/solid";
-import toast, { Toaster } from "react-hot-toast";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+} from '@/Api/Categorias';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const categoriaSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  unpsc: z.string().optional(),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type CategoriaSchema = z.infer<typeof categoriaSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'UNPSC', uid: 'unpsc', sortable: false },
+  { name: 'Productos', uid: 'productos', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'unpsc', 'productos', 'actions'];
 
-export default function CategoriasProductosPage() {
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
+const CategoriasProductosPage = () => {
+  /* Estado */
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<CategoriaSchema>({
-    resolver: zodResolver(categoriaSchema),
-    defaultValues: { nombre: "", unpsc: "" },
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  const [nombre, setNombre] = useState('');
+  const [unpsc, setUnpsc] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  const [toastMsg, setToastMsg] = useState('');
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
+  /* Toast helper */
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Cargar datos */
+  const cargarCategorias = async () => {
+    try {
+      const data = await getCategoriasProductos();
+      setCategorias(data);
+    } catch (err) {
+      console.error('Error cargando categorías', err);
+    }
+  };
+
   useEffect(() => {
-    fetchCategorias();
+    cargarCategorias();
   }, []);
 
-  const fetchCategorias = async () => {
-    const data = await getCategoriasProductos();
-    setCategorias(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar categoría? No se podrá recuperar.')) return;
+    await deleteCategoriaProducto(id);
+    cargarCategorias();
+    notify(`🗑️ Categoría eliminada: ID ${id}`);
   };
 
-  const filtered = categorias.filter(
-    (c) =>
-      c.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      (c.unpsc || "").toLowerCase().includes(search.toLowerCase())
+  const guardar = async () => {
+    const payload = { nombre, unpsc: unpsc || undefined };
+    editId
+      ? await updateCategoriaProducto(editId, payload)
+      : await createCategoriaProducto(payload);
+    onClose();
+    setNombre('');
+    setUnpsc('');
+    setEditId(null);
+    cargarCategorias();
+  };
+
+  const abrirModalEditar = (cat: any) => {
+    setEditId(cat.id);
+    setNombre(cat.nombre);
+    setUnpsc(cat.unpsc || '');
+    onOpen();
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? categorias.filter(
+            (c) =>
+              c.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
+              (c.unpsc || '').toLowerCase().includes(filterValue.toLowerCase())
+          )
+        : categorias,
+    [categorias, filterValue]
   );
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
-  const onSubmit = async (data: CategoriaSchema) => {
-    try {
-      if (editingId) {
-        await updateCategoriaProducto(editingId, data);
-        toast.success("Categoría actualizada");
-      } else {
-        await createCategoriaProducto(data);
-        toast.success("Categoría creada");
-      }
-      setIsModalOpen(false);
-      resetForm();
-      fetchCategorias();
-    } catch (error) {
-      toast.error("Error al guardar la categoría");
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'unpsc':
+        return <span className="text-sm text-gray-600">{item.unpsc || '—'}</span>;
+      case 'productos':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.productos?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const resetForm = () => {
-    reset();
-    setEditingId(null);
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
   };
 
-  const handleEdit = (cat: CategoriaProducto) => {
-    setValue("nombre", cat.nombre);
-    setValue("unpsc", cat.unpsc || "");
-    setEditingId(cat.id);
-    setIsModalOpen(true);
-  };
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre o UNPSC"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    {/* ✅ Checkbox funcional */}
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={onOpen}
+          >
+            Nueva Categoría
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {categorias.length} categorías
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar esta categoría?")) {
-      try {
-        await deleteCategoriaProducto(id);
-        fetchCategorias();
-        toast.success("Categoría eliminada");
-      } catch {
-        toast.error("Error al eliminar");
-      }
-    }
-  };
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === 1}
+        onPress={() => setPage(page - 1)}
+      >
+        Anterior
+      </Button>
+      <Pagination
+        isCompact
+        showControls
+        page={page}
+        total={pages}
+        onChange={setPage}
+      />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
+  );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">🏷️ Categorías de Productos</h1>
-          <button
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            📦 Gestión de Categorías de Productos
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra las categorías disponibles.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de categorías"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
           >
-            <PlusIcon className="w-5 h-5 mr-2" /> Crear Categoría
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="🔍 Buscar categoría o UNPSC..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
-        />
-
-        <div className="bg-white shadow rounded-lg overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-blue-100 text-gray-700">
-              <tr>
-                <th className="px-6 py-3 font-semibold">ID</th>
-                <th className="px-6 py-3 font-semibold">Nombre</th>
-                <th className="px-6 py-3 font-semibold">UNPSC</th>
-                <th className="px-6 py-3 font-semibold"># Productos</th>
-                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-4 text-gray-500">
-                    No hay categorías registradas.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-2">{cat.id}</td>
-                    <td className="px-6 py-2">{cat.nombre}</td>
-                    <td className="px-6 py-2">{cat.unpsc || "—"}</td>
-                    <td className="px-6 py-2">{cat.productos?.length || 0}</td>
-                    <td className="px-6 py-2 flex justify-center gap-2">
-                      <button onClick={() => handleEdit(cat)} className="text-yellow-600 hover:text-yellow-800">
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleDelete(cat.id)} className="text-red-600 hover:text-red-800">
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader
+              columns={columns.filter((c) => visibleColumns.has(c.uid))}
+            >
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'nombre' ? 300 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron categorías">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end items-center mt-4 gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm text-gray-700">
-              Página {page} de {totalPages}
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron categorías</p>
+          )}
+          {sorted.map((cat) => (
+            <Card key={cat.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
+                    {cat.nombre}
+                  </h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(cat)} key={''}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem onPress={() => eliminar(cat.id)} key={''}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">UNPSC:</span> {cat.unpsc || '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Productos:</span>{' '}
+                  {cat.productos?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {cat.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>
+                  {editId ? 'Editar Categoría' : 'Nueva Categoría'}
+                </ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    placeholder="Nombre de la categoría"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                  <Input
+                    label="UNPSC (opcional)"
+                    placeholder="Código UNPSC"
+                    value={unpsc}
+                    onValueChange={setUnpsc}
+                    radius="sm"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-            <h2 className="text-xl font-bold mb-4">
-              {editingId ? "Editar Categoría" : "Crear Categoría"}
-            </h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">Nombre</label>
-                <input
-                  {...register("nombre")}
-                  className="w-full border px-3 py-2 rounded"
-                />
-                {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium">UNPSC</label>
-                <input
-                  {...register("unpsc")}
-                  className="w-full border px-3 py-2 rounded"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
-                >
-                  {editingId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default CategoriasProductosPage;

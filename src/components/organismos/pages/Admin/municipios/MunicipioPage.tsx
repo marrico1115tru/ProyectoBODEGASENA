@@ -1,234 +1,450 @@
-import { useEffect, useState } from 'react';
+// src/pages/MunicipiosPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   obtenerMunicipios,
   crearMunicipio,
-  eliminarMunicipio,
   actualizarMunicipio,
+  eliminarMunicipio,
 } from '@/Api/MunicipiosForm';
-import { Municipio } from '@/types/types/typesMunicipio';
-import { PencilIcon, TrashIcon, PlusIcon, XIcon } from 'lucide-react';
 import DefaultLayout from '@/layouts/default';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import toast, { Toaster } from 'react-hot-toast';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const municipioSchema = z.object({
-  nombre: z.string().min(1, 'Nombre requerido'),
-  departamento: z.string().min(1, 'Departamento requerido'),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type MunicipioSchema = z.infer<typeof municipioSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'Departamento', uid: 'departamento', sortable: false },
+  { name: 'Centros', uid: 'centros', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'nombre',
+  'departamento',
+  'centros',
+  'actions',
+];
 
-export default function MunicipiosView() {
-  const [municipios, setMunicipios] = useState<Municipio[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [search, setSearch] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<MunicipioSchema>({
-    resolver: zodResolver(municipioSchema),
+const MunicipiosPage = () => {
+  /* Estado */
+  const [municipios, setMunicipios] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
-  const fetchMunicipios = async () => {
-    const data = await obtenerMunicipios();
-    setMunicipios(data);
+  /* Formulario */
+  const [nombre, setNombre] = useState('');
+  const [departamento, setDepartamento] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
   };
 
+  /* Obtener datos */
+  const cargarMunicipios = async () => {
+    try {
+      const data = await obtenerMunicipios();
+      setMunicipios(data);
+    } catch (err) {
+      console.error('Error cargando municipios', err);
+    }
+  };
   useEffect(() => {
-    fetchMunicipios();
+    cargarMunicipios();
   }, []);
 
-  const onSubmit = async (data: MunicipioSchema) => {
-    try {
-      if (editId) {
-        await actualizarMunicipio(editId, data);
-        toast.success('Municipio actualizado');
-      } else {
-        await crearMunicipio(data);
-        toast.success('Municipio creado');
-      }
-      fetchMunicipios();
-      setModalOpen(false);
-      reset();
-      setEditId(null);
-    } catch {
-      toast.error('Error al guardar municipio');
-    }
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar municipio? No se podrá recuperar.')) return;
+    await eliminarMunicipio(id);
+    cargarMunicipios();
+    notify(`🗑️ Municipio eliminado: ID ${id}`);
   };
 
-  const handleEdit = (m: Municipio) => {
-    setValue('nombre', m.nombre);
-    setValue('departamento', m.departamento);
+  const guardar = async () => {
+    const payload = { nombre, departamento };
+    editId
+      ? await actualizarMunicipio(editId, payload)
+      : await crearMunicipio(payload);
+    onClose();
+    limpiarForm();
+    cargarMunicipios();
+  };
+
+  const abrirModalEditar = (m: any) => {
     setEditId(m.id);
-    setModalOpen(true);
+    setNombre(m.nombre || '');
+    setDepartamento(m.departamento || '');
+    onOpen();
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Eliminar municipio?')) {
-      await eliminarMunicipio(id);
-      fetchMunicipios();
-      toast.success('Municipio eliminado');
+  const limpiarForm = () => {
+    setEditId(null);
+    setNombre('');
+    setDepartamento('');
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? municipios.filter((m) =>
+            `${m.nombre} ${m.departamento}`
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : municipios,
+    [municipios, filterValue]
+  );
+
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'nombre':
+        return (
+          <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">
+            {item.nombre}
+          </span>
+        );
+      case 'departamento':
+        return <span className="text-sm text-gray-600">{item.departamento}</span>;
+      case 'centros':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.centroFormacions?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const filtered = municipios.filter((m) =>
-    `${m.nombre} ${m.departamento}`.toLowerCase().includes(search.toLowerCase())
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre o departamento"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Municipio
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {municipios.length} municipios
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
   );
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === 1}
+        onPress={() => setPage(page - 1)}
+      >
+        Anterior
+      </Button>
+      <Pagination
+        isCompact
+        showControls
+        page={page}
+        total={pages}
+        onChange={setPage}
+      />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
   );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">🌍 Municipios</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditId(null);
-              setModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🗺️ Gestión de Municipios
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra los municipios registrados.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de municipios"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-4 h-4" /> Crear
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar municipio..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mb-4 w-full border px-4 py-2 rounded"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded">
-          <table className="min-w-full text-sm">
-            <thead className="bg-blue-100 text-left">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Departamento</th>
-                <th className="px-4 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center py-6 text-gray-500">
-                    No hay municipios registrados.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{m.id}</td>
-                    <td className="px-4 py-2">{m.nombre}</td>
-                    <td className="px-4 py-2">{m.departamento}</td>
-                    <td className="px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => handleEdit(m)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron municipios">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Anterior</button>
-            <span className="text-sm">Página {currentPage} de {totalPages}</span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Siguiente</button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron municipios</p>
+          )}
+          {sorted.map((m) => (
+            <Card key={m.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">{m.nombre}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(m)} key={''}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem onPress={() => eliminar(m.id)} key={''}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Depto:</span> {m.departamento}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Centros:</span>{' '}
+                  {m.centroFormacions?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {m.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Municipio' : 'Nuevo Municipio'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    placeholder="Ej: Neiva"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                  />
+                  <Input
+                    label="Departamento"
+                    placeholder="Ej: Huila"
+                    value={departamento}
+                    onValueChange={setDepartamento}
+                    radius="sm"
+                  />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                {editId ? 'Editar Municipio' : 'Crear Municipio'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="text-gray-600 hover:text-red-500"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                type="text"
-                {...register('nombre')}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium">Departamento</label>
-              <input
-                type="text"
-                {...register('departamento')}
-                className="w-full border px-3 py-2 rounded"
-              />
-              {errors.departamento && <p className="text-red-500 text-sm">{errors.departamento.message}</p>}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-              >Cancelar</button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded"
-              >{editId ? 'Actualizar' : 'Crear'}</button>
-            </div>
-          </form>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default MunicipiosPage;

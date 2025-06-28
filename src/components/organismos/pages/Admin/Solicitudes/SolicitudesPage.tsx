@@ -1,305 +1,533 @@
-// pages/solicitudes/SolicitudesPage.tsx
-import { useEffect, useState } from "react";
+// src/pages/SolicitudesPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getSolicitudes,
   createSolicitud,
   updateSolicitud,
   deleteSolicitud,
-} from "@/Api/Solicitudes";
-import { getUsuarios } from "@/Api/Usuariosform";
-import { Solicitud, SolicitudPayload } from "@/types/types/Solicitud";
-import { Usuario } from "@/types/types/Usuario";
-import DefaultLayout from "@/layouts/default";
-import {
-  PencilSquareIcon,
-  TrashIcon,
-  PlusIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/solid";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast, { Toaster } from "react-hot-toast";
+} from '@/Api/Solicitudes';
+import { getUsuarios } from '@/Api/Usuariosform';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-// ✅ Validaciones Zod
-const schema = z.object({
-  fechaSolicitud: z
-    .string()
-    .min(1, "La fecha es obligatoria")
-    .refine((fecha) => !isNaN(Date.parse(fecha)), {
-      message: "La fecha no es válida",
-    }),
-  estadoSolicitud: z.enum(["PENDIENTE", "APROBADA", "RECHAZADA"], {
-    errorMap: () => ({ message: "Seleccione un estado válido" }),
-  }),
-  idUsuarioSolicitanteId: z
-    .coerce.number({
-      invalid_type_error: "Debe seleccionar un usuario",
-    })
-    .min(1, "Seleccione un usuario"),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type FormSchema = z.infer<typeof schema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Fecha', uid: 'fecha', sortable: true },
+  { name: 'Estado', uid: 'estado', sortable: false },
+  { name: 'Solicitante', uid: 'solicitante', sortable: false },
+  { name: '# Detalles', uid: 'detalles', sortable: false },
+  { name: '# Entregas', uid: 'entregas', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'fecha',
+  'estado',
+  'solicitante',
+  'detalles',
+  'entregas',
+  'actions',
+];
 
-export default function SolicitudesPage() {
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+const SolicitudesPage = () => {
+  /* Estado principal */
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS)
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<FormSchema>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      fechaSolicitud: "",
-      estadoSolicitud: "PENDIENTE",
-      idUsuarioSolicitanteId: 0,
-    },
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario modal */
+  const [fechaSolicitud, setFechaSolicitud] = useState('');
+  const [estado, setEstado] = useState<'PENDIENTE' | 'APROBADA' | 'RECHAZADA'>(
+    'PENDIENTE'
+  );
+  const [idSolicitante, setIdSolicitante] = useState<number | ''>('');
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [sols, users] = await Promise.all([getSolicitudes(), getUsuarios()]);
+      setSolicitudes(sols);
+      setUsuarios(users);
+    } catch (err) {
+      console.error('Error cargando solicitudes', err);
+    }
+  };
   useEffect(() => {
-    fetchSolicitudes();
-    fetchUsuarios();
+    cargarDatos();
   }, []);
 
-  const fetchSolicitudes = async () => {
-    const data = await getSolicitudes();
-    setSolicitudes(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar solicitud? No se podrá recuperar.')) return;
+    await deleteSolicitud(id);
+    cargarDatos();
+    notify(`🗑️ Solicitud eliminada: ID ${id}`);
   };
 
-  const fetchUsuarios = async () => {
-    const data = await getUsuarios();
-    setUsuarios(data);
-  };
-
-  const onSubmit = async (data: FormSchema) => {
-    const payload: SolicitudPayload = {
-      fechaSolicitud: data.fechaSolicitud,
-      estadoSolicitud: data.estadoSolicitud,
-      idUsuarioSolicitante: { id: data.idUsuarioSolicitanteId },
+  const guardar = async () => {
+    const payload = {
+      fechaSolicitud,
+      estadoSolicitud: estado,
+      idUsuarioSolicitante: idSolicitante ? { id: Number(idSolicitante) } : undefined,
     };
+    editId ? await updateSolicitud(editId, payload) : await createSolicitud(payload);
+    onClose();
+    limpiarForm();
+    cargarDatos();
+  };
 
-    try {
-      if (editId) {
-        await updateSolicitud(editId, payload);
-        toast.success("Solicitud actualizada");
-      } else {
-        await createSolicitud(payload);
-        toast.success("Solicitud creada");
-      }
-      setIsModalOpen(false);
-      reset();
-      setEditId(null);
-      fetchSolicitudes();
-    } catch {
-      toast.error("Error al guardar la solicitud");
+  const abrirModalEditar = (s: any) => {
+    setEditId(s.id);
+    setFechaSolicitud(s.fechaSolicitud);
+    setEstado(
+      s.estadoSolicitud === 'RECHAZADA'
+        ? 'RECHAZADA'
+        : s.estadoSolicitud === 'APROBADA'
+        ? 'APROBADA'
+        : 'PENDIENTE'
+    );
+    setIdSolicitante(s.idUsuarioSolicitante?.id || '');
+    onOpen();
+  };
+
+  const limpiarForm = () => {
+    setEditId(null);
+    setFechaSolicitud('');
+    setEstado('PENDIENTE');
+    setIdSolicitante('');
+  };
+
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? solicitudes.filter((s) =>
+            (
+              `${s.id} ${s.fechaSolicitud} ${s.estadoSolicitud} ${s.idUsuarioSolicitante?.nombre || ''} ${
+                s.idUsuarioSolicitante?.apellido || ''
+              }`
+            )
+              .toLowerCase()
+              .includes(filterValue.toLowerCase())
+          )
+        : solicitudes,
+    [solicitudes, filterValue]
+  );
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column === 'fecha' ? 'fechaSolicitud' : column];
+      const y = b[column === 'fecha' ? 'fechaSolicitud' : column];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'fecha':
+        return <span className="text-sm text-gray-600">{item.fechaSolicitud}</span>;
+      case 'estado':
+        return (
+          <span
+            className={`text-sm font-medium ${
+              item.estadoSolicitud === 'RECHAZADA'
+                ? 'text-red-600'
+                : item.estadoSolicitud === 'APROBADA'
+                ? 'text-green-600'
+                : 'text-yellow-600'
+            }`}
+          >
+            {item.estadoSolicitud}
+          </span>
+        );
+      case 'solicitante':
+        return (
+          <span className="text-sm text-gray-800">
+            {item.idUsuarioSolicitante
+              ? `${item.idUsuarioSolicitante.nombre} ${item.idUsuarioSolicitante.apellido || ''}`
+              : '—'}
+          </span>
+        );
+      case 'detalles':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.detalleSolicituds?.length || 0}
+          </span>
+        );
+      case 'entregas':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.entregaMaterials?.length || 0}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
     }
   };
 
-  const handleEdit = (sol: Solicitud) => {
-    setValue("fechaSolicitud", sol.fechaSolicitud);
-    setValue("estadoSolicitud", sol.estadoSolicitud);
-    setValue("idUsuarioSolicitanteId", sol.idUsuarioSolicitante.id);
-    setEditId(sol.id);
-    setIsModalOpen(true);
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar esta solicitud?")) {
-      await deleteSolicitud(id);
-      fetchSolicitudes();
-    }
-  };
-
-  const filtered = solicitudes.filter((s) =>
-    s.idUsuarioSolicitante?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre, estado o fecha"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nueva Solicitud
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {solicitudes.length} solicitudes
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
   );
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
+  );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">📄 Solicitudes</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditId(null);
-              setIsModalOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            📝 Gestión de Solicitudes
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra las solicitudes de materiales.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de solicitudes"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
           >
-            <PlusIcon className="w-5 h-5 mr-2" /> Crear Solicitud
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="🔍 Buscar por nombre del solicitante..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
-        />
-
-        <div className="bg-white shadow rounded-lg overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-blue-100 text-gray-700">
-              <tr>
-                <th className="px-6 py-3 font-semibold">ID</th>
-                <th className="px-6 py-3 font-semibold">Fecha</th>
-                <th className="px-6 py-3 font-semibold">Estado</th>
-                <th className="px-6 py-3 font-semibold">Solicitante</th>
-                <th className="px-6 py-3 font-semibold text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-4 text-gray-500">
-                    No hay solicitudes registradas.
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((sol) => (
-                  <tr key={sol.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-2">{sol.id}</td>
-                    <td className="px-6 py-2">{sol.fechaSolicitud}</td>
-                    <td className="px-6 py-2">{sol.estadoSolicitud}</td>
-                    <td className="px-6 py-2">
-                      {sol.idUsuarioSolicitante
-                        ? `${sol.idUsuarioSolicitante.nombre} ${sol.idUsuarioSolicitante.apellido}`
-                        : "Sin solicitante"}
-                    </td>
-                    <td className="px-6 py-2 flex justify-center gap-2">
-                      <button onClick={() => handleEdit(sol)} className="text-yellow-600 hover:text-yellow-800">
-                        <PencilSquareIcon className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleDelete(sol.id)} className="text-red-600 hover:text-red-800">
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'solicitante' ? 260 : undefined}
+                >
+                  {col.name}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron solicitudes">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex justify-end items-center mt-4 gap-2">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <span className="text-sm text-gray-700">
-              Página {page} de {totalPages}
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron solicitudes</p>
+          )}
+          {sorted.map((s) => (
+            <Card key={s.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">ID {s.id}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(s)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(s.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Fecha:</span> {s.fechaSolicitud}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Estado:</span>{' '}
+                  <span
+                    className={
+                      s.estadoSolicitud === 'RECHAZADA'
+                        ? 'text-red-600'
+                        : s.estadoSolicitud === 'APROBADA'
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                    }
+                  >
+                    {s.estadoSolicitud}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Solicitante:</span>{' '}
+                  {s.idUsuarioSolicitante
+                    ? `${s.idUsuarioSolicitante.nombre} ${
+                        s.idUsuarioSolicitante.apellido || ''
+                      }`
+                    : '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Detalles:</span>{' '}
+                  {s.detalleSolicituds?.length || 0}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Entregas:</span>{' '}
+                  {s.entregaMaterials?.length || 0}
+                </p>
+                <p className="text-xs text-gray-400">ID: {s.id}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>
+                  {editId ? 'Editar Solicitud' : 'Nueva Solicitud'}
+                </ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    type="date"
+                    label="Fecha"
+                    value={fechaSolicitud}
+                    onValueChange={setFechaSolicitud}
+                    radius="sm"
+                  />
+                  {/* Estado */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Estado
+                    </label>
+                    <select
+                      value={estado}
+                      onChange={(e) =>
+                        setEstado(e.target.value as 'PENDIENTE' | 'APROBADA' | 'RECHAZADA')
+                      }
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="PENDIENTE">PENDIENTE</option>
+                      <option value="APROBADA">APROBADA</option>
+                      <option value="RECHAZADA">RECHAZADA</option>
+                    </select>
+                  </div>
+                  {/* Solicitante */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Solicitante
+                    </label>
+                    <select
+                      value={idSolicitante}
+                      onChange={(e) => setIdSolicitante(Number(e.target.value) || '')}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Seleccione un usuario</option>
+                      {usuarios.map((u: any) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre} {u.apellido || ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-            <h2 className="text-xl font-bold mb-4">
-              {editId ? "Editar Solicitud" : "Crear Solicitud"}
-            </h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium">Fecha</label>
-                <input
-                  type="date"
-                  {...register("fechaSolicitud")}
-                  className={`w-full border px-3 py-2 rounded ${
-                    errors.fechaSolicitud ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-                {errors.fechaSolicitud && (
-                  <p className="text-red-500 text-sm mt-1">{errors.fechaSolicitud.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Estado</label>
-                <select
-                  {...register("estadoSolicitud")}
-                  className={`w-full border px-3 py-2 rounded ${
-                    errors.estadoSolicitud ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Seleccione un estado</option>
-                  {["PENDIENTE", "APROBADA", "RECHAZADA"].map((estado) => (
-                    <option key={estado} value={estado}>{estado}</option>
-                  ))}
-                </select>
-                {errors.estadoSolicitud && (
-                  <p className="text-red-500 text-sm mt-1">{errors.estadoSolicitud.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Solicitante</label>
-                <select
-                  {...register("idUsuarioSolicitanteId")}
-                  className={`w-full border px-3 py-2 rounded ${
-                    errors.idUsuarioSolicitanteId ? "border-red-500" : "border-gray-300"
-                  }`}
-                >
-                  <option value="">Seleccione un usuario</option>
-                  {usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre} {u.apellido}
-                    </option>
-                  ))}
-                </select>
-                {errors.idUsuarioSolicitanteId && (
-                  <p className="text-red-500 text-sm mt-1">{errors.idUsuarioSolicitanteId.message}</p>
-                )}
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded"
-                >
-                  {editId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </DefaultLayout>
   );
-}
+};
+
+export default SolicitudesPage;

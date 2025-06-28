@@ -1,273 +1,477 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { PencilIcon, TrashIcon, PlusIcon } from "@heroicons/react/24/solid";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import toast, { Toaster } from "react-hot-toast";
-import DefaultLayout from "@/layouts/default";
+// src/pages/ProductosPage.tsx
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  Select,
+  SelectItem,
+  useDisclosure,
+  type SortDescriptor,
+} from '@heroui/react';
 import {
   getProductos,
   createProducto,
   updateProducto,
   deleteProducto,
-} from "@/Api/Productosform";
-import {
-  getCategoriasProductos,
-  createCategoriaProducto,
-} from "@/Api/Categorias";
-import { Producto } from "@/types/types/typesProductos";
-import { CategoriaProducto } from "@/types/types/categorias";
+} from '@/Api/Productosform';
+import { getCategoriasProductos } from '@/Api/Categorias';
+import DefaultLayout from '@/layouts/default';
+import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
-const productoSchema = z.object({
-  nombre: z.string().min(1),
-  descripcion: z.string().optional(),
-  tipoMateria: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
-  idCategoriaId: z.number().min(1),
-});
+/* 🟢 Toast */
+const Toast = ({ message }: { message: string }) => (
+  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
+    {message}
+  </div>
+);
 
-type ProductoSchema = z.infer<typeof productoSchema>;
+/* 📊 Columnas */
+const columns = [
+  { name: 'ID', uid: 'id', sortable: true },
+  { name: 'Nombre', uid: 'nombre', sortable: false },
+  { name: 'Descripción', uid: 'descripcion', sortable: false },
+  { name: 'Categoría', uid: 'categoria', sortable: false },
+  { name: 'Stock', uid: 'stock', sortable: false },
+  { name: 'Vencimiento', uid: 'fechaVencimiento', sortable: false },
+  { name: 'Acciones', uid: 'actions' },
+];
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'nombre',
+  'descripcion',
+  'categoria',
+  'stock',
+  'fechaVencimiento',
+  'actions',
+];
 
-export default function ProductosPage() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isCategoriaOpen, setIsCategoriaOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", unpsc: "" });
+const ProductosPage = () => {
+  /* Estado */
+  const [productos, setProductos] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<any[]>([]);
 
-  const itemsPerPage = 5;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<ProductoSchema>({
-    resolver: zodResolver(productoSchema),
+  const [filterValue, setFilterValue] = useState('');
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set(INITIAL_VISIBLE_COLUMNS),
+  );
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [page, setPage] = useState(1);
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
   });
 
+  /* Formulario modal */
+  const [form, setForm] = useState({
+    nombre: '',
+    descripcion: '',
+    fechaVencimiento: '',
+    idCategoriaId: '',
+  });
+  const [editId, setEditId] = useState<number | null>(null);
+
+  /* UI */
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+  const [toastMsg, setToastMsg] = useState('');
+  const notify = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  /* Obtener datos */
+  const cargarDatos = async () => {
+    try {
+      const [prod, cat] = await Promise.all([getProductos(), getCategoriasProductos()]);
+      setProductos(prod);
+      setCategorias(cat);
+    } catch (err) {
+      console.error('Error cargando datos', err);
+    }
+  };
   useEffect(() => {
-    fetchProductos();
-    fetchCategorias();
+    cargarDatos();
   }, []);
 
-  useEffect(() => {
-    const filtered = productos.filter(p =>
-      p.nombre.toLowerCase().includes(search.toLowerCase())
-    );
-    setFilteredProductos(filtered);
-    setCurrentPage(1);
-  }, [search, productos]);
-
-  const fetchProductos = async () => {
-    const data = await getProductos();
-    setProductos(data);
-    setFilteredProductos(data);
+  /* CRUD */
+  const eliminar = async (id: number) => {
+    if (!confirm('¿Eliminar producto? No se podrá recuperar.')) return;
+    await deleteProducto(id);
+    cargarDatos();
+    notify(`🗑️ Producto eliminado: ID ${id}`);
   };
 
-  const fetchCategorias = async () => {
-    const data = await getCategoriasProductos();
-    setCategorias(data);
+  const guardar = async () => {
+    const payload = {
+      nombre: form.nombre,
+      descripcion: form.descripcion || null,
+      fechaVencimiento: form.fechaVencimiento || null,
+      idCategoriaId: Number(form.idCategoriaId),
+    };
+    editId ? await updateProducto(editId, payload) : await createProducto(payload);
+    onClose();
+    setForm({ nombre: '', descripcion: '', fechaVencimiento: '', idCategoriaId: '' });
+    setEditId(null);
+    cargarDatos();
   };
 
-  const onSubmit = async (data: ProductoSchema) => {
-    try {
-      if (editId) {
-        await updateProducto(editId, data);
-        toast.success("Producto actualizado");
-      } else {
-        await createProducto(data);
-        toast.success("Producto creado");
-      }
-      fetchProductos();
-      reset();
-      setIsOpen(false);
-    } catch {
-      toast.error("Error al guardar producto");
-    }
+  const abrirModalEditar = (p: any) => {
+    setEditId(p.id);
+    setForm({
+      nombre: p.nombre,
+      descripcion: p.descripcion || '',
+      fechaVencimiento: p.fechaVencimiento || '',
+      idCategoriaId: p.idCategoria?.id?.toString() || '',
+    });
+    onOpen();
   };
 
-  const handleEdit = (prod: Producto) => {
-    setValue("nombre", prod.nombre);
-    setValue("descripcion", prod.descripcion || "");
-    setValue("tipoMateria", prod.tipoMateria || "");
-    setValue("fechaVencimiento", prod.fechaVencimiento || "");
-    setValue("idCategoriaId", prod.idCategoria?.id || 0);
-    setEditId(prod.id);
-    setIsOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar este producto?")) {
-      await deleteProducto(id);
-      fetchProductos();
-    }
-  };
-
-  const handleCategoriaSubmit = async () => {
-    await createCategoriaProducto(nuevaCategoria);
-    setNuevaCategoria({ nombre: "", unpsc: "" });
-    setIsCategoriaOpen(false);
-    fetchCategorias();
-    toast.success("Categoría creada");
-  };
-
-  const currentData = filteredProductos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  /* Filtro + Orden + Paginación */
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? productos.filter((p) =>
+            `${p.nombre} ${p.descripcion ?? ''} ${p.idCategoria?.nombre ?? ''}`
+              .toLowerCase()
+              .includes(filterValue.toLowerCase()),
+          )
+        : productos,
+    [productos, filterValue],
   );
-  const totalPages = Math.ceil(filteredProductos.length / itemsPerPage);
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, page, rowsPerPage]);
+  const sorted = useMemo(() => {
+    const items = [...sliced];
+    const { column, direction } = sortDescriptor;
+    items.sort((a, b) => {
+      const x = a[column];
+      const y = b[column];
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+    });
+    return items;
+  }, [sliced, sortDescriptor]);
+
+  /* Helpers */
+  const totalStock = (inv: any[]) =>
+    inv?.reduce((acc: number, i: any) => acc + (i.stock ?? 0), 0) ?? 0;
+
+  /* Render Cell */
+  const renderCell = (item: any, columnKey: string) => {
+    switch (columnKey) {
+      case 'descripcion':
+        return (
+          <span className="text-sm text-gray-600 break-words max-w-[18rem]">
+            {item.descripcion ?? '—'}
+          </span>
+        );
+      case 'categoria':
+        return <span className="text-sm text-gray-600">{item.idCategoria?.nombre ?? '—'}</span>;
+      case 'stock':
+        return <span className="text-sm text-gray-600">{totalStock(item.inventarios)}</span>;
+      case 'fechaVencimiento':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.fechaVencimiento ? new Date(item.fechaVencimiento).toLocaleDateString() : '—'}
+          </span>
+        );
+      case 'actions':
+        return (
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        );
+      default:
+        return item[columnKey as keyof typeof item];
+    }
+  };
+
+  /* Columnas visibles */
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+  };
+
+  /* Top content */
+  const topContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+        <Input
+          isClearable
+          className="w-full md:max-w-[44%]"
+          radius="lg"
+          placeholder="Buscar por nombre, descripción o categoría"
+          startContent={<SearchIcon className="text-[#0D1324]" />}
+          value={filterValue}
+          onValueChange={setFilterValue}
+          onClear={() => setFilterValue('')}
+        />
+        <div className="flex gap-3">
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Columnas</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Seleccionar columnas">
+              {columns
+                .filter((c) => c.uid !== 'actions')
+                .map((col) => (
+                  <DropdownItem key={col.uid} className="py-1 px-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </Dropdown>
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              setEditId(null);
+              setForm({ nombre: '', descripcion: '', fechaVencimiento: '', idCategoriaId: '' });
+              onOpen();
+            }}
+          >
+            Nuevo Producto
+          </Button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-default-400 text-sm">
+          Total {productos.length} productos
+        </span>
+        <label className="flex items-center text-default-400 text-sm">
+          Filas por página:&nbsp;
+          <select
+            className="bg-transparent outline-none text-default-600 ml-1"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(1);
+            }}
+          >
+            {[5, 10, 15].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+
+  /* Bottom content */
+  const bottomContent = (
+    <div className="py-2 px-2 flex justify-center items-center gap-2">
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button
+        size="sm"
+        variant="flat"
+        isDisabled={page === pages}
+        onPress={() => setPage(page + 1)}
+      >
+        Siguiente
+      </Button>
+    </div>
+  );
 
   return (
     <DefaultLayout>
-      <Toaster />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">📦 Gestión de Productos</h1>
-          <button
-            onClick={() => {
-              reset();
-              setEditId(null);
-              setIsOpen(true);
+      {toastMsg && <Toast message={toastMsg} />}
+      <div className="p-6 space-y-6">
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🛠️ Gestión de Productos
+          </h1>
+          <p className="text-sm text-gray-600">
+            Consulta y administra los productos disponibles.
+          </p>
+        </header>
+
+        {/* Tabla desktop */}
+        <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
+          <Table
+            aria-label="Tabla de productos"
+            isHeaderSticky
+            topContent={topContent}
+            bottomContent={bottomContent}
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
             }}
-            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Crear Producto
-          </button>
-        </div>
-
-        <input
-          type="text"
-          placeholder="Buscar productos..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mb-4 w-full max-w-md border px-4 py-2 rounded shadow-sm"
-        />
-
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-100">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold">Nombre</th>
-                <th className="px-6 py-3 text-left font-semibold">Descripción</th>
-                <th className="px-6 py-3 text-left font-semibold">Tipo</th>
-                <th className="px-6 py-3 text-left font-semibold">Vencimiento</th>
-                <th className="px-6 py-3 text-left font-semibold">Categoría</th>
-                <th className="px-6 py-3 text-center font-semibold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {currentData.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-3">{p.nombre}</td>
-                  <td className="px-6 py-3">{p.descripcion || "—"}</td>
-                  <td className="px-6 py-3">{p.tipoMateria || "—"}</td>
-                  <td className="px-6 py-3">{p.fechaVencimiento || "—"}</td>
-                  <td className="px-6 py-3">{p.idCategoria?.nombre || "—"}</td>
-                  <td className="px-6 py-3 text-center space-x-2">
-                    <button onClick={() => handleEdit(p)} className="text-yellow-600 hover:text-yellow-800">
-                      <PencilIcon className="w-5 h-5 inline" />
-                    </button>
-                    <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800">
-                      <TrashIcon className="w-5 h-5 inline" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {currentData.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center text-gray-500 py-4">No hay productos registrados.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="mt-4 flex justify-center items-center gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Anterior</button>
-            <span>Página {currentPage} de {totalPages}</span>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-            >Siguiente</button>
-          </div>
-        )}
-      </div>
-
-      {/* MODAL DE PRODUCTO */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">{editId ? "Editar Producto" : "Crear Producto"}</h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <input {...register("nombre")} placeholder="Nombre" className="w-full border px-3 py-2 rounded" />
-              {errors.nombre && <p className="text-red-500 text-sm">{errors.nombre.message}</p>}
-              <input {...register("descripcion")} placeholder="Descripción" className="w-full border px-3 py-2 rounded" />
-              <input {...register("tipoMateria")} placeholder="Tipo" className="w-full border px-3 py-2 rounded" />
-              <input type="date" {...register("fechaVencimiento")} className="w-full border px-3 py-2 rounded" />
-              <div className="flex gap-2 items-center">
-                <select
-                  {...register("idCategoriaId", { valueAsNumber: true })}
-                  className="w-full border px-3 py-2 rounded"
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'descripcion' ? 280 : undefined}
                 >
-                  <option value={0}>Seleccione una categoría</option>
-                  {categorias.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => setIsCategoriaOpen(true)} className="bg-green-600 text-white px-3 rounded">
-                  +
-                </button>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => setIsOpen(false)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancelar</button>
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  {editId ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
-          </div>
+                  {col.name}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody items={sorted} emptyContent="No se encontraron productos">
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
-      )}
 
-      {/* MODAL DE CATEGORÍA */}
-      {isCategoriaOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
-            <h2 className="text-xl font-bold mb-4">Crear Categoría</h2>
-            <input
-              placeholder="Nombre"
-              value={nuevaCategoria.nombre}
-              onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
-              className="w-full mb-2 border px-3 py-2 rounded"
-            />
-            <input
-              placeholder="UNPSC"
-              value={nuevaCategoria.unpsc}
-              onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, unpsc: e.target.value })}
-              className="w-full mb-4 border px-3 py-2 rounded"
-            />
-            <div className="flex justify-end space-x-2">
-              <button onClick={() => setIsCategoriaOpen(false)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancelar</button>
-              <button onClick={handleCategoriaSubmit} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                Crear
-              </button>
-            </div>
-          </div>
+        {/* Cards móvil */}
+        <div className="grid gap-4 md:hidden">
+          {sorted.length === 0 && (
+            <p className="text-center text-gray-500">No se encontraron productos</p>
+          )}
+          {sorted.map((p) => (
+            <Card key={p.id} className="shadow-sm">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-semibold text-lg">{p.nombre}</h3>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(p)} key={''}>Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(p.id)} key={''}>Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+                <p className="text-sm text-gray-600">{p.descripcion ?? 'Sin descripción'}</p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Categoría:</span>{' '}
+                  {p.idCategoria?.nombre ?? '—'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Stock:</span> {totalStock(p.inventarios)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Vencimiento:</span>{' '}
+                  {p.fechaVencimiento
+                    ? new Date(p.fechaVencimiento).toLocaleDateString()
+                    : '—'}
+                </p>
+                <p className="text-xs text-gray-400">ID: {p.id}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+
+        {/* Modal CRUD */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {(onCloseLocal) => (
+              <>
+                <ModalHeader>{editId ? 'Editar Producto' : 'Nuevo Producto'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input
+                    label="Nombre"
+                    value={form.nombre}
+                    onValueChange={(v) => setForm((p) => ({ ...p, nombre: v }))}
+                    radius="sm"
+                  />
+                  <Input
+                    label="Descripción"
+                    value={form.descripcion}
+                    onValueChange={(v) => setForm((p) => ({ ...p, descripcion: v }))}
+                    radius="sm"
+                  />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.fechaVencimiento}
+                    onValueChange={(v) => setForm((p) => ({ ...p, fechaVencimiento: v }))}
+                    radius="sm"
+                  />
+                  <Select
+                    label="Categoría"
+                    selectedKey={form.idCategoriaId}
+                    onSelectionChange={(k) =>
+                      setForm((p) => ({ ...p, idCategoriaId: k as string }))
+                    }
+                  >
+                    {categorias.map((c) => (
+                      <SelectItem key={c.id}>{c.nombre}</SelectItem>
+                    ))}
+                  </Select>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardar}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      </div>
     </DefaultLayout>
   );
-}
+};
+
+export default ProductosPage;
