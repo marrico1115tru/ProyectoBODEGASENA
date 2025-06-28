@@ -1,15 +1,15 @@
+// types/typesArea.ts
+export interface SedeRef {
+  id: number;
+}
+
 export interface Area {
   id: number;
-  nombreArea: string | null;
-  idSede: {
-    id: number;
-    nombre: string | null;
-  };
+  nombreArea: string;
+  idSede: SedeRef;
 }
 
 export interface AreaFormValues {
   nombreArea: string;
-  idSede: {
-    id: number;
-  };
+  idSede: SedeRef;
 }
