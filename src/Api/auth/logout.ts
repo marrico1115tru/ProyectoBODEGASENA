@@ -1,4 +1,3 @@
-// src/Api/auth/logout.ts
 import Cookies from "js-cookie";
 
 export const logout = () => {

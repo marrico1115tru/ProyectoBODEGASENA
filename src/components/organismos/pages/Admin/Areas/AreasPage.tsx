@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
   Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
@@ -11,7 +11,6 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
@@ -28,7 +27,6 @@ const columns = [
 const INITIAL_VISIBLE_COLUMNS = ['id', 'nombreArea', 'sede', 'actions'];
 
 const AreasPage = () => {
-  /* Estado */
   const [areas, setAreas] = useState<any[]>([]);
   const [sedes, setSedes] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
@@ -41,36 +39,18 @@ const AreasPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const ws = useRef<WebSocket | null>(null);
 
-  /* Toast */
   const notify = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* WebSocket */
-  const setupWebSocket = () => {
-    ws.current = new WebSocket('ws://localhost:3000/ws/areas');
-    ws.current.onmessage = e => {
-      const data = JSON.parse(e.data);
-      if (data.action === 'created') notify(`✅ Área creada: ${data.area.nombreArea}`);
-      if (data.action === 'updated') notify(`✏️ Área actualizada: ${data.area.nombreArea}`);
-      if (data.action === 'deleted') notify(`🗑️ Área eliminada: ID ${data.area.id}`);
-      cargarAreas();
-    };
-    ws.current.onclose = () => setTimeout(setupWebSocket, 5000);
-  };
-
-  /* Efectos */
+  /* Cargar datos */
   useEffect(() => {
     cargarAreas();
     cargarSedes();
-    setupWebSocket();
-    return () => ws.current?.close();
   }, []);
 
-  /* API */
   const cargarAreas = async () => {
     try {
       const data = await getAreas();
@@ -79,6 +59,7 @@ const AreasPage = () => {
       console.error('Error cargando áreas', err);
     }
   };
+
   const cargarSedes = async () => {
     try {
       const data = await getSedes();
@@ -87,20 +68,25 @@ const AreasPage = () => {
       console.error('Error cargando sedes', err);
     }
   };
+
   const eliminar = async (id: number) => {
     if (!confirm('¿Eliminar área? No se podrá recuperar.')) return;
     await deleteArea(id);
     cargarAreas();
     notify(`🗑️ Área eliminada: ID ${id}`);
   };
+
   const guardar = async () => {
     const payload = { nombreArea, idSede: idSede ? { id: parseInt(idSede) } : null };
     editId ? await updateArea(editId, payload) : await createArea(payload);
+    cargarAreas();
     onClose();
     setNombreArea('');
     setIdSede('');
     setEditId(null);
+    notify(editId ? '✏️ Área actualizada' : '✅ Área creada');
   };
+
   const abrirModalEditar = (area: any) => {
     setEditId(area.id);
     setNombreArea(area.nombreArea);
@@ -108,20 +94,21 @@ const AreasPage = () => {
     onOpen();
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () => (filterValue
+  const filtered = useMemo(() => (
+    filterValue
       ? areas.filter(a =>
           a.nombreArea.toLowerCase().includes(filterValue.toLowerCase()) ||
           a.idSede?.nombre?.toLowerCase().includes(filterValue.toLowerCase()))
-      : areas),
-    [areas, filterValue],
-  );
+      : areas
+  ), [areas, filterValue]);
+
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
+
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -133,7 +120,6 @@ const AreasPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     if (columnKey === 'nombreArea')
       return <span className="font-medium text-gray-800 capitalize break-words max-w-[14rem]">{item.nombreArea}</span>;
@@ -156,7 +142,6 @@ const AreasPage = () => {
     return item[columnKey as keyof typeof item];
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns(prev => {
       const copy = new Set(prev);
@@ -164,76 +149,6 @@ const AreasPage = () => {
       return copy;
     });
   };
-
-  /* Top content */
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por nombre de área o sede"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={v => setFilterValue(v)}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu>
-              {columns.filter(c => c.uid !== 'actions').map(col => (
-                <DropdownItem key={col.uid} onPress={() => toggleColumn(col.uid)}>
-                  <Checkbox isSelected={visibleColumns.has(col.uid)} readOnly />
-                  {col.name}
-                </DropdownItem>
-              ))}
-            </DropdownMenu>
-          </Dropdown>
-          {/* 🔧 Botón con color #0D1324 */}
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={onOpen}
-          >
-            Nueva Área
-          </Button>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {areas.length} áreas</span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={e => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-
-  /* Bottom content */
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
-        Siguiente
-      </Button>
-    </div>
-  );
 
   return (
     <DefaultLayout>
@@ -243,24 +158,80 @@ const AreasPage = () => {
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📌 Gestión de Áreas Formativas
           </h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra las áreas disponibles y su sede asignada.
-          </p>
+          <p className="text-sm text-gray-600">Consulta y administra las áreas disponibles y su sede asignada.</p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de áreas"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
               th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
               td: 'align-middle py-3 px-4',
             }}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por nombre de área o sede"
+                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  <div className="flex gap-3">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {columns.filter(c => c.uid !== 'actions').map(col => (
+                          <DropdownItem key={col.uid} onPress={() => toggleColumn(col.uid)}>
+                            <Checkbox isSelected={visibleColumns.has(col.uid)} readOnly />
+                            {col.name}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={onOpen}
+                    >
+                      Nueva Área
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {areas.length} áreas</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={e => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map(n => <option key={n}>{n}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+              </div>
+            }
           >
             <TableHeader columns={columns.filter(c => visibleColumns.has(c.uid))}>
               {col => (
@@ -283,18 +254,14 @@ const AreasPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
+        {/* Cards móviles */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron áreas</p>
-          )}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron áreas</p>}
           {sorted.map(area => (
             <Card key={area.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
-                    {area.nombreArea}
-                  </h3>
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{area.nombreArea}</h3>
                   <Dropdown>
                     <DropdownTrigger>
                       <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
@@ -307,7 +274,7 @@ const AreasPage = () => {
                     </DropdownMenu>
                   </Dropdown>
                 </div>
-                <p className="text-sm text-gray-600 break-words">
+                <p className="text-sm text-gray-600">
                   <span className="font-medium">Sede: </span>{area.idSede?.nombre || 'N/A'}
                 </p>
                 <p className="text-xs text-gray-400">ID: {area.id}</p>

@@ -1,3 +1,4 @@
+// src/pages/CategoriasProductosPage.tsx
 import { useEffect, useState, useMemo } from 'react';
 import {
   Table,
@@ -22,24 +23,26 @@ import {
   useDisclosure,
   type SortDescriptor,
 } from '@heroui/react';
+
 import {
   getCategoriasProductos,
   createCategoriaProducto,
   updateCategoriaProducto,
   deleteCategoriaProducto,
 } from '@/Api/Categorias';
+
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+// 🟢 Toast notificación
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
+// 📊 Definición de columnas
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
@@ -47,10 +50,11 @@ const columns = [
   { name: 'Productos', uid: 'productos', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
+
 const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'unpsc', 'productos', 'actions'];
 
 const CategoriasProductosPage = () => {
-  /* Estado */
+  // 📌 Estados
   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
@@ -68,13 +72,13 @@ const CategoriasProductosPage = () => {
   const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  /* Toast helper */
+  // 🟩 Toast temporal
   const notify = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Cargar datos */
+  // 📥 Cargar datos
   const cargarCategorias = async () => {
     try {
       const data = await getCategoriasProductos();
@@ -88,7 +92,7 @@ const CategoriasProductosPage = () => {
     cargarCategorias();
   }, []);
 
-  /* CRUD */
+  // 🗑️ Eliminar
   const eliminar = async (id: number) => {
     if (!confirm('¿Eliminar categoría? No se podrá recuperar.')) return;
     await deleteCategoriaProducto(id);
@@ -96,15 +100,17 @@ const CategoriasProductosPage = () => {
     notify(`🗑️ Categoría eliminada: ID ${id}`);
   };
 
+  // 💾 Crear / Actualizar
   const guardar = async () => {
     const payload = { nombre, unpsc: unpsc || undefined };
-    editId
-      ? await updateCategoriaProducto(editId, payload)
-      : await createCategoriaProducto(payload);
-    onClose();
-    setNombre('');
-    setUnpsc('');
-    setEditId(null);
+    if (editId) {
+      await updateCategoriaProducto(editId, payload);
+      notify('✅ Categoría actualizada');
+    } else {
+      await createCategoriaProducto(payload);
+      notify('✅ Categoría creada');
+    }
+    cerrarModal();
     cargarCategorias();
   };
 
@@ -115,19 +121,24 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? categorias.filter(
-            (c) =>
-              c.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
-              (c.unpsc || '').toLowerCase().includes(filterValue.toLowerCase())
-          )
-        : categorias,
-    [categorias, filterValue]
-  );
+  const cerrarModal = () => {
+    setEditId(null);
+    setNombre('');
+    setUnpsc('');
+    onClose();
+  };
 
+  // 🔍 Filtrar
+  const filtered = useMemo(() => {
+    return filterValue
+      ? categorias.filter((c) =>
+          c.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
+          (c.unpsc || '').toLowerCase().includes(filterValue.toLowerCase())
+        )
+      : categorias;
+  }, [categorias, filterValue]);
+
+  // 📃 Paginación
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
   const sliced = useMemo(() => {
@@ -146,41 +157,30 @@ const CategoriasProductosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
+  // 📦 Renderizar celdas
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombre':
-        return (
-          <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">
-            {item.nombre}
-          </span>
-        );
+        return <span className="font-medium text-gray-800">{item.nombre}</span>;
       case 'unpsc':
         return <span className="text-sm text-gray-600">{item.unpsc || '—'}</span>;
       case 'productos':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.productos?.length || 0}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.productos?.length || 0}</span>;
       case 'actions':
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>
+              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
                 Editar
               </DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -189,7 +189,6 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -198,7 +197,7 @@ const CategoriasProductosPage = () => {
     });
   };
 
-  /* Top content */
+  // 🔝 Encabezado tabla
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -222,7 +221,6 @@ const CategoriasProductosPage = () => {
                 .filter((c) => c.uid !== 'actions')
                 .map((col) => (
                   <DropdownItem key={col.uid} className="py-1 px-2">
-                    {/* ✅ Checkbox funcional */}
                     <Checkbox
                       isSelected={visibleColumns.has(col.uid)}
                       onValueChange={() => toggleColumn(col.uid)}
@@ -244,9 +242,7 @@ const CategoriasProductosPage = () => {
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {categorias.length} categorías
-        </span>
+        <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -268,30 +264,14 @@ const CategoriasProductosPage = () => {
     </div>
   );
 
-  /* Bottom content */
+  // 🔽 Pie de tabla
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === 1}
-        onPress={() => setPage(page - 1)}
-      >
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
-      <Pagination
-        isCompact
-        showControls
-        page={page}
-        total={pages}
-        onChange={setPage}
-      />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -300,17 +280,16 @@ const CategoriasProductosPage = () => {
   return (
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
+
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📦 Gestión de Categorías de Productos
           </h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra las categorías disponibles.
-          </p>
+          <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Tabla desktop */}
+        {/* Tabla Desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
@@ -324,9 +303,7 @@ const CategoriasProductosPage = () => {
               td: 'align-middle py-3 px-4',
             }}
           >
-            <TableHeader
-              columns={columns.filter((c) => visibleColumns.has(c.uid))}
-            >
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
                 <TableColumn
                   key={col.uid}
@@ -347,7 +324,7 @@ const CategoriasProductosPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
+        {/* Tarjetas Móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron categorías</p>
@@ -356,9 +333,7 @@ const CategoriasProductosPage = () => {
             <Card key={cat.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
-                    {cat.nombre}
-                  </h3>
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{cat.nombre}</h3>
                   <Dropdown>
                     <DropdownTrigger>
                       <Button
@@ -371,10 +346,10 @@ const CategoriasProductosPage = () => {
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(cat)} key={''}>
+                      <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
                         Editar
                       </DropdownItem>
-                      <DropdownItem onPress={() => eliminar(cat.id)} key={''}>
+                      <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
                         Eliminar
                       </DropdownItem>
                     </DropdownMenu>
@@ -384,8 +359,7 @@ const CategoriasProductosPage = () => {
                   <span className="font-medium">UNPSC:</span> {cat.unpsc || '—'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Productos:</span>{' '}
-                  {cat.productos?.length || 0}
+                  <span className="font-medium">Productos:</span> {cat.productos?.length || 0}
                 </p>
                 <p className="text-xs text-gray-400">ID: {cat.id}</p>
               </CardContent>
@@ -394,18 +368,11 @@ const CategoriasProductosPage = () => {
         </div>
 
         {/* Modal */}
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {(onCloseLocal) => (
+            {() => (
               <>
-                <ModalHeader>
-                  {editId ? 'Editar Categoría' : 'Nueva Categoría'}
-                </ModalHeader>
+                <ModalHeader>{editId ? 'Editar Categoría' : 'Nueva Categoría'}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
                     label="Nombre"
@@ -423,7 +390,7 @@ const CategoriasProductosPage = () => {
                   />
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
+                  <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
                   <Button variant="flat" onPress={guardar}>

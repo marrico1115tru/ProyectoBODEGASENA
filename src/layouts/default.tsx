@@ -1,4 +1,4 @@
-import Sidebar from "@/components/organismos/Sidebar/Sidebar";
+ import Sidebar from "@/components/organismos/Sidebar/Sidebar";
 import { User, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";

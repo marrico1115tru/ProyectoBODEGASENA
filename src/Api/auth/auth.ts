@@ -10,7 +10,6 @@ interface LoginResponse {
   };
 }
 
-// ✅ Cambiado a recibir email y password como parámetros individuales
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
   const response = await axios.post('http://localhost:3000/auth/login', {
     email,

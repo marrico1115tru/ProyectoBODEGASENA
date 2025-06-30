@@ -25,3 +25,6 @@ export interface Usuario {
   idFichaFormacion: FichaFormacion;
   idRol: Rol;
 }
+
+// Opcional: tipo para formularios (sin id)
+export type UsuarioFormValues = Omit<Usuario, "id">;

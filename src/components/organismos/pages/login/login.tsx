@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import Cookies from "js-cookie";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaUser, FaLock } from "react-icons/fa";
@@ -15,21 +14,8 @@ const Login = () => {
   const handleLogin = async () => {
     setError("");
     try {
-      const { access_token, user } = await login(email.trim(), password.trim());
-
-      console.log("✅ Token recibido:", access_token);
-
-      // ✅ Guardar el token en cookies
-      Cookies.set("accessToken", access_token, {
-        expires: 1,
-        secure: true,
-        sameSite: "strict",
-      });
-
-      // ✅ Guardar usuario en localStorage
-      localStorage.setItem("user", JSON.stringify(user));
-
-      // ✅ Navegar al dashboard
+    
+      await login(email.trim(), password.trim());
       navigate("/Home");
     } catch (err) {
       console.error("❌ Error de autenticación:", err);

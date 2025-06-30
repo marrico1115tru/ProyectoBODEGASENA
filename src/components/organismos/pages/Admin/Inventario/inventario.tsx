@@ -1,6 +1,4 @@
-/* -------------------------------------------------------------------------- */
-/*  src/pages/InventarioPage.tsx                                              */
-/* -------------------------------------------------------------------------- */
+
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
@@ -26,9 +24,7 @@ import type { InventarioFormValues } from '@/types/types/inventario';
 import type { ProductoFormValues }   from '@/types/types/typesProductos';
 import type { SitioFormValues }      from '@/types/types/Sitio';
 
-/* -------------------------------------------------------------------------- */
-/*  Helpers                                                                   */
-/* -------------------------------------------------------------------------- */
+
 const primaryBtn =
   'bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow';
 
@@ -38,9 +34,7 @@ const Toast = ({ msg }: { msg: string }) => (
   </div>
 );
 
-/* -------------------------------------------------------------------------- */
-/*  Columnas tabla                                                            */
-/* -------------------------------------------------------------------------- */
+
 const columns = [
   { name: 'ID',       uid: 'id',       sortable: true },
   { name: 'Producto', uid: 'producto' },
@@ -51,11 +45,9 @@ const columns = [
 type ColumnKey = (typeof columns)[number]['uid'];
 const DEFAULT_VISIBLE = new Set<ColumnKey>(['id', 'producto', 'sitio', 'stock', 'actions']);
 
-/* -------------------------------------------------------------------------- */
-/*  Componente                                                                */
-/* -------------------------------------------------------------------------- */
+
 export default function InventarioPage() {
-  /* ---------------------------- datos ----------------------------------- */
+ 
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [productos,   setProductos]   = useState<any[]>([]);
   const [sitios,      setSitios]      = useState<any[]>([]);
@@ -63,14 +55,13 @@ export default function InventarioPage() {
   const [tiposSitio,  setTipos]       = useState<any[]>([]);
   const [categorias,  setCategorias]  = useState<any[]>([]);
 
-  /* ---------------------------- tabla / filtros ------------------------- */
   const [filter,  setFilter]  = useState('');
   const [visible, setVisible] = useState(DEFAULT_VISIBLE);
   const [rows,    setRows]    = useState(5);
   const [page,    setPage]    = useState(1);
   const [sort,    setSort]    = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
-  /* ---------------------------- formularios ----------------------------- */
+
   const [inv, setInv]   = useState({ stock: '', idProductoId: '', fkSitioId: '' });
   const [invId, setInvId] = useState<number | null>(null);
   const invModal = useDisclosure();
@@ -81,11 +72,10 @@ export default function InventarioPage() {
   const [sit, setSit]   = useState({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
   const sitModal = useDisclosure();
 
-  /* ---------------------------- toast ----------------------------------- */
   const [toast, setToast] = useState('');
   const notify = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
-  /* ---------------------------- carga inicial --------------------------- */
+ 
   useEffect(() => {
     (async () => {
       const [invD, prodD, sitD, catD, areaD, tipoD] = await Promise.all([
@@ -97,7 +87,6 @@ export default function InventarioPage() {
     })();
   }, []);
 
-  /* ---------------------------- CRUD inventario ------------------------- */
   const saveInv = async () => {
     if (!inv.stock || !inv.idProductoId || !inv.fkSitioId) { notify('Completa todos los campos'); return; }
     const payload: InventarioFormValues = {
@@ -116,7 +105,7 @@ export default function InventarioPage() {
     setInventarios(await getInventarios());
   };
 
-  /* ---------------------------- CRUD producto rápido -------------------- */
+ 
   const saveProd = async () => {
     if (!prod.nombre || !prod.idCategoriaId) { notify('Nombre y categoría requeridos'); return; }
     const payload: ProductoFormValues = {
@@ -131,7 +120,7 @@ export default function InventarioPage() {
     } catch { notify('Error al crear producto'); }
   };
 
-  /* ---------------------------- CRUD sitio rápido ----------------------- */
+ 
   const saveSit = async () => {
     if (!sit.nombre || !sit.ubicacion || !sit.idAreaId || !sit.idTipoSitioId) {
       notify('Completa todos los campos'); return;
@@ -151,7 +140,7 @@ export default function InventarioPage() {
     } catch { notify('Error al crear sitio'); }
   };
 
-  /* ---------------------------- datos tabla ----------------------------- */
+ 
   const filtered = useMemo(
     () => filter
       ? inventarios.filter(i =>
@@ -171,7 +160,7 @@ export default function InventarioPage() {
     });
   }, [filtered, page, rows, sort]);
 
-  /* ---------------------------- render celdas --------------------------- */
+  
   const cell = (row: any, key: ColumnKey) => {
     switch (key) {
       case 'id':       return row.idProductoInventario;
@@ -204,7 +193,6 @@ export default function InventarioPage() {
     }
   };
 
-  /* ---------------------------- topContent ------------------------------ */
   const topContent =
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -251,7 +239,7 @@ export default function InventarioPage() {
       </div>
     </div>;
 
-  /* ---------------------------------------------------------------------- */
+
   return (
     <DefaultLayout>
       {toast && <Toast msg={toast} />}
@@ -264,7 +252,6 @@ export default function InventarioPage() {
           <p className="text-sm text-gray-600">Consulta y administra stock por sitio y producto.</p>
         </header>
 
-        {/* tabla (desktop) */}
         <div className="hidden md:block overflow-x-auto rounded-xl bg-white shadow-sm">
           <Table
             aria-label="Inventario"
@@ -289,7 +276,7 @@ export default function InventarioPage() {
           </Table>
         </div>
 
-        {/* cards móvil */}
+      
         <div className="grid gap-4 md:hidden">
           {list.length ? list.map(i => (
             <Card key={i.idProductoInventario} className="shadow-sm">
@@ -324,8 +311,7 @@ export default function InventarioPage() {
           )) : <p className="text-center text-gray-500">No se encontraron registros</p>}
         </div>
 
-        {/* ---------------- Modal Inventario ---------------- */}
-        <Modal isOpen={invModal.isOpen} onOpenChange={o => o || invModal.onClose()}   /* solo cierra explícito */
+        <Modal isOpen={invModal.isOpen} onOpenChange={o => o || invModal.onClose()}   
                isDismissable={false} placement="center">
           <ModalContent className="backdrop-blur bg-white/60 rounded-xl shadow-xl">
             <ModalHeader>{invId ? 'Editar Inventario' : 'Nuevo Inventario'}</ModalHeader>
@@ -333,7 +319,7 @@ export default function InventarioPage() {
               <Input label="Stock" type="number" min={0} value={inv.stock}
                      onValueChange={v => setInv(f => ({ ...f, stock: v }))} />
 
-              {/* producto */}
+            
               <div className="flex items-end gap-2">
                 <Select label="Producto" className="flex-1"
                         selectedKeys={inv.idProductoId ? new Set([inv.idProductoId]) : new Set()}
@@ -345,7 +331,7 @@ export default function InventarioPage() {
                 </Button>
               </div>
 
-              {/* sitio */}
+             
               <div className="flex items-end gap-2">
                 <Select label="Sitio" className="flex-1"
                         selectedKeys={inv.fkSitioId ? new Set([inv.fkSitioId]) : new Set()}
@@ -364,7 +350,7 @@ export default function InventarioPage() {
           </ModalContent>
         </Modal>
 
-        {/* ---------------- Modal Producto rápido ------------- */}
+   
         <Modal isOpen={prodModal.isOpen} onOpenChange={o => o || prodModal.onClose()}
                isDismissable={false} placement="center">
           <ModalContent className="backdrop-blur bg-white/60 rounded-xl shadow-xl">
