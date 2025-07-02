@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import {
   Home, Menu, FileText, ChevronDown, ChevronUp, Users, BarChart2,
   Warehouse, Building2, GraduationCap, FolderGit2, MapPin, BookOpen,
@@ -9,9 +10,13 @@ import {
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
+import axios from "axios";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [openMenus, setOpenMenus] = useState({
     reports: false,
     products: false,
@@ -21,7 +26,7 @@ const Sidebar = () => {
     userReports: false,
     admin: false,
     ubicacion: false,
-    formacion: false,
+    formacion: false
   });
 
   const navigate = useNavigate();
@@ -33,6 +38,45 @@ const Sidebar = () => {
     localStorage.clear();
     navigate("/login");
   };
+
+  // Obtener el rol del usuario desde el token
+  const userData = getDecodedTokenFromCookies('token');
+  console.log("[JWT]::::",userData?.rol?.id);
+
+  // Consultar los módulos del rol del usuario
+  useEffect(() => {
+    const fetchModulos = async () => {
+      try {
+        const token = localStorage.getItem('token'); // o de cookies si lo guardas allí
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+          rol: userData?.rol?.id
+        };
+
+        const url = 'http://localhost:3000/sitio/permisos/modulos/rol';
+        //TODO:  1. pendiente por implementar el servicion que reciba el rol del usuario y retorne los módulos permitidos
+        const response = await axios.get(url, config);
+
+        console.log("Permisos de módulos:", response);
+
+        //TODO: 2.Luego de obtener los módulos, se debe actualizar el estado para mostrar u ocultar los botones del sidebar
+        //setEstadisticas(response.data);
+      } catch (err) {
+        setError('Error al obtener estadísticas de sitios');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchModulos();
+  }, [userData]);
+
+
 
   return (
     <aside className={`transition-all duration-300 flex flex-col shadow-lg border-r border-slate-700 ${isOpen ? "w-64" : "w-20"} min-h-screen bg-slate-900 text-white`}>
@@ -52,6 +96,8 @@ const Sidebar = () => {
           <SidebarButton to="/inicio" icon={<FileText className="w-5 h-5" />} label="Inicio" isOpen={isOpen} activePaths={["/inicio"]} />
 
           {/* Productos */}
+          //TODO: 3.Se debe validar si el modulo Ejemplo productos se encuentra habilitado para el rol del usuario
+          
           <SidebarButton icon={<FileText className="w-5 h-5" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("products")} endIcon={openMenus.products ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
           {openMenus.products && isOpen && (
             <Submenu>
@@ -60,6 +106,7 @@ const Sidebar = () => {
               <SidebarButton to="/InventarioPage" icon={<Warehouse className="w-4 h-4" />} label="Inventario" isOpen={isOpen} activePaths={["/InventarioPage"]} />
             </Submenu>
           )}
+
 
           {/* Solicitudes */}
           <SidebarButton icon={<ClipboardList className="w-5 h-5" />} label="Solicitudes" isOpen={isOpen} onClick={() => toggleMenu("solicitudes")} endIcon={openMenus.solicitudes ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
