@@ -78,6 +78,8 @@ const Sidebar = () => {
 
 
 
+  
+
   return (
     <aside className={`transition-all duration-300 flex flex-col shadow-lg border-r border-slate-700 ${isOpen ? "w-64" : "w-20"} min-h-screen bg-slate-900 text-white`}>
       {/* Header */}
