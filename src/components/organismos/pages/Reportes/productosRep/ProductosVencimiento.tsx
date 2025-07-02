@@ -14,7 +14,11 @@ export default function ProductosProximosAVencer() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["productos-proximos-vencer"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3000/productos/proximos-vencer");
+      const config = {
+        withCredentials: true, // ✅ El token se enviará automáticamente si está en las cookies
+      };
+
+      const res = await axios.get("http://localhost:3000/productos/proximos-vencer", config);
       return res.data;
     },
   });

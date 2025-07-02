@@ -108,7 +108,7 @@ const Sidebar = () => {
           )}
 
           {/* Admin */}
-          <SidebarButton icon={<ShieldCheck className="w-5 h-5" />} label="Admin" isOpen={isOpen} onClick={() => toggleMenu("admin")} endIcon={openMenus.admin ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
+          <SidebarButton icon={<ShieldCheck className="w-5 h-5" />} label="Admin MARIAAA" isOpen={isOpen} onClick={() => toggleMenu("admin")} endIcon={openMenus.admin ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
           {openMenus.admin && isOpen && (
             <Submenu>
               <SidebarButton to="/usuarios" icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/usuarios"]} />

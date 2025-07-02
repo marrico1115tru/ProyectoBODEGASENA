@@ -14,23 +14,28 @@ const Login = () => {
   const handleLogin = async () => {
     setError("");
     try {
-    
       await login(email.trim(), password.trim());
+
+      // ✅ Si todo sale bien, redirige
       navigate("/Home");
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error de autenticación:", err);
-      setError("Credenciales incorrectas");
+      if (err.response?.status === 401) {
+        setError("Credenciales inválidas");
+      } else {
+        setError("Error al conectar con el servidor");
+      }
     }
   };
 
   return (
     <div
       className="h-screen w-full bg-cover bg-center flex items-center justify-center"
-      style={{ backgroundImage: `url('src/img/bodegas.jpeg')` }}
+      style={{ backgroundImage: `url('/src/img/bodegas.jpeg')` }}
     >
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-10 rounded-xl shadow-2xl max-w-sm w-full text-gray-100">
         <div className="flex justify-center mb-6">
-          <img src="src/img/log.png" alt="Logo" className="h-16" />
+          <img src="/src/img/log.png" alt="Logo" className="h-16" />
         </div>
 
         <h2 className="text-center text-2xl font-bold mb-6 text-white">INGRESAR</h2>

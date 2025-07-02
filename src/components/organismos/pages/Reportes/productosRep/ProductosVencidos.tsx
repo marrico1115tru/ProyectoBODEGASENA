@@ -21,7 +21,11 @@ export default function ProductosVencidos() {
   const { data, isLoading, error } = useQuery<ProductoVencido[]>({
     queryKey: ["productos-vencidos"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3000/productos/vencidos");
+      const config = {
+        withCredentials: true, // ✅ para incluir cookies en la petición
+      };
+
+      const res = await axios.get("http://localhost:3000/productos/vencidos", config);
       return res.data;
     },
   });

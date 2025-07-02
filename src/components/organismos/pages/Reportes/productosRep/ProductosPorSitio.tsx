@@ -20,7 +20,11 @@ export default function ProductosPorSitio() {
   const { data, isLoading, error } = useQuery<ProductoPorSitio[]>({
     queryKey: ["productos-por-sitio"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3000/productos/por-sitio");
+      const config = {
+        withCredentials: true, // ✅ ENVÍA LAS COOKIES
+      };
+
+      const res = await axios.get("http://localhost:3000/productos/por-sitio", config);
       return res.data;
     },
   });

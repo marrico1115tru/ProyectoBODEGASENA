@@ -1,142 +1,112 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Bar } from 'react-chartjs-2';
+import { BarChart, PieChart } from './Graficasbases/GraficasBaseSitios';
+import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
-import {
-  Chart as ChartJS,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-  Title,
-} from 'chart.js';
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title);
-
-interface Producto {
-  nombre: string;
-  inventarios: { stock: number }[];
+interface SitioEstadistica {
+  estado: string;
+  cantidad: number;
 }
 
-interface ProductoMovimiento {
-  nombre: string;
-  totalMovimiento: number | string;
-}
-
-export default function VistaProductos() {
-  const [vencidos, setVencidos] = useState<Producto[]>([]);
-  const [masMovidos, setMasMovidos] = useState<ProductoMovimiento[]>([]);
+const VistaEstadisticasSitios: React.FC = () => {
+  const [estadisticas, setEstadisticas] = useState<SitioEstadistica[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchEstadisticas = async () => {
       try {
-        const [vencidosRes, movidosRes] = await Promise.all([
-          axios.get('http://localhost:3000/productos/vencidos'),
-          axios.get('http://localhost:3000/productos/mayor-movimiento'),
-        ]);
+        const token = localStorage.getItem('token'); // o de cookies si lo guardas allí
 
-        const productosVencidosFiltrados = vencidosRes.data.filter(
-          (p: any) => Array.isArray(p.inventarios) && p.inventarios.length > 0
-        );
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        };
 
-        setVencidos(productosVencidosFiltrados);
-        setMasMovidos(movidosRes.data);
+        const url = 'http://localhost:3000/sitio/estadisticas/por-estado';
+        const response = await axios.get<SitioEstadistica[]>(url, config);
+
+        setEstadisticas(response.data);
       } catch (err) {
+        setError('Error al obtener estadísticas de sitios');
         console.error(err);
-        setError('Error al obtener datos del servidor');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchEstadisticas();
   }, []);
 
-  const renderBarChart = (labels: string[], data: number[], label: string, color: string) => (
-    <Bar
-      data={{
-        labels,
-        datasets: [
-          {
-            label,
-            data,
-            backgroundColor: color,
-            borderRadius: 6,
-          },
-        ],
-      }}
-      options={{
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: label,
-            font: { size: 18 },
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1,
-            },
-          },
-        },
-      }}
-    />
+  const labels = estadisticas.map((e) => e.estado);
+  const values = estadisticas.map((e) => e.cantidad);
+  const colores = labels.map((estado) =>
+    estado === 'ACTIVO' ? '#4ADE80' : '#F87171'
   );
+
+  const total = values.reduce((acc, val) => acc + val, 0);
+  const porcentajes = values.map((valor) =>
+    total > 0 ? Number(((valor / total) * 100).toFixed(2)) : 0
+  );
+
+  const dataBarSitios = {
+    labels,
+    datasets: [
+      {
+        label: 'Cantidad de Sitios',
+        data: values,
+        backgroundColor: colores,
+      },
+    ],
+  };
+
+  const dataPieSitios = {
+    labels: labels.map((label, index) => `${label} (${porcentajes[index]}%)`),
+    datasets: [
+      {
+        data: values,
+        backgroundColor: colores,
+      },
+    ],
+  };
 
   return (
     <DefaultLayout>
-      <div className="p-6 space-y-8 bg-slate-900 min-h-screen text-white">
-        <h2 className="text-2xl font-bold">Estadísticas de Productos</h2>
+      <div className="p-6 bg-[#0f172a] min-h-screen">
+        <h1 className="text-white text-3xl font-bold mb-6 text-center">Estadísticas de Sitios</h1>
 
-        {loading && <div className="text-gray-300">Cargando datos...</div>}
-        {error && <div className="text-red-500">{error}</div>}
+        {loading && <p className="text-white text-center">Cargando estadísticas...</p>}
+        {error && <p className="text-red-500 text-center">{error}</p>}
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Productos Vencidos */}
-            <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
-              <h3 className="text-xl font-semibold mb-4">Productos Vencidos</h3>
-              {vencidos.length > 0 ? (
-                renderBarChart(
-                  vencidos.map((p) => p.nombre),
-                  vencidos.map((p) =>
-                    Array.isArray(p.inventarios)
-                      ? p.inventarios.reduce((acc, inv) => acc + inv.stock, 0)
-                      : 0
-                  ),
-                  'Stock Total de Productos Vencidos',
-                  'rgba(255, 99, 132, 0.5)'
-                )
-              ) : (
-                <p>No hay productos vencidos con inventario.</p>
-              )}
-            </div>
+            <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-2 text-center">Sitios Activos vs Inactivos</h2>
+              <p className="text-sm text-gray-600 text-center mb-4">
+                Comparación de sitios activos e inactivos
+              </p>
+              <div className="max-w-2xl mx-auto">
+                <BarChart data={dataBarSitios} />
+              </div>
+            </Card>
 
-            {/* Productos con mayor movimiento */}
-            <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
-              <h3 className="text-xl font-semibold mb-4">Productos con mayor movimiento</h3>
-              {masMovidos.length > 0 ? (
-                renderBarChart(
-                  masMovidos.map((p) => p.nombre),
-                  masMovidos.map((p) => Number(p.totalMovimiento)), // conversión a número
-                  'Cantidad Movida',
-                  'rgba(54, 162, 235, 0.5)'
-                )
-              ) : (
-                <p>No hay productos con movimiento registrado.</p>
-              )}
-            </div>
+            <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-2 text-center">Distribución de Sitios (%)</h2>
+              <p className="text-sm text-gray-600 text-center mb-4">
+                Porcentaje de sitios activos e inactivos
+              </p>
+              <div className="max-w-md mx-auto">
+                <PieChart data={dataPieSitios} />
+              </div>
+            </Card>
           </div>
         )}
       </div>
     </DefaultLayout>
   );
-}
+};
+
+export default VistaEstadisticasSitios;

@@ -22,11 +22,20 @@ export default function VistaEstadisticasUsuarios() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      axios.get('http://localhost:3000/productos/solicitados-por-usuario'),
-      axios.get('http://localhost:3000/usuarios/estadisticas/por-rol'),
-    ])
-      .then(([productosRes, rolesRes]) => {
+    const fetchData = async () => {
+      try {
+        const config = {
+          withCredentials: true, // ✅ Enviar cookies automáticamente
+        };
+
+        const urlProductos = 'http://localhost:3000/productos/solicitados-por-usuario';
+        const urlRoles = 'http://localhost:3000/usuarios/estadisticas/por-rol';
+
+        const [productosRes, rolesRes] = await Promise.all([
+          axios.get(urlProductos, config),
+          axios.get(urlRoles, config),
+        ]);
+
         const productosValidos = productosRes.data
           .filter(
             (p: any) =>
@@ -46,14 +55,15 @@ export default function VistaEstadisticasUsuarios() {
 
         setProductosPorUsuario(productosValidos);
         setUsuariosPorRol(rolesValidos);
-      })
-      .catch((err) => {
+      } catch (err) {
         setError('Error al obtener datos de estadísticas.');
         console.error('❌', err);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
 
   return (

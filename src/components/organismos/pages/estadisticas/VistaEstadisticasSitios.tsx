@@ -17,9 +17,13 @@ const VistaEstadisticasSitios: React.FC = () => {
   useEffect(() => {
     const fetchEstadisticas = async () => {
       try {
-        const response = await axios.get<SitioEstadistica[]>(
-          'http://localhost:3000/sitio/estadisticas/por-estado'
-        );
+        const config = {
+          withCredentials: true, // 🔐 Enviar cookies al backend
+        };
+
+        const url = 'http://localhost:3000/sitio/estadisticas/por-estado';
+        const response = await axios.get<SitioEstadistica[]>(url, config);
+
         setEstadisticas(response.data);
       } catch (err) {
         setError('Error al obtener estadísticas de sitios');
@@ -39,7 +43,6 @@ const VistaEstadisticasSitios: React.FC = () => {
   );
 
   const total = values.reduce((acc, val) => acc + val, 0);
-
   const porcentajes = values.map((valor) =>
     total > 0 ? Number(((valor / total) * 100).toFixed(2)) : 0
   );
