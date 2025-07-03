@@ -1,4 +1,3 @@
-// src/pages/SitiosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -31,18 +30,19 @@ import {
 } from '@/Api/SitioService';
 import { getAreas } from '@/Api/AreasService';
 import { getTiposSitio } from '@/Api/Tipo_sitios';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+const ID_ROL_ACTUAL = 1; // Ajusta según el rol actual del usuario
+
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
@@ -65,7 +65,13 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const SitiosPage = () => {
-  /* Estado */
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
   const [sitios, setSitios] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [tipos, setTipos] = useState<any[]>([]);
@@ -80,7 +86,6 @@ const SitiosPage = () => {
     direction: 'ascending',
   });
 
-  /* Formulario */
   const [nombre, setNombre] = useState('');
   const [ubicacion, setUbicacion] = useState('');
   const [estado, setEstado] = useState<'ACTIVO' | 'INACTIVO'>('ACTIVO');
@@ -88,7 +93,6 @@ const SitiosPage = () => {
   const [idTipo, setIdTipo] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -96,7 +100,29 @@ const SitiosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  useEffect(() => {
+    cargarPermisos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cargarPermisos = async () => {
+    try {
+      const permisosObtenidos = await getPermisosPorRuta('/SitiosPage', ID_ROL_ACTUAL);
+      setPermisos(permisosObtenidos);
+      if (permisosObtenidos.puedeVer) {
+        cargarDatos();
+      }
+    } catch (error) {
+      console.error('Error cargando permisos:', error);
+      setPermisos({
+        puedeVer: false,
+        puedeCrear: false,
+        puedeEditar: false,
+        puedeEliminar: false,
+      });
+    }
+  };
+
   const cargarDatos = async () => {
     try {
       const [s, a, t] = await Promise.all([
@@ -111,19 +137,18 @@ const SitiosPage = () => {
       console.error('Error cargando sitios', err);
     }
   };
-  useEffect(() => {
-    cargarDatos();
-  }, []);
 
-  /* CRUD */
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar sitio? No se podrá recuperar.')) return;
+    if (!permisos.puedeEliminar) return;
+    if (!window.confirm('¿Eliminar sitio? No se podrá recuperar.')) return;
     await deleteSitio(id);
-    cargarDatos();
     notify(`🗑️ Sitio eliminado: ID ${id}`);
+    cargarDatos();
   };
 
   const guardar = async () => {
+    if (editId && !permisos.puedeEditar) return;
+    if (!editId && !permisos.puedeCrear) return;
     const payload = {
       nombre,
       ubicacion,
@@ -131,13 +156,20 @@ const SitiosPage = () => {
       id_area: idArea || undefined,
       id_tipo_sitio: idTipo || undefined,
     };
-    editId ? await updateSitio(editId, payload) : await createSitio(payload);
-    onClose();
+    if (editId) {
+      await updateSitio(editId, payload);
+      notify('✏️ Sitio actualizado');
+    } else {
+      await createSitio(payload);
+      notify('✅ Sitio creado');
+    }
     limpiarForm();
+    onClose();
     cargarDatos();
   };
 
   const abrirModalEditar = (s: any) => {
+    if (!permisos.puedeEditar) return;
     setEditId(s.id);
     setNombre(s.nombre || '');
     setUbicacion(s.ubicacion || '');
@@ -156,7 +188,6 @@ const SitiosPage = () => {
     setIdTipo('');
   };
 
-  /* Filtro + Orden + Paginación */
   const filtered = useMemo(
     () =>
       filterValue
@@ -172,11 +203,14 @@ const SitiosPage = () => {
         : sitios,
     [sitios, filterValue]
   );
+
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
+
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -188,7 +222,6 @@ const SitiosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombre':
@@ -228,6 +261,7 @@ const SitiosPage = () => {
           </span>
         );
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -241,8 +275,18 @@ const SitiosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {[
+                permisos.puedeEditar ? (
+                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                    Editar
+                  </DropdownItem>
+                ) : null,
+                permisos.puedeEliminar ? (
+                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                    Eliminar
+                  </DropdownItem>
+                ) : null,
+              ].filter(Boolean)}
             </DropdownMenu>
           </Dropdown>
         );
@@ -251,7 +295,6 @@ const SitiosPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -260,7 +303,18 @@ const SitiosPage = () => {
     });
   };
 
-  /* Top content */
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -295,22 +349,22 @@ const SitiosPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarForm();
-              onOpen();
-            }}
-          >
-            Nuevo Sitio
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={() => {
+                limpiarForm();
+                onOpen();
+              }}
+            >
+              Nuevo Sitio
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {sitios.length} sitios
-        </span>
+        <span className="text-default-400 text-sm">Total {sitios.length} sitios</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -332,19 +386,13 @@ const SitiosPage = () => {
     </div>
   );
 
-  /* Bottom content */
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -354,7 +402,6 @@ const SitiosPage = () => {
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🏷️ Gestión de Sitios
@@ -364,7 +411,6 @@ const SitiosPage = () => {
           </p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de sitios"
@@ -399,7 +445,6 @@ const SitiosPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron sitios</p>
@@ -409,22 +454,34 @@ const SitiosPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">{s.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(s)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(s.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="rounded-full text-[#0D1324]"
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {[
+                          permisos.puedeEditar ? (
+                            <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
+                              Editar
+                            </DropdownItem>
+                          ) : null,
+                          permisos.puedeEliminar ? (
+                            <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
+                              Eliminar
+                            </DropdownItem>
+                          ) : null,
+                        ].filter(Boolean)}
+                      </DropdownMenu>
+                    </Dropdown>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Ubicación:</span> {s.ubicacion}
@@ -444,8 +501,7 @@ const SitiosPage = () => {
                   <span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Inventarios:</span>{' '}
-                  {s.inventarios?.length || 0}
+                  <span className="font-medium">Inventarios:</span> {s.inventarios?.length || 0}
                 </p>
                 <p className="text-xs text-gray-400">ID: {s.id}</p>
               </CardContent>
@@ -453,7 +509,6 @@ const SitiosPage = () => {
           ))}
         </div>
 
-        {/* Modal CRUD */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -471,6 +526,7 @@ const SitiosPage = () => {
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
+                    disabled={!permisos.puedeCrear && !editId}
                   />
                   <Input
                     label="Ubicación"
@@ -478,6 +534,7 @@ const SitiosPage = () => {
                     value={ubicacion}
                     onValueChange={setUbicacion}
                     radius="sm"
+                    disabled={!permisos.puedeCrear && !editId}
                   />
                   {/* Estado */}
                   <div>
@@ -488,6 +545,7 @@ const SitiosPage = () => {
                       value={estado}
                       onChange={(e) => setEstado(e.target.value as 'ACTIVO' | 'INACTIVO')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="ACTIVO">ACTIVO</option>
                       <option value="INACTIVO">INACTIVO</option>
@@ -502,6 +560,7 @@ const SitiosPage = () => {
                       value={idArea}
                       onChange={(e) => setIdArea(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="">Seleccione un área</option>
                       {areas.map((a: any) => (
@@ -520,6 +579,7 @@ const SitiosPage = () => {
                       value={idTipo}
                       onChange={(e) => setIdTipo(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="">Seleccione un tipo</option>
                       {tipos.map((t: any) => (
@@ -534,7 +594,11 @@ const SitiosPage = () => {
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

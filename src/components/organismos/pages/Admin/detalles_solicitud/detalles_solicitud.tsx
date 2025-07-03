@@ -30,18 +30,19 @@ import {
 } from '@/Api/detalles_solicitud';
 import { getProductos } from '@/Api/Productosform';
 import { getSolicitudes } from '@/Api/Solicitudes';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+const ID_ROL_ACTUAL = 1;
+
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Cantidad', uid: 'cantidad', sortable: false },
@@ -60,7 +61,6 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const DetalleSolicitudesPage = () => {
-  /* Estado principal */
   const [detalles, setDetalles] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
@@ -75,14 +75,20 @@ const DetalleSolicitudesPage = () => {
     direction: 'ascending',
   });
 
-  /* Formulario modal */
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+  const [loadingPermisos, setLoadingPermisos] = useState(true);
+
   const [cantidad, setCantidad] = useState<number | ''>('');
   const [observaciones, setObservaciones] = useState('');
   const [idProducto, setIdProducto] = useState<number | ''>('');
   const [idSolicitud, setIdSolicitud] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -90,7 +96,34 @@ const DetalleSolicitudesPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  useEffect(() => {
+    cargarPermisos();
+    // eslint-disable-next-line
+  }, []);
+
+  const cargarPermisos = async () => {
+    setLoadingPermisos(true);
+    try {
+      // ¡Asegúrate de que la ruta sea EXACTAMENTE la que tienes en backend!
+      // Si tu backend espera '/DetalleSolicitudPage', usa esa ruta.
+      const p = await getPermisosPorRuta('/DetalleSolicitudPage', ID_ROL_ACTUAL);
+      setPermisos(p.data || p); // Soporta ambas estructuras de respuesta
+      if ((p.data || p).puedeVer) {
+        cargarDatos();
+      }
+    } catch (error) {
+      console.error('Error cargando permisos:', error);
+      setPermisos({
+        puedeVer: false,
+        puedeCrear: false,
+        puedeEditar: false,
+        puedeEliminar: false,
+      });
+    } finally {
+      setLoadingPermisos(false);
+    }
+  };
+
   const cargarDatos = async () => {
     try {
       const [det, prods, sols] = await Promise.all([
@@ -105,31 +138,43 @@ const DetalleSolicitudesPage = () => {
       console.error('Error cargando datos', err);
     }
   };
-  useEffect(() => {
-    cargarDatos();
-  }, []);
 
-  /* CRUD ------------- */
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) return;
     if (!confirm('¿Eliminar registro? No se podrá recuperar.')) return;
-    await deleteDetalleSolicitud(id);
-    cargarDatos();
-    notify(`🗑️ Registro eliminado: ID ${id}`);
+    try {
+      await deleteDetalleSolicitud(id);
+      notify(`🗑️ Registro eliminado: ID ${id}`);
+      cargarDatos();
+    } catch (e) {
+      notify('Error eliminando registro');
+    }
   };
 
   const guardar = async () => {
+    if (!permisos.puedeCrear && !permisos.puedeEditar) return;
     const payload = {
       cantidadSolicitada: cantidad,
       observaciones: observaciones || null,
       idProducto: idProducto ? { id: Number(idProducto) } : null,
       idSolicitud: idSolicitud ? { id: Number(idSolicitud) } : null,
     };
-    editId
-      ? await updateDetalleSolicitud(editId, payload)
-      : await createDetalleSolicitud(payload);
-    onClose();
-    limpiarFormulario();
-    cargarDatos();
+    try {
+      if (editId) {
+        if (!permisos.puedeEditar) return;
+        await updateDetalleSolicitud(editId, payload);
+        notify('✅ Detalle actualizado');
+      } else {
+        if (!permisos.puedeCrear) return;
+        await createDetalleSolicitud(payload);
+        notify('✅ Detalle creado');
+      }
+      onClose();
+      limpiarFormulario();
+      cargarDatos();
+    } catch (e) {
+      notify('Error guardando registro');
+    }
   };
 
   const abrirModalEditar = (d: any) => {
@@ -149,7 +194,6 @@ const DetalleSolicitudesPage = () => {
     setIdSolicitud('');
   };
 
-  /* Filtro + Orden + Paginación */
   const filtered = useMemo(
     () =>
       filterValue
@@ -184,7 +228,6 @@ const DetalleSolicitudesPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'cantidad':
@@ -208,6 +251,7 @@ const DetalleSolicitudesPage = () => {
           </span>
         );
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return <></>;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -221,8 +265,12 @@ const DetalleSolicitudesPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {permisos.puedeEditar ? (
+                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>Editar</DropdownItem>
+              ) : null}
+              {permisos.puedeEliminar ? (
+                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>Eliminar</DropdownItem>
+              ) : null}
             </DropdownMenu>
           </Dropdown>
         );
@@ -231,7 +279,6 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -240,7 +287,6 @@ const DetalleSolicitudesPage = () => {
     });
   };
 
-  /* Top content */
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -275,16 +321,18 @@ const DetalleSolicitudesPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarFormulario();
-              onOpen();
-            }}
-          >
-            Nuevo Detalle
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={() => {
+                limpiarFormulario();
+                onOpen();
+              }}
+            >
+              Nuevo Detalle
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -310,7 +358,6 @@ const DetalleSolicitudesPage = () => {
     </div>
   );
 
-  /* Bottom content */
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
@@ -328,6 +375,31 @@ const DetalleSolicitudesPage = () => {
     </div>
   );
 
+  // Espera a que cargue permisos antes de mostrar cualquier cosa
+  if (loadingPermisos) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-blue-100 text-blue-700 p-4 rounded shadow text-center">
+            Cargando permisos...
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
@@ -339,7 +411,6 @@ const DetalleSolicitudesPage = () => {
           <p className="text-sm text-gray-600">Gestiona los ítems de cada solicitud.</p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla detalle solicitud"
@@ -374,7 +445,6 @@ const DetalleSolicitudesPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron registros</p>
@@ -384,22 +454,28 @@ const DetalleSolicitudesPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">Cant: {d.cantidadSolicitada}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(d)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(d.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="rounded-full text-[#0D1324]"
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {permisos.puedeEditar ? (
+                          <DropdownItem onPress={() => abrirModalEditar(d)} key={`editar-${d.id}`}>Editar</DropdownItem>
+                        ) : null}
+                        {permisos.puedeEliminar ? (
+                          <DropdownItem onPress={() => eliminar(d.id)} key={`eliminar-${d.id}`}>Eliminar</DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  ) : <></>}
                 </div>
                 <p className="text-sm text-gray-600 break-words">
                   <span className="font-medium">Obs:</span> {d.observaciones || '—'}
@@ -417,7 +493,6 @@ const DetalleSolicitudesPage = () => {
           ))}
         </div>
 
-        {/* Modal CRUD */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -444,7 +519,6 @@ const DetalleSolicitudesPage = () => {
                     onValueChange={setObservaciones}
                     radius="sm"
                   />
-                  {/* Select Producto */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Producto
@@ -462,7 +536,6 @@ const DetalleSolicitudesPage = () => {
                       ))}
                     </select>
                   </div>
-                  {/* Select Solicitud */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Solicitud

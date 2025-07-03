@@ -1,46 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Button,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  DropdownTrigger,
-  Pagination,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Checkbox,
-  useDisclosure,
-  type SortDescriptor,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
+  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+  Checkbox, useDisclosure, type SortDescriptor,
 } from '@heroui/react';
 import {
-  getMovimientos,
-  createMovimiento,
-  updateMovimiento,
-  deleteMovimiento,
+  getMovimientos, createMovimiento, updateMovimiento, deleteMovimiento,
 } from '@/Api/Movimientosform';
 import { getInventarios } from '@/Api/inventario';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService'; 
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+const ID_ROL_ACTUAL = 1; 
+
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Tipo', uid: 'tipo', sortable: false },
@@ -49,23 +30,22 @@ const columns = [
   { name: 'Inventario', uid: 'inventario', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
-const INITIAL_VISIBLE_COLUMNS = [
-  'id',
-  'tipo',
-  'cantidad',
-  'fecha',
-  'inventario',
-  'actions',
-];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'tipo', 'cantidad', 'fecha', 'inventario', 'actions'];
 
 const MovimientosPage = () => {
-  /* Estado */
+  // Estado de permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Estado de datos
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -73,14 +53,14 @@ const MovimientosPage = () => {
     direction: 'ascending',
   });
 
-  /* Formulario modal */
+  // Formulario modal
   const [tipoMovimiento, setTipoMovimiento] = useState('ENTRADA');
   const [cantidad, setCantidad] = useState<number | ''>('');
   const [fecha, setFecha] = useState('');
   const [idInventario, setIdInventario] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
+  // UI
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -88,46 +68,71 @@ const MovimientosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  // Cargar permisos y datos al montar
+  useEffect(() => {
+    cargarPermisos();
+  }, []);
+
+  const cargarPermisos = async () => {
+    try {
+      const permisosObtenidos = await getPermisosPorRuta('/MovimientoInventarioPage', ID_ROL_ACTUAL);
+      setPermisos(permisosObtenidos);
+      if (permisosObtenidos.puedeVer) {
+        cargarDatos();
+      }
+    } catch (error) {
+      console.error('Error cargando permisos:', error);
+      setPermisos({
+        puedeVer: false,
+        puedeCrear: false,
+        puedeEditar: false,
+        puedeEliminar: false,
+      });
+    }
+  };
+
   const cargarDatos = async () => {
     try {
       const [movs, invs] = await Promise.all([getMovimientos(), getInventarios()]);
       setMovimientos(movs);
       setInventarios(invs);
-    } catch (err) {
-      console.error('Error cargando datos', err);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
     }
   };
-  useEffect(() => {
-    cargarDatos();
-  }, []);
 
-  /* CRUD */
+  // CRUD
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) return;
     if (!confirm('¿Eliminar movimiento? No se podrá recuperar.')) return;
     await deleteMovimiento(id);
-    cargarDatos();
     notify(`🗑️ Movimiento eliminado: ID ${id}`);
+    cargarDatos();
   };
 
   const guardar = async () => {
+    if (editId && !permisos.puedeEditar) return;
+    if (!editId && !permisos.puedeCrear) return;
     const payload = {
       tipoMovimiento,
       cantidad,
       fechaMovimiento: fecha,
-      idProductoInventario: idInventario
-        ? { idProductoInventario: Number(idInventario) }
-        : null,
+      idProductoInventario: idInventario ? { idProductoInventario: Number(idInventario) } : null,
     };
-    editId
-      ? await updateMovimiento(editId, payload)
-      : await createMovimiento(payload);
-    onClose();
+    if (editId) {
+      await updateMovimiento(editId, payload);
+      notify('✏️ Movimiento actualizado');
+    } else {
+      await createMovimiento(payload);
+      notify('✅ Movimiento creado');
+    }
     limpiarForm();
+    onClose();
     cargarDatos();
   };
 
   const abrirModalEditar = (m: any) => {
+    if (!permisos.puedeEditar) return;
     setEditId(m.id);
     setTipoMovimiento(m.tipoMovimiento);
     setCantidad(m.cantidad);
@@ -144,21 +149,15 @@ const MovimientosPage = () => {
     setIdInventario('');
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? movimientos.filter((m) =>
-            (
-              `${m.tipoMovimiento} ${m.cantidad} ${m.fechaMovimiento} ${m.idProductoInventario?.idProductoInventario || ''
-              }`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
-          )
-        : movimientos,
-    [movimientos, filterValue]
-  );
+  // Filtrado, paginación y orden
+  const filtered = useMemo(() => {
+    if (!filterValue) return movimientos;
+    return movimientos.filter((m) =>
+      `${m.tipoMovimiento} ${m.cantidad} ${m.fechaMovimiento} ${m.idProductoInventario?.idProductoInventario || ''}`
+        .toLowerCase()
+        .includes(filterValue.toLowerCase())
+    );
+  }, [movimientos, filterValue]);
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
@@ -178,7 +177,7 @@ const MovimientosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
+  // Renderizado de celdas con control de permisos en acciones
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'tipo':
@@ -188,27 +187,23 @@ const MovimientosPage = () => {
       case 'fecha':
         return <span className="text-sm text-gray-600">{item.fechaMovimiento}</span>;
       case 'inventario':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idProductoInventario?.idProductoInventario ?? '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idProductoInventario?.idProductoInventario ?? '—'}</span>;
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {permisos.puedeEditar ? (
+                <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">Editar</DropdownItem>
+              ) : null}
+              {permisos.puedeEliminar ? (
+                <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">Eliminar</DropdownItem>
+              ) : null}
             </DropdownMenu>
           </Dropdown>
         );
@@ -217,7 +212,6 @@ const MovimientosPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -226,7 +220,20 @@ const MovimientosPage = () => {
     });
   };
 
-  /* Top content */
+  // Si no tiene permiso para ver, muestra mensaje y no carga la vista
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
+  // Contenido superior y inferior para la tabla
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -246,37 +253,35 @@ const MovimientosPage = () => {
               <Button variant="flat">Columnas</Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
-                    <Checkbox
-                      isSelected={visibleColumns.has(col.uid)}
-                      onValueChange={() => toggleColumn(col.uid)}
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
+              {columns.filter((c) => c.uid !== 'actions').map((col) => (
+                <DropdownItem key={col.uid} className="py-1 px-2">
+                  <Checkbox
+                    isSelected={visibleColumns.has(col.uid)}
+                    onValueChange={() => toggleColumn(col.uid)}
+                    size="sm"
+                  >
+                    {col.name}
+                  </Checkbox>
+                </DropdownItem>
+              ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarForm();
-              onOpen();
-            }}
-          >
-            Nuevo Movimiento
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={() => {
+                limpiarForm();
+                onOpen();
+              }}
+            >
+              Nuevo Movimiento
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {movimientos.length} movimientos
-        </span>
+        <span className="text-default-400 text-sm">Total {movimientos.length} movimientos</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -288,9 +293,7 @@ const MovimientosPage = () => {
             }}
           >
             {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
+              <option key={n} value={n}>{n}</option>
             ))}
           </select>
         </label>
@@ -298,21 +301,11 @@ const MovimientosPage = () => {
     </div>
   );
 
-  /* Bottom content */
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
-        Siguiente
-      </Button>
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
     </div>
   );
 
@@ -357,7 +350,7 @@ const MovimientosPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron movimientos">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
@@ -376,22 +369,28 @@ const MovimientosPage = () => {
                   <h3 className="font-semibold text-lg">
                     {m.tipoMovimiento}: {m.cantidad}
                   </h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(m)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(m.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="rounded-full text-[#0D1324]"
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {permisos.puedeEditar ? (
+                          <DropdownItem onPress={() => abrirModalEditar(m)} key="editar">Editar</DropdownItem>
+                        ) : null}
+                        {permisos.puedeEliminar ? (
+                          <DropdownItem onPress={() => eliminar(m.id)} key="eliminar">Eliminar</DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Fecha:</span> {m.fechaMovimiento}
@@ -427,6 +426,7 @@ const MovimientosPage = () => {
                       value={tipoMovimiento}
                       onChange={(e) => setTipoMovimiento(e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="ENTRADA">ENTRADA</option>
                       <option value="SALIDA">SALIDA</option>
@@ -440,6 +440,7 @@ const MovimientosPage = () => {
                     value={cantidad.toString()}
                     onValueChange={(v) => setCantidad(v ? Number(v) : '')}
                     radius="sm"
+                    disabled={!permisos.puedeCrear && !editId}
                   />
                   {/* Fecha */}
                   <Input
@@ -448,6 +449,7 @@ const MovimientosPage = () => {
                     value={fecha}
                     onValueChange={setFecha}
                     radius="sm"
+                    disabled={!permisos.puedeCrear && !editId}
                   />
                   {/* Inventario */}
                   <div>
@@ -458,6 +460,7 @@ const MovimientosPage = () => {
                       value={idInventario}
                       onChange={(e) => setIdInventario(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="">Seleccione un inventario</option>
                       {inventarios.map((inv) => (
@@ -472,7 +475,11 @@ const MovimientosPage = () => {
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

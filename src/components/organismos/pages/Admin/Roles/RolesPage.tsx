@@ -1,46 +1,26 @@
-// src/pages/RolesPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Button,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  DropdownTrigger,
-  Pagination,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Checkbox,
-  useDisclosure,
-  type SortDescriptor,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
+  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+  Checkbox, useDisclosure, type SortDescriptor,
 } from '@heroui/react';
 import {
-  getRoles,
-  createRol,
-  updateRol,
-  deleteRol,
+  getRoles, createRol, updateRol, deleteRol,
 } from '@/Api/RolService';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+const ID_ROL_ACTUAL = 1; // Ajusta según el rol del usuario autenticado
+
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Rol', uid: 'rol', sortable: false },
@@ -48,21 +28,21 @@ const columns = [
   { name: 'Permisos', uid: 'permisos', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
-const INITIAL_VISIBLE_COLUMNS = [
-  'id',
-  'rol',
-  'usuarios',
-  'permisos',
-  'actions',
-];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'rol', 'usuarios', 'permisos', 'actions'];
 
 const RolesPage = () => {
-  /* Estado */
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Estado datos y UI
   const [roles, setRoles] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -70,11 +50,9 @@ const RolesPage = () => {
     direction: 'ascending',
   });
 
-  /* Formulario */
   const [nombreRol, setNombreRol] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -82,7 +60,30 @@ const RolesPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  // Cargar permisos y datos al montar
+  useEffect(() => {
+    cargarPermisos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cargarPermisos = async () => {
+    try {
+      const permisosObtenidos = await getPermisosPorRuta('/RolesPage', ID_ROL_ACTUAL);
+      setPermisos(permisosObtenidos);
+      if (permisosObtenidos.puedeVer) {
+        cargarRoles();
+      }
+    } catch (error) {
+      console.error('Error cargando permisos:', error);
+      setPermisos({
+        puedeVer: false,
+        puedeCrear: false,
+        puedeEditar: false,
+        puedeEliminar: false,
+      });
+    }
+  };
+
   const cargarRoles = async () => {
     try {
       const data = await getRoles();
@@ -91,27 +92,34 @@ const RolesPage = () => {
       console.error('Error cargando roles', err);
     }
   };
-  useEffect(() => {
-    cargarRoles();
-  }, []);
 
-  /* CRUD */
+  // CRUD con control de permisos
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar rol? No se podrá recuperar.')) return;
+    if (!permisos.puedeEliminar) return;
+    if (!window.confirm('¿Eliminar rol? No se podrá recuperar.')) return;
     await deleteRol(id);
-    cargarRoles();
     notify(`🗑️ Rol eliminado: ID ${id}`);
+    cargarRoles();
   };
 
   const guardar = async () => {
+    if (editId && !permisos.puedeEditar) return;
+    if (!editId && !permisos.puedeCrear) return;
     const payload = { nombreRol };
-    editId ? await updateRol(editId, payload) : await createRol(payload);
-    onClose();
+    if (editId) {
+      await updateRol(editId, payload);
+      notify('✏️ Rol actualizado');
+    } else {
+      await createRol(payload);
+      notify('✅ Rol creado');
+    }
     limpiarForm();
+    onClose();
     cargarRoles();
   };
 
   const abrirModalEditar = (r: any) => {
+    if (!permisos.puedeEditar) return;
     setEditId(r.id);
     setNombreRol(r.nombreRol);
     onOpen();
@@ -122,21 +130,21 @@ const RolesPage = () => {
     setNombreRol('');
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? roles.filter((r) =>
-            `${r.nombreRol}`.toLowerCase().includes(filterValue.toLowerCase())
-          )
-        : roles,
-    [roles, filterValue]
-  );
+  // Filtrado, paginación y orden
+  const filtered = useMemo(() => {
+    if (!filterValue) return roles;
+    return roles.filter((r) =>
+      `${r.nombreRol}`.toLowerCase().includes(filterValue.toLowerCase())
+    );
+  }, [roles, filterValue]);
+
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
+
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -148,7 +156,6 @@ const RolesPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'rol':
@@ -158,29 +165,31 @@ const RolesPage = () => {
           </span>
         );
       case 'usuarios':
-        return (
-          <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>;
       case 'permisos':
-        return (
-          <span className="text-sm text-gray-600">{item.permisos?.length || 0}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.permisos?.length || 0}</span>;
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {[
+                permisos.puedeEditar ? (
+                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                    Editar
+                  </DropdownItem>
+                ) : null,
+                permisos.puedeEliminar ? (
+                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                    Eliminar
+                  </DropdownItem>
+                ) : null,
+              ].filter(Boolean)}
             </DropdownMenu>
           </Dropdown>
         );
@@ -189,7 +198,6 @@ const RolesPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -198,7 +206,18 @@ const RolesPage = () => {
     });
   };
 
-  /* Top content */
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -233,22 +252,22 @@ const RolesPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarForm();
-              onOpen();
-            }}
-          >
-            Nuevo Rol
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={() => {
+                limpiarForm();
+                onOpen();
+              }}
+            >
+              Nuevo Rol
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {roles.length} roles
-        </span>
+        <span className="text-default-400 text-sm">Total {roles.length} roles</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -270,19 +289,13 @@ const RolesPage = () => {
     </div>
   );
 
-  /* Bottom content */
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -349,22 +362,34 @@ const RolesPage = () => {
                   <h3 className="font-semibold text-lg break-words max-w-[14rem]">
                     {r.nombreRol}
                   </h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(r)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(r.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="rounded-full text-[#0D1324]"
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {[
+                          permisos.puedeEditar ? (
+                            <DropdownItem key={`editar-${r.id}`} onPress={() => abrirModalEditar(r)}>
+                              Editar
+                            </DropdownItem>
+                          ) : null,
+                          permisos.puedeEliminar ? (
+                            <DropdownItem key={`eliminar-${r.id}`} onPress={() => eliminar(r.id)}>
+                              Eliminar
+                            </DropdownItem>
+                          ) : null,
+                        ].filter(Boolean)}
+                      </DropdownMenu>
+                    </Dropdown>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Usuarios:</span> {r.usuarios?.length || 0}
@@ -396,13 +421,18 @@ const RolesPage = () => {
                     value={nombreRol}
                     onValueChange={setNombreRol}
                     radius="sm"
+                    disabled={!permisos.puedeCrear && !editId}
                   />
                 </ModalBody>
                 <ModalFooter>
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

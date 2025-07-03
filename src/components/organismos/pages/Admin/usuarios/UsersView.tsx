@@ -1,4 +1,3 @@
-// src/pages/UsuariosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -34,18 +33,19 @@ import {
 import { getAreas } from '@/Api/AreasService';
 import { getFichasFormacion } from '@/Api/fichasFormacion';
 import { getRoles } from '@/Api/RolService';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
+const ID_ROL_ACTUAL = 1;
+
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
     {message}
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombreCompleto', sortable: false },
@@ -70,7 +70,13 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const UsuariosPage = () => {
-  /* Estado principal */
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [fichas, setFichas] = useState<any[]>([]);
@@ -87,7 +93,6 @@ const UsuariosPage = () => {
     direction: 'ascending',
   });
 
-  /* Formulario modal */
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -101,7 +106,6 @@ const UsuariosPage = () => {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -109,7 +113,29 @@ const UsuariosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  useEffect(() => {
+    cargarPermisos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cargarPermisos = async () => {
+    try {
+      const permisosObtenidos = await getPermisosPorRuta('/UsuariosPage', ID_ROL_ACTUAL);
+      setPermisos(permisosObtenidos);
+      if (permisosObtenidos.puedeVer) {
+        cargarDatos();
+      }
+    } catch (error) {
+      console.error('Error cargando permisos:', error);
+      setPermisos({
+        puedeVer: false,
+        puedeCrear: false,
+        puedeEditar: false,
+        puedeEliminar: false,
+      });
+    }
+  };
+
   const cargarDatos = async () => {
     try {
       const [u, a, f, r] = await Promise.all([
@@ -126,19 +152,18 @@ const UsuariosPage = () => {
       console.error('Error cargando datos', err);
     }
   };
-  useEffect(() => {
-    cargarDatos();
-  }, []);
 
-  /* CRUD */
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar usuario?  No se podrá recuperar.')) return;
+    if (!permisos.puedeEliminar) return;
+    if (!window.confirm('¿Eliminar usuario? No se podrá recuperar.')) return;
     await deleteUsuario(id);
-    cargarDatos();
     notify(`🗑️ Usuario eliminado: ID ${id}`);
+    cargarDatos();
   };
 
   const guardar = async () => {
+    if (editId && !permisos.puedeEditar) return;
+    if (!editId && !permisos.puedeCrear) return;
     const payload = {
       nombre: form.nombre,
       apellido: form.apellido || null,
@@ -150,7 +175,13 @@ const UsuariosPage = () => {
       idFichaFormacion: { id: Number(form.idFicha) },
       rol: form.idRol ? Number(form.idRol) : null,
     };
-    editId ? await updateUsuario(editId, payload) : await createUsuario(payload);
+    if (editId) {
+      await updateUsuario(editId, payload);
+      notify('✏️ Usuario actualizado');
+    } else {
+      await createUsuario(payload);
+      notify('✅ Usuario creado');
+    }
     onClose();
     setForm({
       nombre: '',
@@ -168,6 +199,7 @@ const UsuariosPage = () => {
   };
 
   const abrirModalEditar = (u: any) => {
+    if (!permisos.puedeEditar) return;
     setEditId(u.id);
     setForm({
       nombre: u.nombre || '',
@@ -183,7 +215,6 @@ const UsuariosPage = () => {
     onOpen();
   };
 
-  /* Filtro + Orden + Paginación */
   const filtered = useMemo(
     () =>
       filterValue
@@ -211,7 +242,6 @@ const UsuariosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombreCompleto':
@@ -231,6 +261,7 @@ const UsuariosPage = () => {
       case 'rol':
         return <span className="text-sm text-gray-600">{item.rol?.nombreRol ?? '—'}</span>;
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -244,8 +275,18 @@ const UsuariosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {[
+                permisos.puedeEditar ? (
+                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                    Editar
+                  </DropdownItem>
+                ) : null,
+                permisos.puedeEliminar ? (
+                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                    Eliminar
+                  </DropdownItem>
+                ) : null,
+              ].filter(Boolean)}
             </DropdownMenu>
           </Dropdown>
         );
@@ -254,7 +295,6 @@ const UsuariosPage = () => {
     }
   };
 
-  /* Columnas visibles */
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -263,7 +303,18 @@ const UsuariosPage = () => {
     });
   };
 
-  /* Top content */
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -298,33 +349,33 @@ const UsuariosPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              setEditId(null);
-              setForm({
-                nombre: '',
-                apellido: '',
-                cedula: '',
-                email: '',
-                telefono: '',
-                password: '',
-                idArea: '',
-                idFicha: '',
-                idRol: '',
-              });
-              onOpen();
-            }}
-          >
-            Nuevo Usuario
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={() => {
+                setEditId(null);
+                setForm({
+                  nombre: '',
+                  apellido: '',
+                  cedula: '',
+                  email: '',
+                  telefono: '',
+                  password: '',
+                  idArea: '',
+                  idFicha: '',
+                  idRol: '',
+                });
+                onOpen();
+              }}
+            >
+              Nuevo Usuario
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {usuarios.length} usuarios
-        </span>
+        <span className="text-default-400 text-sm">Total {usuarios.length} usuarios</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -346,19 +397,13 @@ const UsuariosPage = () => {
     </div>
   );
 
-  /* Bottom content */
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -368,7 +413,6 @@ const UsuariosPage = () => {
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             👥 Gestión de Usuarios
@@ -378,7 +422,6 @@ const UsuariosPage = () => {
           </p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de usuarios"
@@ -406,14 +449,13 @@ const UsuariosPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron usuarios">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Cards móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron usuarios</p>
@@ -425,22 +467,34 @@ const UsuariosPage = () => {
                   <h3 className="font-semibold text-lg">
                     {u.nombre} {u.apellido ?? ''}
                   </h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(u)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(u.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="rounded-full text-[#0D1324]"
+                        >
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {[
+                          permisos.puedeEditar ? (
+                            <DropdownItem key={`editar-${u.id}`} onPress={() => abrirModalEditar(u)}>
+                              Editar
+                            </DropdownItem>
+                          ) : null,
+                          permisos.puedeEliminar ? (
+                            <DropdownItem key={`eliminar-${u.id}`} onPress={() => eliminar(u.id)}>
+                              Eliminar
+                            </DropdownItem>
+                          ) : null,
+                        ].filter(Boolean)}
+                      </DropdownMenu>
+                    </Dropdown>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Cédula:</span> {u.cedula ?? '—'}
@@ -463,7 +517,6 @@ const UsuariosPage = () => {
           ))}
         </div>
 
-        {/* Modal CRUD */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -506,7 +559,6 @@ const UsuariosPage = () => {
                     onValueChange={(v) => setForm((p) => ({ ...p, telefono: v }))}
                     radius="sm"
                   />
-                  {/* Sólo al crear */}
                   {!editId && (
                     <Input
                       label="Contraseña"
@@ -518,7 +570,7 @@ const UsuariosPage = () => {
                   )}
                   <Select
                     label="Área"
-                    selectedKey={form.idArea}
+                    selectedKeys={form.idArea}
                     onSelectionChange={(k) => setForm((p) => ({ ...p, idArea: k as string }))}
                   >
                     {areas.map((a) => (
@@ -527,7 +579,7 @@ const UsuariosPage = () => {
                   </Select>
                   <Select
                     label="Ficha de Formación"
-                    selectedKey={form.idFicha}
+                    selectedKeys={form.idFicha}
                     onSelectionChange={(k) => setForm((p) => ({ ...p, idFicha: k as string }))}
                   >
                     {fichas.map((f) => (
@@ -536,7 +588,7 @@ const UsuariosPage = () => {
                   </Select>
                   <Select
                     label="Rol"
-                    selectedKey={form.idRol}
+                    selectedKeys={form.idRol}
                     onSelectionChange={(k) => setForm((p) => ({ ...p, idRol: k as string }))}
                   >
                     {roles.map((r) => (
@@ -548,7 +600,11 @@ const UsuariosPage = () => {
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

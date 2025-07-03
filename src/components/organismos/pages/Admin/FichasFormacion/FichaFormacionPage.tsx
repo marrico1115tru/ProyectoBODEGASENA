@@ -1,27 +1,10 @@
-// src/pages/FichasFormacionPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Button,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  DropdownTrigger,
-  Pagination,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Checkbox,
-  useDisclosure,
-  type SortDescriptor,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
+  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+  Checkbox, useDisclosure, type SortDescriptor,
+  Toast,
 } from '@heroui/react';
 import {
   getFichasFormacion,
@@ -31,18 +14,11 @@ import {
 } from '@/Api/fichasFormacion';
 import { getTitulados } from '@/Api/TituladosService';
 import { getUsuarios } from '@/Api/Usuariosform';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
-
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
@@ -63,36 +39,58 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const FichasFormacionPage = () => {
-  /* Estado */
   const [fichas, setFichas] = useState<any[]>([]);
   const [titulados, setTitulados] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
+
+  const [nombre, setNombre] = useState('');
+  const [idTitulado, setIdTitulado] = useState('');
+  const [idResponsable, setIdResponsable] = useState('');
+  const [editId, setEditId] = useState<number | null>(null);
+  const [toastMsg, setToastMsg] = useState('');
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
   });
 
-  /* Formulario */
-  const [nombre, setNombre] = useState('');
-  const [idTitulado, setIdTitulado] = useState<number | ''>('');
-  const [idResponsable, setIdResponsable] = useState<number | ''>('');
-  const [editId, setEditId] = useState<number | null>(null);
-
-  /* UI */
-  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Obtener datos */
+  useEffect(() => {
+    const cargarPermisos = async () => {
+      try {
+        // Pasamos la ruta y el id del rol actual
+        const ID_ROL_ACTUAL = Number(localStorage.getItem('ID_ROL_ACTUAL') || '0');
+        const p = await getPermisosPorRuta('/FichaFormacionPage', ID_ROL_ACTUAL);
+        setPermisos(p);
+        if (p.puedeVer) {
+          cargarDatos();
+        }
+      } catch (err) {
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+        console.error('Error cargando permisos:', err);
+      }
+    };
+    cargarPermisos();
+    // eslint-disable-next-line
+  }, []);
+
   const cargarDatos = async () => {
     try {
       const [fs, ts, us] = await Promise.all([
@@ -107,16 +105,12 @@ const FichasFormacionPage = () => {
       console.error('Error cargando fichas', err);
     }
   };
-  useEffect(() => {
-    cargarDatos();
-  }, []);
 
-  /* CRUD */
   const eliminar = async (id: number) => {
     if (!confirm('¿Eliminar ficha? No se podrá recuperar.')) return;
     await deleteFichaFormacion(id);
-    cargarDatos();
     notify(`🗑️ Ficha eliminada: ID ${id}`);
+    cargarDatos();
   };
 
   const guardar = async () => {
@@ -125,19 +119,23 @@ const FichasFormacionPage = () => {
       idTitulado: idTitulado ? { id: Number(idTitulado) } : null,
       idUsuarioResponsable: idResponsable ? { id: Number(idResponsable) } : null,
     };
-    editId
-      ? await updateFichaFormacion(editId, payload)
-      : await createFichaFormacion(payload);
+    if (editId) {
+      await updateFichaFormacion(editId, payload);
+      notify('✏️ Ficha actualizada');
+    } else {
+      await createFichaFormacion(payload);
+      notify('✅ Ficha creada');
+    }
     onClose();
     limpiarForm();
     cargarDatos();
   };
 
-  const abrirModalEditar = (f: any) => {
-    setEditId(f.id);
-    setNombre(f.nombre || '');
-    setIdTitulado(f.idTitulado?.id || '');
-    setIdResponsable(f.idUsuarioResponsable?.id || '');
+  const abrirModalEditar = (ficha: any) => {
+    setEditId(ficha.id);
+    setNombre(ficha.nombre);
+    setIdTitulado(ficha.idTitulado?.id?.toString() || '');
+    setIdResponsable(ficha.idUsuarioResponsable?.id?.toString() || '');
     onOpen();
   };
 
@@ -148,24 +146,16 @@ const FichasFormacionPage = () => {
     setIdResponsable('');
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? fichas.filter((f) =>
-            (
-              `${f.nombre} ${f.idTitulado?.nombre || ''} ${
-                f.idUsuarioResponsable?.nombre || ''
-              }`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
-          )
-        : fichas,
-    [fichas, filterValue]
-  );
+  const filtered = useMemo(() => {
+    if (!filterValue) return fichas;
+    return fichas.filter(f =>
+      `${f.nombre} ${f.idTitulado?.nombre || ''} ${f.idUsuarioResponsable?.nombre || ''}`
+        .toLowerCase()
+        .includes(filterValue.toLowerCase())
+    );
+  }, [fichas, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -183,21 +173,12 @@ const FichasFormacionPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombre':
-        return (
-          <span className="font-medium text-gray-800 break-words max-w-[18rem]">
-            {item.nombre}
-          </span>
-        );
+        return <span className="font-medium text-gray-800 break-words max-w-[16rem]">{item.nombre}</span>;
       case 'titulado':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idTitulado?.nombre || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idTitulado?.nombre || '—'}</span>;
       case 'responsable':
         return (
           <span className="text-sm text-gray-600">
@@ -207,33 +188,29 @@ const FichasFormacionPage = () => {
           </span>
         );
       case 'usuarios':
-        return (
-          <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>;
       case 'entregas':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.entregaMaterials?.length || 0}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.entregaMaterials?.length || 0}</span>;
       case 'actions':
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>
-                Editar
-              </DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              {permisos.puedeEditar ? (
+                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
+                  Editar
+                </DropdownItem>
+              ) : null}
+              {permisos.puedeEliminar ? (
+                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
+                  Eliminar
+                </DropdownItem>
+              ) : null}
             </DropdownMenu>
           </Dropdown>
         );
@@ -242,121 +219,26 @@ const FichasFormacionPage = () => {
     }
   };
 
-  /* Columnas visibles */
-  const toggleColumn = (key: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
-      return copy;
-    });
-  };
-
-  /* Top content */
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por nombre, titulado o responsable"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={setFilterValue}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
-                    <Checkbox
-                      isSelected={visibleColumns.has(col.uid)}
-                      onValueChange={() => toggleColumn(col.uid)}
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
-            </DropdownMenu>
-          </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarForm();
-              onOpen();
-            }}
-          >
-            Nueva Ficha
-          </Button>
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
         </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {fichas.length} fichas
-        </span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
+      </DefaultLayout>
+    );
+  }
 
-  /* Bottom content */
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === 1}
-        onPress={() => setPage(page - 1)}
-      >
-        Anterior
-      </Button>
-      <Pagination
-        isCompact
-        showControls
-        page={page}
-        total={pages}
-        onChange={setPage}
-      />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
-        Siguiente
-      </Button>
-    </div>
-  );
+  function toggleColumn(uid: string): void {
+    throw new Error('Function not implemented.');
+  }
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
+      {toastMsg && <Toast>{toastMsg}</Toast>}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🎓 Gestión de Fichas de Formación
@@ -366,22 +248,82 @@ const FichasFormacionPage = () => {
           </p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de fichas"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
               th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
               td: 'align-middle py-3 px-4',
             }}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por nombre, titulado o responsable"
+                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  <div className="flex gap-3">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {columns.filter(c => c.uid !== 'actions').map(col => (
+                          <DropdownItem key={col.uid} onPress={() => toggleColumn(col.uid)}>
+                            <Checkbox isSelected={visibleColumns.has(col.uid)} readOnly />
+                            {col.name}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    {permisos.puedeCrear ? (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={onOpen}
+                      >
+                        Nueva Ficha
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {fichas.length} fichas</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={e => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map(n => <option key={n}>{n}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+              </div>
+            }
           >
-            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
-              {(col) => (
+            <TableHeader columns={columns.filter(c => visibleColumns.has(c.uid))}>
+              {col => (
                 <TableColumn
                   key={col.uid}
                   align={col.uid === 'actions' ? 'center' : 'start'}
@@ -392,85 +334,68 @@ const FichasFormacionPage = () => {
               )}
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron fichas">
-              {(item) => (
+              {item => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {col => <TableCell>{renderCell(item, col as string)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Cards móvil */}
+        {/* Cards móviles */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron fichas</p>
-          )}
-          {sorted.map((f) => (
-            <Card key={f.id} className="shadow-sm">
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron fichas</p>}
+          {sorted.map(ficha => (
+            <Card key={ficha.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
-                    {f.nombre}
-                  </h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(f)} key={''}>
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem onPress={() => eliminar(f.id)} key={''}>
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{ficha.nombre}</h3>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {permisos.puedeEditar ? (
+                          <DropdownItem onPress={() => abrirModalEditar(ficha)} key="editar">Editar</DropdownItem>
+                        ) : null}
+                        {permisos.puedeEliminar ? (
+                          <DropdownItem onPress={() => eliminar(ficha.id)} key="eliminar">Eliminar</DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Titulado:</span>{' '}
-                  {f.idTitulado?.nombre || '—'}
+                  <span className="font-medium">Titulado: </span>{ficha.idTitulado?.nombre || '—'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Responsable:</span>{' '}
-                  {f.idUsuarioResponsable
-                    ? `${f.idUsuarioResponsable.nombre} ${f.idUsuarioResponsable.apellido ?? ''}`
+                  <span className="font-medium">Responsable: </span>
+                  {ficha.idUsuarioResponsable
+                    ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ''}`
                     : '—'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Usuarios:</span>{' '}
-                  {f.usuarios?.length || 0}
+                  <span className="font-medium">Usuarios: </span>{ficha.usuarios?.length || 0}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Entregas:</span>{' '}
-                  {f.entregaMaterials?.length || 0}
+                  <span className="font-medium">Entregas: </span>{ficha.entregaMaterials?.length || 0}
                 </p>
-                <p className="text-xs text-gray-400">ID: {f.id}</p>
+                <p className="text-xs text-gray-400">ID: {ficha.id}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Modal CRUD */}
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        {/* Modal */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {(onCloseLocal) => (
+            {onCloseLocal => (
               <>
-                <ModalHeader>
-                  {editId ? 'Editar Ficha' : 'Nueva Ficha'}
-                </ModalHeader>
+                <ModalHeader>{editId ? 'Editar Ficha' : 'Nueva Ficha'}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
                     label="Nombre"
@@ -479,38 +404,26 @@ const FichasFormacionPage = () => {
                     onValueChange={setNombre}
                     radius="sm"
                   />
-                  {/* Titulado */}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Titulado
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Titulado</label>
                     <select
                       value={idTitulado}
-                      onChange={(e) => setIdTitulado(Number(e.target.value) || '')}
+                      onChange={e => setIdTitulado(e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione un titulado</option>
-                      {titulados.map((t: any) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nombre}
-                        </option>
-                      ))}
+                      {titulados.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                   </div>
-                  {/* Responsable */}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Responsable
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Responsable</label>
                     <select
                       value={idResponsable}
-                      onChange={(e) =>
-                        setIdResponsable(Number(e.target.value) || '')
-                      }
+                      onChange={e => setIdResponsable(e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione un responsable</option>
-                      {usuarios.map((u: any) => (
+                      {usuarios.map(u => (
                         <option key={u.id} value={u.id}>
                           {`${u.nombre} ${u.apellido ?? ''}`}
                         </option>
@@ -519,9 +432,7 @@ const FichasFormacionPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
                   <Button variant="flat" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
