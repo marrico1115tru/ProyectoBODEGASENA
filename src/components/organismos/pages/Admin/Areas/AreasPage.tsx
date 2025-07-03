@@ -7,9 +7,13 @@ import {
 } from '@heroui/react';
 import { getAreas, createArea, updateArea, deleteArea } from '@/Api/AreasService';
 import { getSedes } from '@/Api/SedesService';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService'; // Ajusta la ruta si es necesario
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+
+// Cambia esto según cómo obtengas el rol actual
+const ID_ROL_ACTUAL = 1;
 
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
@@ -17,7 +21,6 @@ const Toast = ({ message }: { message: string }) => (
   </div>
 );
 
-/* 📊 Columnas */
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre del Área', uid: 'nombreArea', sortable: false },
@@ -40,16 +43,34 @@ const AreasPage = () => {
   const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
   const notify = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  /* Cargar datos */
   useEffect(() => {
-    cargarAreas();
-    cargarSedes();
+    cargarPermisos();
   }, []);
+
+  const cargarPermisos = async () => {
+    try {
+      const p = await getPermisosPorRuta('/AreasPage', ID_ROL_ACTUAL);
+      setPermisos(p);
+      if (p.puedeVer) {
+        cargarAreas();
+        cargarSedes();
+      }
+    } catch (err) {
+      console.error('Error cargando permisos', err);
+    }
+  };
 
   const cargarAreas = async () => {
     try {
@@ -125,7 +146,8 @@ const AreasPage = () => {
       return <span className="font-medium text-gray-800 capitalize break-words max-w-[14rem]">{item.nombreArea}</span>;
     if (columnKey === 'sede')
       return <span className="text-sm text-gray-500 break-words max-w-[12rem]">{item.idSede?.nombre || 'N/A'}</span>;
-    if (columnKey === 'actions')
+    if (columnKey === 'actions') {
+      if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
       return (
         <Dropdown>
           <DropdownTrigger>
@@ -134,11 +156,16 @@ const AreasPage = () => {
             </Button>
           </DropdownTrigger>
           <DropdownMenu>
-            <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-            <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+            {permisos.puedeEditar ? (
+              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">Editar</DropdownItem>
+            ) : null}
+            {permisos.puedeEliminar ? (
+              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">Eliminar</DropdownItem>
+            ) : null}
           </DropdownMenu>
         </Dropdown>
       );
+    }
     return item[columnKey as keyof typeof item];
   };
 
@@ -149,6 +176,18 @@ const AreasPage = () => {
       return copy;
     });
   };
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
+            No tienes permiso para ver esta página.
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>
@@ -198,13 +237,15 @@ const AreasPage = () => {
                         ))}
                       </DropdownMenu>
                     </Dropdown>
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={onOpen}
-                    >
-                      Nueva Área
-                    </Button>
+                    {permisos.puedeCrear ? (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={onOpen}
+                      >
+                        Nueva Área
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -262,17 +303,23 @@ const AreasPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg break-words max-w-[14rem]">{area.nombreArea}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(area)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(area.id)} key={''}>Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
+                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {permisos.puedeEditar ? (
+                          <DropdownItem onPress={() => abrirModalEditar(area)} key="editar">Editar</DropdownItem>
+                        ) : null}
+                        {permisos.puedeEliminar ? (
+                          <DropdownItem onPress={() => eliminar(area.id)} key="eliminar">Eliminar</DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Sede: </span>{area.idSede?.nombre || 'N/A'}

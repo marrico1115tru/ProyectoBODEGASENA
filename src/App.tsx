@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router-dom";
 
 import IndexPage from "@/components/organismos/pages/index";
 import Login from "./components/organismos/pages/login/login";
-import Inicio from "./components/organismos/pages/Inicio/inicio";
+import InicioDash from "./components/organismos/pages/Inicio/inicioDash.tsx";
 import Agropecuario from "./components/organismos/pages/Inicio/agropecuario";
 import AmbientalView from "./components/organismos/pages/Inicio/ambiental";
 import Gastronomia from "./components/organismos/pages/Inicio/gastronomia";
@@ -36,6 +36,7 @@ import Perfil from "./components/organismos/pages/Perfil/Perfil.tsx"
 import CategoriasProductosPage from "./components/organismos/pages/Admin/categorias/categorias.tsx";
 import InventarioPage from "./components/organismos/pages/Admin/Inventario/inventario.tsx";
 import DetalleSolicitudPage from "./components/organismos/pages/Admin/detalles_solicitud/detalles_solicitud.tsx";
+import GetModulosConOpciones from "./components/organismos/pages/permisos/ModulosConOpcionesPage.tsx"
 const queryClient = new QueryClient();
 
 function App() {
@@ -43,7 +44,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Routes>
-        <Route path="/inicio" element={<Inicio />} />
+        <Route path="/InicioDash" element={<InicioDash />} />
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/home" element={<IndexPage />} />
@@ -79,6 +80,7 @@ function App() {
         <Route path ="/CategoriasProductosPage" element={<CategoriasProductosPage/>} />
         <Route path="/InventarioPage" element={<InventarioPage/>}/>
         <Route path="/DetalleSolicitudPage" element={<DetalleSolicitudPage/>}/>
+        <Route path="/getModulosConOpciones" element={<GetModulosConOpciones/>}/>   
       </Routes>
     </QueryClientProvider>
   );

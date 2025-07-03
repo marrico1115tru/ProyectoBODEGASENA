@@ -7,7 +7,7 @@ export default function IndexPage() {
   const navigate = useNavigate();
 
   const handleRedirect = () => {
-    navigate("/inicio"); 
+    navigate("/InicioDash"); 
   };
 
   return (

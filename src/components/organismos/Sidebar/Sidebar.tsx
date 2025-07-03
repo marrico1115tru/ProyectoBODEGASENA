@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-
 import {
   Home, Menu, FileText, ChevronDown, ChevronUp, Users, BarChart2,
   Warehouse, Building2, GraduationCap, FolderGit2, MapPin, BookOpen,
   ShieldCheck, ClipboardList, Landmark, LogOut, Boxes, Tags, ListChecks,
-  PackageCheck, ArrowLeftRight, FilePlus, PackageSearch, Users2, UserCog,
-  History, LayoutGrid, AlertTriangle, Clock
+  PackageCheck, ArrowLeftRight, FilePlus, PackageSearch, Users2, LayoutGrid,
+  AlertTriangle, Clock, UserCog, History
 } from "lucide-react";
 import SidebarButton from "@/components/molecula/Button";
 import { Button } from "@/components/ui/button";
@@ -13,60 +12,49 @@ import { useNavigate } from "react-router-dom";
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 import axios from "axios";
 
+const normalizar = (str: string) => str.toLowerCase().replace(/\s+/g, "");
+
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
   const [openMenus, setOpenMenus] = useState({
     reports: false,
     products: false,
     solicitudes: false,
-    infoReports: false,
-    productReports: false,
-    userReports: false,
     admin: false,
     ubicacion: false,
-    formacion: false
+    formacion: false,
+    infoReports: false,
+    productReports: false,
+    userReports: false
   });
 
   const navigate = useNavigate();
-
   const toggleMenu = (menu: keyof typeof openMenus) =>
-    setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+    setOpenMenus(prev => ({ ...prev, [menu]: !prev[menu] }));
 
   const handleLogout = () => {
-    localStorage.clear();
     navigate("/login");
   };
 
-  // Obtener el rol del usuario desde el token
-  const userData = getDecodedTokenFromCookies('token');
-  console.log("[JWT]::::",userData?.rol?.id);
-
-  // Consultar los módulos del rol del usuario
   useEffect(() => {
     const fetchModulos = async () => {
       try {
-        const token = localStorage.getItem('token'); // o de cookies si lo guardas allí
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
 
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-          rol: userData?.rol?.id
-        };
+        const url = `http://localhost:3000/permisos/modulos/${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
 
-        const url = 'http://localhost:3000/sitio/permisos/modulos/rol';
-        //TODO:  1. pendiente por implementar el servicion que reciba el rol del usuario y retorne los módulos permitidos
-        const response = await axios.get(url, config);
-
-        console.log("Permisos de módulos:", response);
-
-        //TODO: 2.Luego de obtener los módulos, se debe actualizar el estado para mostrar u ocultar los botones del sidebar
-        //setEstadisticas(response.data);
+        if (Array.isArray(response.data)) {
+          const nombres = response.data.map((m: any) => normalizar(m.nombremodulo));
+          setModulosPermitidos(nombres);
+        }
       } catch (err) {
-        setError('Error al obtener estadísticas de sitios');
+        setError("Error al obtener permisos de módulos");
         console.error(err);
       } finally {
         setLoading(false);
@@ -74,122 +62,143 @@ const Sidebar = () => {
     };
 
     fetchModulos();
-  }, [userData]);
-
-
-
-  
+  }, []);
 
   return (
     <aside className={`transition-all duration-300 flex flex-col shadow-lg border-r border-slate-700 ${isOpen ? "w-64" : "w-20"} min-h-screen bg-slate-900 text-white`}>
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
         {isOpen && <h1 className="text-xl font-bold tracking-wide text-cyan-400">INNOVASOFT</h1>}
-        <Button variant="ghost" className="text-white hover:text-slate-200 p-2" onClick={() => setIsOpen(!isOpen)}>
+        <Button variant="ghost" className="text-white p-2" onClick={() => setIsOpen(!isOpen)}>
           <Menu />
         </Button>
       </div>
 
-      {/* Navegación */}
       <div className="flex-1 overflow-y-auto px-2 py-4 custom-scrollbar">
-        <nav className="flex flex-col gap-1 text-sm font-medium">
-          {/* Enlaces directos */}
-          <SidebarButton to="/inicio" icon={<Home className="w-5 h-5" />} label="Home" isOpen={isOpen} activePaths={["/inicio"]} />
-          <SidebarButton to="/inicio" icon={<FileText className="w-5 h-5" />} label="Inicio" isOpen={isOpen} activePaths={["/inicio"]} />
+        {loading ? (
+          <p className="text-center text-gray-400">Cargando permisos...</p>
+        ) : error ? (
+          <p className="text-center text-red-500">{error}</p>
+        ) : (
+          <nav className="flex flex-col gap-1 text-sm font-medium">
+            {/* Siempre visibles */}
+            <SidebarButton to="/home" icon={<Home />} label="Home" isOpen={isOpen} activePaths={["/home"]} />
+            {modulosPermitidos.length > 1 && (
+              <SidebarButton to="/InicioDash" icon={<FileText />} label="Inicio" isOpen={isOpen} activePaths={["/InicioDash"]} />
+            )}
 
-          {/* Productos */}
-          //TODO: 3.Se debe validar si el modulo Ejemplo productos se encuentra habilitado para el rol del usuario
-          
-          <SidebarButton icon={<FileText className="w-5 h-5" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("products")} endIcon={openMenus.products ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.products && isOpen && (
-            <Submenu>
-              <SidebarButton to="/productos/listar" icon={<Boxes className="w-4 h-4" />} label="Ver Productos" isOpen={isOpen} activePaths={["/productos/listar"]} />
-              <SidebarButton to="/CategoriasProductosPage" icon={<Tags className="w-4 h-4" />} label="Categorías" isOpen={isOpen} activePaths={["/CategoriasProductosPage"]} />
-              <SidebarButton to="/InventarioPage" icon={<Warehouse className="w-4 h-4" />} label="Inventario" isOpen={isOpen} activePaths={["/InventarioPage"]} />
-            </Submenu>
-          )}
+            {/* Módulos con permisos */}
+            {modulosPermitidos.includes("productos") && (
+              <>
+                <SidebarButton icon={<FileText />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("products")} endIcon={openMenus.products ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.products && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/productos/listar" icon={<Boxes />} label="Ver Productos" isOpen={isOpen} />
+                    <SidebarButton to="/CategoriasProductosPage" icon={<Tags />} label="Categorías" isOpen={isOpen} />
+                    <SidebarButton to="/InventarioPage" icon={<Warehouse />} label="Inventario" isOpen={isOpen} />
+                  </Submenu>
+                )}
+              </>
+            )}
 
+            {modulosPermitidos.includes("solicitudes") && (
+              <>
+                <SidebarButton icon={<ClipboardList />} label="Solicitudes" isOpen={isOpen} onClick={() => toggleMenu("solicitudes")} endIcon={openMenus.solicitudes ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.solicitudes && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/SolicitudesPage" icon={<FilePlus />} label="Solicitudes" isOpen={isOpen} />
+                    <SidebarButton to="/DetalleSolicitudPage" icon={<ListChecks />} label="Detalle de la Solicitud" isOpen={isOpen} />
+                    <SidebarButton to="/EntregaMaterialPage" icon={<PackageCheck />} label="Entrega de Material" isOpen={isOpen} />
+                    <SidebarButton to="/MovimientoInventarioPage" icon={<ArrowLeftRight />} label="Movimientos" isOpen={isOpen} />
+                  </Submenu>
+                )}
+              </>
+            )}
 
-          {/* Solicitudes */}
-          <SidebarButton icon={<ClipboardList className="w-5 h-5" />} label="Solicitudes" isOpen={isOpen} onClick={() => toggleMenu("solicitudes")} endIcon={openMenus.solicitudes ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.solicitudes && isOpen && (
-            <Submenu>
-              <SidebarButton to="/SolicitudesPage" icon={<FilePlus className="w-4 h-4" />} label="Solicitudes" isOpen={isOpen} activePaths={["/SolicitudesPage"]} />
-              <SidebarButton to="/DetalleSolicitudPage" icon={<ListChecks className="w-4 h-4" />} label="Detalle de la Solicitud" isOpen={isOpen} activePaths={["/DetalleSolicitudPage"]} />
-              <SidebarButton to="/EntregaMaterialPage" icon={<PackageCheck className="w-4 h-4" />} label="Entrega de Material" isOpen={isOpen} activePaths={["/EntregaMaterialPage"]} />
-              <SidebarButton to="/MovimientoInventarioPage" icon={<ArrowLeftRight className="w-4 h-4" />} label="Movimientos" isOpen={isOpen} activePaths={["/MovimientoInventarioPage"]} />
-            </Submenu>
-          )}
+            {modulosPermitidos.includes("estadisticas") && (
+              <>
+                <SidebarButton icon={<BarChart2 />} label="Estadísticas" isOpen={isOpen} onClick={() => toggleMenu("reports")} endIcon={openMenus.reports ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.reports && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/VistaProductos" icon={<PackageSearch />} label="Productos" isOpen={isOpen} />
+                    <SidebarButton to="/VistaEstadisticasUsuarios" icon={<Users2 />} label="Usuarios" isOpen={isOpen} />
+                    <SidebarButton to="/VistaEstadisticasSitios" icon={<MapPin />} label="Sitios" isOpen={isOpen} />
+                  </Submenu>
+                )}
 
-          {/* Estadísticas */}
-          <SidebarButton icon={<BarChart2 className="w-5 h-5" />} label="Estadísticas" isOpen={isOpen} onClick={() => toggleMenu("reports")} endIcon={openMenus.reports ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.reports && isOpen && (
-            <Submenu>
-              <SidebarButton to="/VistaProductos" icon={<PackageSearch className="w-4 h-4" />} label="Productos" isOpen={isOpen} activePaths={["/VistaProductos"]} />
-              <SidebarButton to="/VistaEstadisticasUsuarios" icon={<Users2 className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/VistaEstadisticasUsuarios"]} />
-              <SidebarButton to="/VistaEstadisticasSitios" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/VistaEstadisticasSitios"]} />
-            </Submenu>
-          )}
+                <SidebarButton icon={<FileText />} label="Reportes" isOpen={isOpen} onClick={() => toggleMenu("infoReports")} endIcon={openMenus.infoReports ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.infoReports && isOpen && (
+                  <Submenu>
+                    <SidebarButton icon={<PackageSearch />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("productReports")} endIcon={openMenus.productReports ? <ChevronUp /> : <ChevronDown />} />
+                    {openMenus.productReports && (
+                      <Submenu indent>
+                        <SidebarButton to="/report/productosRep/ProductosPorSitio" icon={<LayoutGrid />} label="Productos por Sitio" isOpen={isOpen} />
+                        <SidebarButton to="/report/productosRep/ProductosVencidos" icon={<AlertTriangle />} label="Productos vencidos" isOpen={isOpen} />
+                        <SidebarButton to="/report/productosRep/ProductosVencimiento" icon={<Clock />} label="Próximos a vencer" isOpen={isOpen} />
+                      </Submenu>
+                    )}
 
-          {/* Reportes */}
-          <SidebarButton icon={<FileText className="w-5 h-5" />} label="Reportes" isOpen={isOpen} onClick={() => toggleMenu("infoReports")} endIcon={openMenus.infoReports ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.infoReports && isOpen && (
-            <Submenu>
-              {/* Subreportes Productos */}
-              <SidebarButton icon={<PackageSearch className="w-4 h-4" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("productReports")} endIcon={openMenus.productReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />} />
-              {openMenus.productReports && (
-                <Submenu indent>
-                  <SidebarButton to="/report/productosRep/ProductosPorSitio" icon={<LayoutGrid className="w-4 h-4" />} label="Productos por Sitio" isOpen={isOpen} activePaths={["/report/productosRep/ProductosPorSitio"]} />
-                  <SidebarButton to="/report/productosRep/ProductosVencidos" icon={<AlertTriangle className="w-4 h-4" />} label="Productos vencidos" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencidos"]} />
-                  <SidebarButton to="/report/productosRep/ProductosVencimiento" icon={<Clock className="w-4 h-4" />} label="Próximos a vencer" isOpen={isOpen} activePaths={["/report/productosRep/ProductosVencimiento"]} />
-                </Submenu>
-              )}
+                    <SidebarButton icon={<Users />} label="Usuarios" isOpen={isOpen} onClick={() => toggleMenu("userReports")} endIcon={openMenus.userReports ? <ChevronUp /> : <ChevronDown />} />
+                    {openMenus.userReports && (
+                      <Submenu indent>
+                        <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" icon={<UserCog />} label="Usuarios por rol" isOpen={isOpen} />
+                        <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<History />} label="Historial materiales utilizados" isOpen={isOpen} />
+                      </Submenu>
+                    )}
+                  </Submenu>
+                )}
+              </>
+            )}
 
-              {/* Subreportes Usuarios */}
-              <SidebarButton icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} onClick={() => toggleMenu("userReports")} endIcon={openMenus.userReports ? <ChevronUp size={14} /> : <ChevronDown size={14} />} />
-              {openMenus.userReports && (
-                <Submenu indent>
-                  <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" icon={<UserCog className="w-4 h-4" />} label="Usuarios por rol" isOpen={isOpen} activePaths={["/report/UsuariosRep/UsuariosPorRol"]} />
-                  <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<History className="w-4 h-4" />} label="Historial materiales utilizados" isOpen={isOpen} activePaths={["/report/UsuariosRep/UsuariosHistoria"]} />
-                </Submenu>
-              )}
-            </Submenu>
-          )}
+            {modulosPermitidos.includes("administracion") && (
+              <>
+                <SidebarButton icon={<ShieldCheck />} label="Admin" isOpen={isOpen} onClick={() => toggleMenu("admin")} endIcon={openMenus.admin ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.admin && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/usuarios" icon={<Users />} label="Usuarios" isOpen={isOpen} />
+                    <SidebarButton to="/RolesPage" icon={<ShieldCheck />} label="Roles" isOpen={isOpen} />
+                     <SidebarButton to="/getModulosConOpciones" icon={<ShieldCheck />} label="Dar Permisos" isOpen={isOpen} />
+                  </Submenu>
+                )}
+              </>
+            )}
 
-          {/* Admin */}
-          <SidebarButton icon={<ShieldCheck className="w-5 h-5" />} label="Admin MARIAAA" isOpen={isOpen} onClick={() => toggleMenu("admin")} endIcon={openMenus.admin ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.admin && isOpen && (
-            <Submenu>
-              <SidebarButton to="/usuarios" icon={<Users className="w-4 h-4" />} label="Usuarios" isOpen={isOpen} activePaths={["/usuarios"]} />
-              <SidebarButton to="/RolesPage" icon={<ShieldCheck className="w-4 h-4" />} label="Roles" isOpen={isOpen} activePaths={["/RolesPage"]} />
-            </Submenu>
-          )}
+            {modulosPermitidos.includes("ubicacion") && (
+              <>
+                <SidebarButton icon={<MapPin />} label="Ubicación" isOpen={isOpen} onClick={() => toggleMenu("ubicacion")} endIcon={openMenus.ubicacion ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.ubicacion && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/MunicipioPage" icon={<MapPin />} label="Municipios" isOpen={isOpen} />
+                    <SidebarButton to="/SedesPage" icon={<Landmark />} label="Sedes" isOpen={isOpen} />
+                    <SidebarButton to="/SitiosPage" icon={<MapPin />} label="Sitios" isOpen={isOpen} />
+                    <SidebarButton to="/Tipo_sitiosPage" icon={<MapPin />} label="Tipo de Sitios" isOpen={isOpen} />
+                  </Submenu>
+                )}
+              </>
+            )}
 
-          {/* Ubicación */}
-          <SidebarButton icon={<MapPin className="w-5 h-5" />} label="Ubicación" isOpen={isOpen} onClick={() => toggleMenu("ubicacion")} endIcon={openMenus.ubicacion ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.ubicacion && isOpen && (
-            <Submenu>
-              <SidebarButton to="/MunicipioPage" icon={<MapPin className="w-4 h-4" />} label="Municipios" isOpen={isOpen} activePaths={["/MunicipioPage"]} />
-              <SidebarButton to="/SedesPage" icon={<Landmark className="w-4 h-4" />} label="Sedes" isOpen={isOpen} activePaths={["/SedesPage"]} />
-              <SidebarButton to="/SitiosPage" icon={<MapPin className="w-4 h-4" />} label="Sitios" isOpen={isOpen} activePaths={["/SitiosPage"]} />
-              <SidebarButton to="/Tipo_sitiosPage" icon={<MapPin className="w-4 h-4" />} label="Tipo de Sitios" isOpen={isOpen} activePaths={["/Tipo_sitiosPage"]} />
-            </Submenu>
-          )}
+            {modulosPermitidos.includes("formacion") && (
+              <>
+                <SidebarButton icon={<GraduationCap />} label="Formación" isOpen={isOpen} onClick={() => toggleMenu("formacion")} endIcon={openMenus.formacion ? <ChevronUp /> : <ChevronDown />} />
+                {openMenus.formacion && isOpen && (
+                  <Submenu>
+                    <SidebarButton to="/CentrosFormaciones" icon={<Building2 />} label="Centros Formación" isOpen={isOpen} />
+                    <SidebarButton to="/TituladosPage" icon={<GraduationCap />} label="Titulados" isOpen={isOpen} />
+                    <SidebarButton to="/FichaFormacionPage" icon={<BookOpen />} label="Fichas Formación" isOpen={isOpen} />
+                    <SidebarButton to="/AreasPage" icon={<FolderGit2 />} label="Áreas" isOpen={isOpen} />
+                  </Submenu>
+                )}
+              </>
+            )}
 
-          {/* Formación */}
-          <SidebarButton icon={<GraduationCap className="w-5 h-5" />} label="Formación" isOpen={isOpen} onClick={() => toggleMenu("formacion")} endIcon={openMenus.formacion ? <ChevronUp size={16} /> : <ChevronDown size={16} />} />
-          {openMenus.formacion && isOpen && (
-            <Submenu>
-              <SidebarButton to="/CentrosFormaciones" icon={<Building2 className="w-4 h-4" />} label="Centros Formación" isOpen={isOpen} activePaths={["/CentrosFormaciones"]} />
-              <SidebarButton to="/TituladosPage" icon={<GraduationCap className="w-4 h-4" />} label="Titulados" isOpen={isOpen} activePaths={["/TituladosPage"]} />
-              <SidebarButton to="/FichaFormacionPage" icon={<BookOpen className="w-4 h-4" />} label="Fichas Formación" isOpen={isOpen} activePaths={["/FichaFormacionPage"]} />
-              <SidebarButton to="/AreasPage" icon={<FolderGit2 className="w-4 h-4" />} label="Áreas" isOpen={isOpen} activePaths={["/AreasPage"]} />
-            </Submenu>
-          )}
-        </nav>
+            {modulosPermitidos.length === 0 && (
+              <div className="text-center text-yellow-400 mt-4 text-xs">
+                No tienes acceso a módulos adicionales.
+              </div>
+            )}
+          </nav>
+        )}
       </div>
 
-      {/* Logout */}
       <div className="p-4 border-t border-slate-700">
         <Button variant="ghost" className="w-full flex items-center gap-2 justify-start text-white hover:bg-slate-800" onClick={handleLogout}>
           <LogOut className="w-5 h-5" />
