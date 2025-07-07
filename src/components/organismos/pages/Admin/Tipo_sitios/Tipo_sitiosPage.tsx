@@ -28,7 +28,7 @@ import {
   updateTipoSitio,
   deleteTipoSitio,
 } from '@/Api/Tipo_sitios';
-import { getPermisosPorRuta } from '@/Api/permisosSe';
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';

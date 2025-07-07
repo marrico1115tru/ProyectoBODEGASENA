@@ -19,7 +19,7 @@ interface BarChartProps {
     datasets: {
       label: string;
       data: number[];
-      backgroundColor?: string;
+      backgroundColor?: string | string[];  // <-- Aquí permitimos string o string[]
     }[];
     title: string;
   };

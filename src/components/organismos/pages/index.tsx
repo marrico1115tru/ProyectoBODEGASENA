@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import DefaultLayout from "@/layouts/default";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Rocket, Users } from "lucide-react";
+import { RocketLaunchIcon, CheckCircleIcon, UserGroupIcon } from "@heroicons/react/24/solid";
 
 export default function IndexPage() {
   const navigate = useNavigate();
 
   const handleRedirect = () => {
-    navigate("/InicioDash"); 
+    navigate("/InicioDash");
   };
 
   return (
@@ -16,7 +16,7 @@ export default function IndexPage() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
           <div className="space-y-6">
             <img
-              src= "src\img\log.png"
+              src="src/img/log.png"
               alt="Logo"
               className="w-20 h-20 object-contain"
             />
@@ -33,7 +33,7 @@ export default function IndexPage() {
           </div>
           <div className="hidden md:block">
             <img
-              src="src\img\bodegas.jpeg"
+              src="src/img/bodegas.jpeg"
               alt="Gestión de inventario"
               className="w-full max-h-[400px] object-contain"
             />
@@ -49,21 +49,21 @@ export default function IndexPage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-slate-50 rounded-xl p-6 shadow-md text-center">
-              <Rocket className="mx-auto h-10 w-10 text-blue-600 mb-4" />
+              <RocketLaunchIcon className="mx-auto h-10 w-10 text-blue-600 mb-4" />
               <h3 className="font-semibold text-lg">Rápido y Eficiente</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Accede y gestiona tus productos en segundos con una interfaz intuitiva.
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-6 shadow-md text-center">
-              <CheckCircle className="mx-auto h-10 w-10 text-blue-600 mb-4" />
+              <CheckCircleIcon className="mx-auto h-10 w-10 text-blue-600 mb-4" />
               <h3 className="font-semibold text-lg">Control Total</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Ten el control completo del inventario desde cualquier dispositivo.
               </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-6 shadow-md text-center">
-              <Users className="mx-auto h-10 w-10 text-blue-600 mb-4" />
+              <UserGroupIcon className="mx-auto h-10 w-10 text-blue-600 mb-4" />
               <h3 className="font-semibold text-lg">Multiusuario</h3>
               <p className="text-sm text-slate-600 mt-2">
                 Colabora con tu equipo y asigna permisos de acceso fácilmente.

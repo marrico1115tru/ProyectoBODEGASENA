@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+
 import {
   Table,
   TableHeader,
@@ -30,13 +31,12 @@ import {
   deleteCategoriaProducto,
 } from '@/Api/Categorias';
 
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService'; 
+import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-// Ajusta según cómo obtengas el rol actual del usuario
 const ID_ROL_ACTUAL = 1;
 
 const Toast = ({ message }: { message: string }) => (
@@ -86,7 +86,7 @@ const CategoriasProductosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  // Carga permisos y luego datos si puede ver
+  
   useEffect(() => {
     cargarPermisos();
   }, []);
@@ -128,10 +128,10 @@ const CategoriasProductosPage = () => {
     try {
       if (editId) {
         await updateCategoriaProducto(editId, payload);
-        notify('✅ Categoría actualizada');
+        notify('Categoría actualizada');
       } else {
         await createCategoriaProducto(payload);
-        notify('✅ Categoría creada');
+        notify('Categoría creada');
       }
       cerrarModal();
       cargarCategorias();
@@ -200,16 +200,16 @@ const CategoriasProductosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
+              {permisos.puedeEditar && (
                 <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
                   Editar
                 </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
+              )}
+              {permisos.puedeEliminar && (
                 <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
                   Eliminar
                 </DropdownItem>
-              ) : null}
+              )}
             </DropdownMenu>
           </Dropdown>
         );
@@ -238,6 +238,12 @@ const CategoriasProductosPage = () => {
     );
   }
 
+  
+  const handleDiegoClick = () => {
+    alert('¡Botón Enviar presionado!');
+   
+  };
+
   return (
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
@@ -250,7 +256,6 @@ const CategoriasProductosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Tabla Desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
@@ -289,15 +294,20 @@ const CategoriasProductosPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-                    {permisos.puedeCrear ? (
-                      <Button
-                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                        endContent={<PlusIcon />}
-                        onPress={onOpen}
-                      >
-                        Nueva Categoría
-                      </Button>
-                    ) : null}
+                    {permisos.puedeCrear && (
+                      <>
+                        <Button
+                          className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                          endContent={<PlusIcon />}
+                          onPress={onOpen}
+                        >
+                          Nueva Categoría
+                        </Button>
+                        <Button color="primary" onPress={handleDiegoClick}>
+                          Holii
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -363,40 +373,33 @@ const CategoriasProductosPage = () => {
 
         {/* Tarjetas Móvil */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron categorías</p>
-          )}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
           {sorted.map((cat) => (
             <Card key={cat.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg break-words max-w-[14rem]">{cat.nombre}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
+                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                           <MoreVertical />
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu>
-                        {permisos.puedeEditar ? (
+                        {permisos.puedeEditar && (
                           <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
                             Editar
                           </DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
+                        )}
+                        {permisos.puedeEliminar && (
                           <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
                             Eliminar
                           </DropdownItem>
-                        ) : null}
+                        )}
                       </DropdownMenu>
                     </Dropdown>
-                  ) : null}
+                  )}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">UNPSC:</span> {cat.unpsc || '—'}
@@ -436,7 +439,7 @@ const CategoriasProductosPage = () => {
                   <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button color="primary" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>
