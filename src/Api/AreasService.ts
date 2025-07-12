@@ -2,9 +2,9 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:3000/areas';
 
-// Config global (asegúrate de usar esto si tienes más archivos)
+
 const config = {
-  withCredentials: true, // ⚠️ Importante para enviar cookies al backend
+  withCredentials: true, 
 };
 
 export const getAreas = async () => {

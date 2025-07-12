@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Checkbox } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
 import axios from "@/Api/axios";
 
@@ -72,10 +71,10 @@ export default function GestionPermisosPage() {
     }
   };
 
-  const handleCheckboxChange = (id: number, campo: CampoPermiso, checked: boolean) => {
+  const handleCheckboxChange = (id: number, campo: CampoPermiso, value: boolean) => {
     setPermisos((prev) =>
       prev.map((permiso) =>
-        permiso.id === id ? { ...permiso, [campo]: checked } : permiso
+        permiso.id === id ? { ...permiso, [campo]: value } : permiso
       )
     );
   };
@@ -156,11 +155,11 @@ export default function GestionPermisosPage() {
   };
 
   const renderFormularioNuevo = () => (
-    <div className="p-6 border border-gray-300 rounded-lg bg-gradient-to-br from-gray-100 via-gray-50 to-slate-200 shadow-lg space-y-4">
+    <div className="p-4 border border-gray-300 rounded-md space-y-2">
       <div>
-        <label className="block text-sm mb-1 font-semibold text-slate-700">Opción:</label>
+        <label className="block text-sm mb-1 font-medium">Opción:</label>
         <select
-          className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-400 bg-slate-50"
+          className="w-full border px-2 py-1 rounded"
           name="id_opcion"
           value={nuevoPermiso.id_opcion}
           onChange={(e) =>
@@ -175,26 +174,23 @@ export default function GestionPermisosPage() {
           ))}
         </select>
       </div>
-      <div className="flex gap-4 flex-wrap">
-        {(["puedeVer", "puedeCrear", "puedeEditar", "puedeEliminar"] as CampoPermiso[]).map(
-          (campo) => (
-            <label key={campo} className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <Checkbox
-                checked={nuevoPermiso[campo]}
-                onChange={(event) =>
-                  setNuevoPermiso({ ...nuevoPermiso, [campo]: event.target.checked })
-                }
-                color="primary"
-                className="h-5 w-5"
-              />
-              {campo.replace("puede", "")}
-            </label>
-          )
-        )}
-      </div>
+      {(["puedeVer", "puedeCrear", "puedeEditar", "puedeEliminar"] as CampoPermiso[]).map(
+        (campo) => (
+          <label key={campo} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={nuevoPermiso[campo]}
+              onChange={(e) =>
+                setNuevoPermiso({ ...nuevoPermiso, [campo]: e.target.checked })
+              }
+            />
+            <span>{campo}</span>
+          </label>
+        )
+      )}
       <button
         onClick={crearPermiso}
-        className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold shadow"
+        className="mt-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-blue-700"
       >
         Guardar Permiso
       </button>
@@ -203,17 +199,15 @@ export default function GestionPermisosPage() {
 
   return (
     <DefaultLayout>
-      <div className="p-8 space-y-8 bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 min-h-screen">
-        <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight mb-4">
-          Gestión de Permisos por Rol
-        </h1>
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-gray-800">Gestión de Permisos por Rol</h1>
 
-        <div className="max-w-xs space-y-2">
-          <label className="block text-sm font-bold text-slate-700">
+        <div className="max-w-sm space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
             Selecciona un rol:
           </label>
           <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 bg-slate-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
             onChange={(e) => setRolSeleccionado(Number(e.target.value))}
             defaultValue=""
           >
@@ -232,7 +226,7 @@ export default function GestionPermisosPage() {
           <div className="space-y-4">
             <button
               onClick={() => setMostrarFormularioNuevo(!mostrarFormularioNuevo)}
-              className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold shadow"
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
             >
               {mostrarFormularioNuevo ? "Cancelar" : "Crear nuevo permiso"}
             </button>
@@ -242,39 +236,39 @@ export default function GestionPermisosPage() {
         )}
 
         {rolSeleccionado && (
-          <div className="overflow-auto rounded-xl border border-gray-200 shadow-lg bg-gradient-to-br from-slate-50 via-slate-100 to-gray-200">
+          <div className="overflow-auto rounded-lg border border-gray-200 shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-slate-200">
+              <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left font-bold text-slate-700 w-1/2">
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 w-1/2">
                     Opción
                   </th>
-                  <th className="px-4 py-3 text-center text-slate-700">Ver</th>
-                  <th className="px-4 py-3 text-center text-slate-700">Crear</th>
-                  <th className="px-4 py-3 text-center text-slate-700">Editar</th>
-                  <th className="px-4 py-3 text-center text-slate-700">Eliminar</th>
-                  <th className="px-4 py-3 text-center text-slate-700">Acciones</th>
+                  <th className="px-4 py-3 text-center">Ver</th>
+                  <th className="px-4 py-3 text-center">Crear</th>
+                  <th className="px-4 py-3 text-center">Editar</th>
+                  <th className="px-4 py-3 text-center">Eliminar</th>
+                  <th className="px-4 py-3 text-center">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white/80">
+              <tbody className="divide-y divide-gray-100 bg-white">
                 {permisos.map((permiso) => (
                   <tr key={permiso.id}>
-                    <td className="px-4 py-3 font-semibold text-slate-900">
+                    <td className="px-4 py-3 font-medium text-gray-800">
                       {permiso.opcion.nombreOpcion}
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {permiso.opcion.rutaFrontend}
                       </div>
                     </td>
                     {(["puedeVer", "puedeCrear", "puedeEditar", "puedeEliminar"] as CampoPermiso[]).map(
                       (campo) => (
                         <td key={campo} className="px-4 py-3 text-center">
-                          <Checkbox
+                          <input
+                            type="checkbox"
                             checked={permiso[campo]}
-                            onChange={(event) =>
-                              handleCheckboxChange(permiso.id, campo, event.target.checked)
+                            onChange={(e) =>
+                              handleCheckboxChange(permiso.id, campo, e.target.checked)
                             }
-                            color="primary"
-                            className="h-5 w-5"
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                           />
                         </td>
                       )
@@ -282,7 +276,7 @@ export default function GestionPermisosPage() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => eliminarPermiso(permiso.id)}
-                        className="text-red-600 hover:text-red-800 hover:underline text-sm transition font-semibold"
+                        className="text-red-600 hover:underline text-sm"
                       >
                         Eliminar
                       </button>
@@ -299,7 +293,7 @@ export default function GestionPermisosPage() {
             <button
               onClick={guardarPermisos}
               disabled={guardando}
-              className="px-6 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg shadow-lg font-bold transition disabled:opacity-60"
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow"
             >
               {guardando ? "Guardando..." : "Guardar Permisos"}
             </button>

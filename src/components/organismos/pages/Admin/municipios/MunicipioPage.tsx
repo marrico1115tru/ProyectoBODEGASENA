@@ -337,7 +337,7 @@ const MunicipiosPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron municipios">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
                 </TableRow>
               )}
             </TableBody>

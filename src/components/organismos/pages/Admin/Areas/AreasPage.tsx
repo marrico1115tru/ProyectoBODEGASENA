@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import {
   Table,
@@ -47,12 +47,11 @@ const Toast = ({ message }: { message: string }) => (
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Nombre', uid: 'nombre', sortable: false },
-  { name: 'Descripción', uid: 'descripcion', sortable: false },
+  { name: 'Nombre', uid: 'nombreArea', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
 
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'descripcion', 'actions'];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombreArea', 'actions'];
 
 const AreasPage = () => {
   const [areas, setAreas] = useState<any[]>([]);
@@ -66,13 +65,11 @@ const AreasPage = () => {
   });
 
   const [nombre, setNombre] = useState('');
-  const [descripcion, setDescripcion] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
 
   const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -98,6 +95,7 @@ const AreasPage = () => {
       }
     } catch (error) {
       console.error('Error al cargar permisos:', error);
+      notify('Error al cargar permisos');
     }
   };
 
@@ -107,6 +105,7 @@ const AreasPage = () => {
       setAreas(data);
     } catch (error) {
       console.error('Error al cargar áreas:', error);
+      notify('Error al cargar áreas');
     }
   };
 
@@ -118,11 +117,16 @@ const AreasPage = () => {
       cargarAreas();
     } catch (error) {
       console.error('Error al eliminar área:', error);
+      notify('Error al eliminar área');
     }
   };
 
   const guardar = async () => {
-    const payload = { nombre, descripcion };
+    if (!nombre.trim()) {
+      notify('El nombre es obligatorio');
+      return;
+    }
+    const payload = { nombreArea: nombre };
     try {
       if (editId) {
         await updateArea(editId, payload);
@@ -135,29 +139,26 @@ const AreasPage = () => {
       cargarAreas();
     } catch (error) {
       console.error('Error al guardar área:', error);
+      notify('Error al guardar área');
     }
   };
 
   const abrirModalEditar = (area: any) => {
     setEditId(area.id);
-    setNombre(area.nombre);
-    setDescripcion(area.descripcion || '');
+    setNombre(area.nombreArea);
     onOpen();
   };
 
   const cerrarModal = () => {
     setEditId(null);
     setNombre('');
-    setDescripcion('');
     onClose();
   };
 
   const filtered = useMemo(() => {
     return filterValue
-      ? areas.filter(
-          (a) =>
-            a.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
-            (a.descripcion || '').toLowerCase().includes(filterValue.toLowerCase())
+      ? areas.filter((a) =>
+          (a.nombreArea || '').toLowerCase().includes(filterValue.toLowerCase())
         )
       : areas;
   }, [areas, filterValue]);
@@ -182,10 +183,8 @@ const AreasPage = () => {
 
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
-      case 'nombre':
-        return <span className="font-medium text-gray-800">{item.nombre}</span>;
-      case 'descripcion':
-        return <span className="text-sm text-gray-600">{item.descripcion || '—'}</span>;
+      case 'nombreArea':
+        return <span className="font-medium text-gray-800">{item.nombreArea || '—'}</span>;
       case 'actions':
         if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
@@ -196,21 +195,21 @@ const AreasPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar && (
+              {permisos.puedeEditar ? (
                 <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
                   Editar
                 </DropdownItem>
-              )}
-              {permisos.puedeEliminar && (
+              ) : null}
+              {permisos.puedeEliminar ? (
                 <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
                   Eliminar
                 </DropdownItem>
-              )}
+              ) : null}
             </DropdownMenu>
           </Dropdown>
         );
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || '—';
     }
   };
 
@@ -234,15 +233,9 @@ const AreasPage = () => {
     );
   }
 
-
-  const handleDiegoClick = () => {
-    alert('¡Botón Enviar presionado!');
-  };
-
   return (
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
-
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -263,7 +256,7 @@ const AreasPage = () => {
                     isClearable
                     className="w-full md:max-w-[44%]"
                     radius="lg"
-                    placeholder="Buscar por nombre o descripción"
+                    placeholder="Buscar por nombre"
                     startContent={<SearchIcon className="text-[#0D1324]" />}
                     value={filterValue}
                     onValueChange={setFilterValue}
@@ -291,19 +284,13 @@ const AreasPage = () => {
                       </DropdownMenu>
                     </Dropdown>
                     {permisos.puedeCrear && (
-                      <>
-                        <Button
-                          className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                          endContent={<PlusIcon />}
-                          onPress={onOpen}
-                        >
-                          Nueva Área
-                        </Button>
-                       
-                        <Button color="primary" onPress={handleDiegoClick}>
-                          Enviar
-                        </Button>
-                      </>
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={onOpen}
+                      >
+                        Nueva Área
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -352,7 +339,7 @@ const AreasPage = () => {
                 <TableColumn
                   key={col.uid}
                   align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 300 : undefined}
+                  width={col.uid === 'nombreArea' ? 300 : undefined}
                 >
                   {col.name}
                 </TableColumn>
@@ -375,7 +362,7 @@ const AreasPage = () => {
             <Card key={area.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{area.nombre}</h3>
+                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{area.nombreArea}</h3>
                   {(permisos.puedeEditar || permisos.puedeEliminar) && (
                     <Dropdown>
                       <DropdownTrigger>
@@ -384,23 +371,20 @@ const AreasPage = () => {
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu>
-                        {permisos.puedeEditar && (
+                        {permisos.puedeEditar ? (
                           <DropdownItem key={`editar-${area.id}`} onPress={() => abrirModalEditar(area)}>
                             Editar
                           </DropdownItem>
-                        )}
-                        {permisos.puedeEliminar && (
+                        ) : null}
+                        {permisos.puedeEliminar ? (
                           <DropdownItem key={`eliminar-${area.id}`} onPress={() => eliminar(area.id)}>
                             Eliminar
                           </DropdownItem>
-                        )}
+                        ) : null}
                       </DropdownMenu>
                     </Dropdown>
                   )}
                 </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Descripción:</span> {area.descripcion || '—'}
-                </p>
                 <p className="text-xs text-gray-400">ID: {area.id}</p>
               </CardContent>
             </Card>
@@ -419,13 +403,6 @@ const AreasPage = () => {
                     placeholder="Nombre del área"
                     value={nombre}
                     onValueChange={setNombre}
-                    radius="sm"
-                  />
-                  <Input
-                    label="Descripción (opcional)"
-                    placeholder="Descripción del área"
-                    value={descripcion}
-                    onValueChange={setDescripcion}
                     radius="sm"
                   />
                 </ModalBody>

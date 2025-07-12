@@ -45,15 +45,16 @@ const Toast = ({ message }: { message: string }) => (
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Cantidad', uid: 'cantidad', sortable: false },
+  { name: 'Cantidad', uid: 'cantidadSolicitada', sortable: false },
   { name: 'Observaciones', uid: 'observaciones', sortable: false },
   { name: 'Producto', uid: 'producto', sortable: false },
   { name: 'Solicitud', uid: 'solicitud', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
+
 const INITIAL_VISIBLE_COLUMNS = [
   'id',
-  'cantidad',
+  'cantidadSolicitada',
   'observaciones',
   'producto',
   'solicitud',
@@ -65,9 +66,7 @@ const DetalleSolicitudesPage = () => {
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -83,10 +82,10 @@ const DetalleSolicitudesPage = () => {
   });
   const [loadingPermisos, setLoadingPermisos] = useState(true);
 
-  const [cantidad, setCantidad] = useState<number | ''>('');
+  const [cantidad, setCantidad] = useState<number | undefined>(undefined);
   const [observaciones, setObservaciones] = useState('');
-  const [idProducto, setIdProducto] = useState<number | ''>('');
-  const [idSolicitud, setIdSolicitud] = useState<number | ''>('');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<any | null>(null);
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<any | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
@@ -98,16 +97,13 @@ const DetalleSolicitudesPage = () => {
 
   useEffect(() => {
     cargarPermisos();
-    // eslint-disable-next-line
   }, []);
 
   const cargarPermisos = async () => {
     setLoadingPermisos(true);
     try {
-      // ¡Asegúrate de que la ruta sea EXACTAMENTE la que tienes en backend!
-      // Si tu backend espera '/DetalleSolicitudPage', usa esa ruta.
       const p = await getPermisosPorRuta('/DetalleSolicitudPage', ID_ROL_ACTUAL);
-      setPermisos(p.data || p); // Soporta ambas estructuras de respuesta
+      setPermisos(p.data || p);
       if ((p.data || p).puedeVer) {
         cargarDatos();
       }
@@ -153,12 +149,33 @@ const DetalleSolicitudesPage = () => {
 
   const guardar = async () => {
     if (!permisos.puedeCrear && !permisos.puedeEditar) return;
+
+    if (!cantidad || cantidad <= 0) {
+      notify('La cantidad solicitada debe ser mayor que cero');
+      return;
+    }
+    if (!productoSeleccionado) {
+      notify('Debes seleccionar un producto');
+      return;
+    }
+    if (!solicitudSeleccionada) {
+      notify('Debes seleccionar una solicitud');
+      return;
+    }
+
+    // Aquí enviamos el objeto completo para cumplir el tipo
     const payload = {
       cantidadSolicitada: cantidad,
       observaciones: observaciones || null,
-      idProducto: idProducto ? { id: Number(idProducto) } : null,
-      idSolicitud: idSolicitud ? { id: Number(idSolicitud) } : null,
+      idProducto: {
+        id: productoSeleccionado.id,
+        nombre: productoSeleccionado.nombre,
+      },
+      idSolicitud: {
+        id: solicitudSeleccionada.id,
+      },
     };
+
     try {
       if (editId) {
         if (!permisos.puedeEditar) return;
@@ -181,34 +198,32 @@ const DetalleSolicitudesPage = () => {
     setEditId(d.id);
     setCantidad(d.cantidadSolicitada);
     setObservaciones(d.observaciones || '');
-    setIdProducto(d.idProducto?.id || '');
-    setIdSolicitud(d.idSolicitud?.id || '');
+    setProductoSeleccionado(d.idProducto);
+    setSolicitudSeleccionada(d.idSolicitud);
     onOpen();
   };
 
   const limpiarFormulario = () => {
     setEditId(null);
-    setCantidad('');
+    setCantidad(undefined);
     setObservaciones('');
-    setIdProducto('');
-    setIdSolicitud('');
+    setProductoSeleccionado(null);
+    setSolicitudSeleccionada(null);
   };
 
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? detalles.filter((d) =>
-            (
-              `${d.cantidadSolicitada} ${d.observaciones || ''} ${
-                d.idProducto?.nombre || ''
-              } ${d.idSolicitud?.estadoSolicitud || ''}`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
+  const filtered = useMemo(() => {
+    return filterValue
+      ? detalles.filter((d) =>
+          (
+            `${d.cantidadSolicitada} ${d.observaciones || ''} ${
+              d.idProducto?.nombre || ''
+            } ${d.idSolicitud?.estadoSolicitud || ''}`
           )
-        : detalles,
-    [detalles, filterValue]
-  );
+            .toLowerCase()
+            .includes(filterValue.toLowerCase())
+        )
+      : detalles;
+  }, [detalles, filterValue]);
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
@@ -230,7 +245,7 @@ const DetalleSolicitudesPage = () => {
 
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
-      case 'cantidad':
+      case 'cantidadSolicitada':
         return <span className="text-sm text-gray-800">{item.cantidadSolicitada}</span>;
       case 'observaciones':
         return (
@@ -266,10 +281,14 @@ const DetalleSolicitudesPage = () => {
             </DropdownTrigger>
             <DropdownMenu>
               {permisos.puedeEditar ? (
-                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>Editar</DropdownItem>
+                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
+                  Editar
+                </DropdownItem>
               ) : null}
               {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>Eliminar</DropdownItem>
+                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
+                  Eliminar
+                </DropdownItem>
               ) : null}
             </DropdownMenu>
           </Dropdown>
@@ -375,7 +394,6 @@ const DetalleSolicitudesPage = () => {
     </div>
   );
 
-  // Espera a que cargue permisos antes de mostrar cualquier cosa
   if (loadingPermisos) {
     return (
       <DefaultLayout>
@@ -508,8 +526,8 @@ const DetalleSolicitudesPage = () => {
                     label="Cantidad solicitada"
                     placeholder="Ej: 10"
                     type="number"
-                    value={cantidad.toString()}
-                    onValueChange={(v) => setCantidad(v ? Number(v) : '')}
+                    value={typeof cantidad === 'number' ? cantidad.toString() : ''}
+                    onValueChange={(v) => setCantidad(v ? Number(v) : undefined)}
                     radius="sm"
                   />
                   <Input
@@ -524,8 +542,12 @@ const DetalleSolicitudesPage = () => {
                       Producto
                     </label>
                     <select
-                      value={idProducto}
-                      onChange={(e) => setIdProducto(Number(e.target.value) || '')}
+                      value={productoSeleccionado?.id || ''}
+                      onChange={(e) => {
+                        const id = Number(e.target.value);
+                        const producto = productos.find((p) => p.id === id) || null;
+                        setProductoSeleccionado(producto);
+                      }}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione un producto</option>
@@ -541,8 +563,12 @@ const DetalleSolicitudesPage = () => {
                       Solicitud
                     </label>
                     <select
-                      value={idSolicitud}
-                      onChange={(e) => setIdSolicitud(Number(e.target.value) || '')}
+                      value={solicitudSeleccionada?.id || ''}
+                      onChange={(e) => {
+                        const id = Number(e.target.value);
+                        const solicitud = solicitudes.find((s) => s.id === id) || null;
+                        setSolicitudSeleccionada(solicitud);
+                      }}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione una solicitud</option>

@@ -38,7 +38,9 @@ const Login = () => {
           <img src="/src/img/log.png" alt="Logo" className="h-16" />
         </div>
 
-        <h2 className="text-center text-2xl font-bold mb-6 text-white">INGRESAR</h2>
+        <h2 className="text-center text-2xl font-bold mb-6 text-white">
+          INGRESAR
+        </h2>
 
         <div className="space-y-4">
           <div>
@@ -83,7 +85,11 @@ const Login = () => {
           </Button>
         </div>
 
-        <p className="text-center text-xs text-white/70 mt-4 hover:underline cursor-pointer">
+        {/* ✅ Enlace corregido */}
+        <p
+          onClick={() => navigate("/recuperar")}
+          className="text-center text-xs text-white/70 mt-4 hover:underline cursor-pointer"
+        >
           ¿Olvidó su contraseña?
         </p>
       </div>

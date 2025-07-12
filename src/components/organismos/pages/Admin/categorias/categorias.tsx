@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import {
   Table,
@@ -200,16 +200,16 @@ const CategoriasProductosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar && (
+              {permisos.puedeEditar ? (
                 <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
                   Editar
                 </DropdownItem>
-              )}
-              {permisos.puedeEliminar && (
+              ) : null}
+              {permisos.puedeEliminar ? (
                 <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
                   Eliminar
                 </DropdownItem>
-              )}
+              ) : null}
             </DropdownMenu>
           </Dropdown>
         );
@@ -387,16 +387,16 @@ const CategoriasProductosPage = () => {
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu>
-                        {permisos.puedeEditar && (
+                        {permisos.puedeEditar ? (
                           <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
                             Editar
                           </DropdownItem>
-                        )}
-                        {permisos.puedeEliminar && (
+                        ) : null}
+                        {permisos.puedeEliminar ? (
                           <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
                             Eliminar
                           </DropdownItem>
-                        )}
+                        ) : null}
                       </DropdownMenu>
                     </Dropdown>
                   )}

@@ -36,7 +36,8 @@ import Perfil from "./components/organismos/pages/Perfil/Perfil.tsx"
 import CategoriasProductosPage from "./components/organismos/pages/Admin/categorias/categorias.tsx";
 import InventarioPage from "./components/organismos/pages/Admin/Inventario/inventario.tsx";
 import DetalleSolicitudPage from "./components/organismos/pages/Admin/detalles_solicitud/detalles_solicitud.tsx";
-import GetModulosConOpciones from "./components/organismos/pages/permisos/ModulosConOpcionesPage.tsx"
+import GetModulosConOpciones from "./components/organismos/pages/permisos/ModulosConOpcionesPage.tsx";
+import RecuperarContraseña from "./components/organismos/pages/login/RecuperarContraseña.tsx";
 const queryClient = new QueryClient();
 
 function App() {
@@ -80,7 +81,8 @@ function App() {
         <Route path ="/CategoriasProductosPage" element={<CategoriasProductosPage/>} />
         <Route path="/InventarioPage" element={<InventarioPage/>}/>
         <Route path="/DetalleSolicitudPage" element={<DetalleSolicitudPage/>}/>
-        <Route path="/getModulosConOpciones" element={<GetModulosConOpciones/>}/>   
+        <Route path="/getModulosConOpciones" element={<GetModulosConOpciones/>}/>  
+        <Route path="/recuperar" element={<RecuperarContraseña />} /> 
       </Routes>
     </QueryClientProvider>
   );

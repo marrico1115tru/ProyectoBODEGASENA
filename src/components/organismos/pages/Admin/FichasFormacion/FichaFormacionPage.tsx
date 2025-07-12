@@ -1,10 +1,26 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
-  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
-  Checkbox, useDisclosure, type SortDescriptor,
-  Toast,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
 } from '@heroui/react';
 import {
   getFichasFormacion,
@@ -14,7 +30,6 @@ import {
 } from '@/Api/fichasFormacion';
 import { getTitulados } from '@/Api/TituladosService';
 import { getUsuarios } from '@/Api/Usuariosform';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,7 +61,10 @@ const FichasFormacionPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
+  });
 
   const [nombre, setNombre] = useState('');
   const [idTitulado, setIdTitulado] = useState('');
@@ -55,40 +73,13 @@ const FichasFormacionPage = () => {
   const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const notify = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(''), 3000);
   };
 
   useEffect(() => {
-    const cargarPermisos = async () => {
-      try {
-        // Pasamos la ruta y el id del rol actual
-        const ID_ROL_ACTUAL = Number(localStorage.getItem('ID_ROL_ACTUAL') || '0');
-        const p = await getPermisosPorRuta('/FichaFormacionPage', ID_ROL_ACTUAL);
-        setPermisos(p);
-        if (p.puedeVer) {
-          cargarDatos();
-        }
-      } catch (err) {
-        setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
-        });
-        console.error('Error cargando permisos:', err);
-      }
-    };
-    cargarPermisos();
-    // eslint-disable-next-line
+    cargarDatos();
   }, []);
 
   const cargarDatos = async () => {
@@ -114,21 +105,36 @@ const FichasFormacionPage = () => {
   };
 
   const guardar = async () => {
+    if (!nombre.trim()) {
+      notify('El nombre es obligatorio');
+      return;
+    }
+    if (!idTitulado) {
+      notify('Debes seleccionar un titulado');
+      return;
+    }
+
     const payload = {
       nombre,
-      idTitulado: idTitulado ? { id: Number(idTitulado) } : null,
-      idUsuarioResponsable: idResponsable ? { id: Number(idResponsable) } : null,
+      idTitulado: titulados.find(t => t.id === Number(idTitulado)) || null,
+      idUsuarioResponsable: usuarios.find(u => u.id === Number(idResponsable)) || null,
     };
-    if (editId) {
-      await updateFichaFormacion(editId, payload);
-      notify('✏️ Ficha actualizada');
-    } else {
-      await createFichaFormacion(payload);
-      notify('✅ Ficha creada');
+
+    try {
+      if (editId) {
+        await updateFichaFormacion(editId, payload);
+        notify('✏️ Ficha actualizada');
+      } else {
+        await createFichaFormacion(payload);
+        notify('✅ Ficha creada');
+      }
+      onClose();
+      limpiarForm();
+      cargarDatos();
+    } catch (error) {
+      notify('Error guardando ficha');
+      console.error(error);
     }
-    onClose();
-    limpiarForm();
-    cargarDatos();
   };
 
   const abrirModalEditar = (ficha: any) => {
@@ -192,7 +198,6 @@ const FichasFormacionPage = () => {
       case 'entregas':
         return <span className="text-sm text-gray-600">{item.entregaMaterials?.length || 0}</span>;
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -201,16 +206,12 @@ const FichasFormacionPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
+              <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -219,25 +220,22 @@ const FichasFormacionPage = () => {
     }
   };
 
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
-
-  function toggleColumn(uid: string): void {
-    throw new Error('Function not implemented.');
+  function toggleColumn(uid: string) {
+    setVisibleColumns(prev => {
+      const copy = new Set(prev);
+      if (copy.has(uid)) copy.delete(uid);
+      else copy.add(uid);
+      return copy;
+    });
   }
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast>{toastMsg}</Toast>}
+      {toastMsg && (
+        <div className="fixed top-6 right-6 z-50 bg-[#0D1324] text-white px-4 py-2 rounded shadow-lg">
+          {toastMsg}
+        </div>
+      )}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -285,15 +283,13 @@ const FichasFormacionPage = () => {
                         ))}
                       </DropdownMenu>
                     </Dropdown>
-                    {permisos.puedeCrear ? (
-                      <Button
-                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                        endContent={<PlusIcon />}
-                        onPress={onOpen}
-                      >
-                        Nueva Ficha
-                      </Button>
-                    ) : null}
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={onOpen}
+                    >
+                      Nueva Ficha
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -351,23 +347,17 @@ const FichasFormacionPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg break-words max-w-[14rem]">{ficha.nombre}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem onPress={() => abrirModalEditar(ficha)} key="editar">Editar</DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem onPress={() => eliminar(ficha.id)} key="eliminar">Eliminar</DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  ) : null}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(ficha)} key="editar">Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(ficha.id)} key="eliminar">Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Titulado: </span>{ficha.idTitulado?.nombre || '—'}

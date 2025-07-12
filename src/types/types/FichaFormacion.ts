@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export interface Titulado {
   id: number;
   nombre: string;

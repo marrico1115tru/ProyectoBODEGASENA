@@ -20,3 +20,10 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 
   return response.data;
 };
+export const recuperarPassword = async (email: string): Promise<void> => {
+  await axios.post(
+    'http://localhost:3000/auth/recuperar',
+    { email },
+    { withCredentials: true }
+  );
+};

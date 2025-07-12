@@ -1,26 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
-  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
-  Checkbox, useDisclosure, type SortDescriptor,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
 } from '@heroui/react';
 import {
-  getMovimientos, createMovimiento, updateMovimiento, deleteMovimiento,
+  getMovimientos,
+  createMovimiento,
+  updateMovimiento,
+  deleteMovimiento,
 } from '@/Api/Movimientosform';
 import { getInventarios } from '@/Api/inventario';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService'; 
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-const ID_ROL_ACTUAL = 1; 
-
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -33,15 +44,7 @@ const columns = [
 const INITIAL_VISIBLE_COLUMNS = ['id', 'tipo', 'cantidad', 'fecha', 'inventario', 'actions'];
 
 const MovimientosPage = () => {
-  // Estado de permisos
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
-  // Estado de datos
+  // Estados
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
@@ -68,28 +71,10 @@ const MovimientosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  // Cargar permisos y datos al montar
+  // Carga inicial de datos
   useEffect(() => {
-    cargarPermisos();
+    cargarDatos();
   }, []);
-
-  const cargarPermisos = async () => {
-    try {
-      const permisosObtenidos = await getPermisosPorRuta('/MovimientoInventarioPage', ID_ROL_ACTUAL);
-      setPermisos(permisosObtenidos);
-      if (permisosObtenidos.puedeVer) {
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-    }
-  };
 
   const cargarDatos = async () => {
     try {
@@ -103,7 +88,6 @@ const MovimientosPage = () => {
 
   // CRUD
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
     if (!confirm('¿Eliminar movimiento? No se podrá recuperar.')) return;
     await deleteMovimiento(id);
     notify(`🗑️ Movimiento eliminado: ID ${id}`);
@@ -111,28 +95,55 @@ const MovimientosPage = () => {
   };
 
   const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
+    if (!cantidad || cantidad <= 0) {
+      notify('La cantidad debe ser mayor que cero');
+      return;
+    }
+    if (!fecha) {
+      notify('La fecha es obligatoria');
+      return;
+    }
+    if (!idInventario) {
+      notify('Debe seleccionar un inventario');
+      return;
+    }
+
+    const inventarioSeleccionado = inventarios.find(inv => inv.idProductoInventario === Number(idInventario));
+    if (!inventarioSeleccionado) {
+      notify('Inventario seleccionado no válido');
+      return;
+    }
+
     const payload = {
       tipoMovimiento,
       cantidad,
       fechaMovimiento: fecha,
-      idProductoInventario: idInventario ? { idProductoInventario: Number(idInventario) } : null,
+      idProductoInventario: {
+        idProductoInventario: inventarioSeleccionado.idProductoInventario,
+        stock: inventarioSeleccionado.stock,
+        nombre: inventarioSeleccionado.nombre,
+        cantidadDisponible: inventarioSeleccionado.cantidadDisponible,
+      },
     };
-    if (editId) {
-      await updateMovimiento(editId, payload);
-      notify('✏️ Movimiento actualizado');
-    } else {
-      await createMovimiento(payload);
-      notify('✅ Movimiento creado');
+
+    try {
+      if (editId) {
+        await updateMovimiento(editId, payload);
+        notify('✏️ Movimiento actualizado');
+      } else {
+        await createMovimiento(payload);
+        notify('✅ Movimiento creado');
+      }
+      limpiarForm();
+      onClose();
+      cargarDatos();
+    } catch (error) {
+      notify('Error guardando movimiento');
+      console.error(error);
     }
-    limpiarForm();
-    onClose();
-    cargarDatos();
   };
 
   const abrirModalEditar = (m: any) => {
-    if (!permisos.puedeEditar) return;
     setEditId(m.id);
     setTipoMovimiento(m.tipoMovimiento);
     setCantidad(m.cantidad);
@@ -177,7 +188,7 @@ const MovimientosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado de celdas con control de permisos en acciones
+  // Renderizado de celdas
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'tipo':
@@ -189,7 +200,6 @@ const MovimientosPage = () => {
       case 'inventario':
         return <span className="text-sm text-gray-600">{item.idProductoInventario?.idProductoInventario ?? '—'}</span>;
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -198,12 +208,8 @@ const MovimientosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">Editar</DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">Eliminar</DropdownItem>
-              ) : null}
+              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">Editar</DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">Eliminar</DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -220,100 +226,10 @@ const MovimientosPage = () => {
     });
   };
 
-  // Si no tiene permiso para ver, muestra mensaje y no carga la vista
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
-
-  // Contenido superior y inferior para la tabla
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por tipo, fecha o inventario"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={setFilterValue}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns.filter((c) => c.uid !== 'actions').map((col) => (
-                <DropdownItem key={col.uid} className="py-1 px-2">
-                  <Checkbox
-                    isSelected={visibleColumns.has(col.uid)}
-                    onValueChange={() => toggleColumn(col.uid)}
-                    size="sm"
-                  >
-                    {col.name}
-                  </Checkbox>
-                </DropdownItem>
-              ))}
-            </DropdownMenu>
-          </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarForm();
-                onOpen();
-              }}
-            >
-              Nuevo Movimiento
-            </Button>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {movimientos.length} movimientos</span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
-    </div>
-  );
-
   return (
     <DefaultLayout>
       {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🔄 Movimientos de Inventario
@@ -323,13 +239,81 @@ const MovimientosPage = () => {
           </p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de movimientos"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por tipo, fecha o inventario"
+                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  <div className="flex gap-3">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns.filter((c) => c.uid !== 'actions').map((col) => (
+                          <DropdownItem key={col.uid} className="py-1 px-2">
+                            <Checkbox
+                              isSelected={visibleColumns.has(col.uid)}
+                              onValueChange={() => toggleColumn(col.uid)}
+                              size="sm"
+                            >
+                              {col.name}
+                            </Checkbox>
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={() => {
+                        limpiarForm();
+                        onOpen();
+                      }}
+                    >
+                      Nuevo Movimiento
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {movimientos.length} movimientos</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+              </div>
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
@@ -357,7 +341,6 @@ const MovimientosPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron movimientos</p>
@@ -369,28 +352,22 @@ const MovimientosPage = () => {
                   <h3 className="font-semibold text-lg">
                     {m.tipoMovimiento}: {m.cantidad}
                   </h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem onPress={() => abrirModalEditar(m)} key="editar">Editar</DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem onPress={() => eliminar(m.id)} key="eliminar">Eliminar</DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem onPress={() => abrirModalEditar(m)} key="editar">Editar</DropdownItem>
+                      <DropdownItem onPress={() => eliminar(m.id)} key="eliminar">Eliminar</DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Fecha:</span> {m.fechaMovimiento}
@@ -405,7 +382,6 @@ const MovimientosPage = () => {
           ))}
         </div>
 
-        {/* Modal CRUD */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -417,7 +393,6 @@ const MovimientosPage = () => {
               <>
                 <ModalHeader>{editId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  {/* Tipo movimiento */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Tipo de movimiento
@@ -426,13 +401,11 @@ const MovimientosPage = () => {
                       value={tipoMovimiento}
                       onChange={(e) => setTipoMovimiento(e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="ENTRADA">ENTRADA</option>
                       <option value="SALIDA">SALIDA</option>
                     </select>
                   </div>
-                  {/* Cantidad */}
                   <Input
                     label="Cantidad"
                     placeholder="Ej: 100"
@@ -440,18 +413,14 @@ const MovimientosPage = () => {
                     value={cantidad.toString()}
                     onValueChange={(v) => setCantidad(v ? Number(v) : '')}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
-                  {/* Fecha */}
                   <Input
                     label="Fecha (YYYY-MM-DD)"
                     placeholder="2025-06-21"
                     value={fecha}
                     onValueChange={setFecha}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
-                  {/* Inventario */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Producto Inventario
@@ -460,7 +429,6 @@ const MovimientosPage = () => {
                       value={idInventario}
                       onChange={(e) => setIdInventario(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="">Seleccione un inventario</option>
                       {inventarios.map((inv) => (
@@ -472,14 +440,8 @@ const MovimientosPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="flat"
-                    onPress={guardar}
-                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
-                  >
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>
