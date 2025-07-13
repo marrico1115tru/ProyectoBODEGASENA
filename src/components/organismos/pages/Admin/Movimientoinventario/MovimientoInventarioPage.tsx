@@ -32,6 +32,7 @@ import { getInventarios } from '@/Api/inventario';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import Toast from "@/components/ui/Toast"; 
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -56,14 +57,13 @@ const MovimientosPage = () => {
     direction: 'ascending',
   });
 
-  // Formulario modal
+ 
   const [tipoMovimiento, setTipoMovimiento] = useState('ENTRADA');
   const [cantidad, setCantidad] = useState<number | ''>('');
   const [fecha, setFecha] = useState('');
   const [idInventario, setIdInventario] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  // UI
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
   const [toastMsg, setToastMsg] = useState('');
   const notify = (msg: string) => {
@@ -71,7 +71,7 @@ const MovimientosPage = () => {
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  // Carga inicial de datos
+ 
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -86,7 +86,7 @@ const MovimientosPage = () => {
     }
   };
 
-  // CRUD
+  
   const eliminar = async (id: number) => {
     if (!confirm('¿Eliminar movimiento? No se podrá recuperar.')) return;
     await deleteMovimiento(id);
@@ -114,9 +114,11 @@ const MovimientosPage = () => {
       return;
     }
 
+   
     const payload = {
+      id: editId ?? 0, 
       tipoMovimiento,
-      cantidad,
+      cantidad: Number(cantidad),
       fechaMovimiento: fecha,
       idProductoInventario: {
         idProductoInventario: inventarioSeleccionado.idProductoInventario,
@@ -160,7 +162,7 @@ const MovimientosPage = () => {
     setIdInventario('');
   };
 
-  // Filtrado, paginación y orden
+  
   const filtered = useMemo(() => {
     if (!filterValue) return movimientos;
     return movimientos.filter((m) =>
@@ -188,7 +190,7 @@ const MovimientosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado de celdas
+
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'tipo':

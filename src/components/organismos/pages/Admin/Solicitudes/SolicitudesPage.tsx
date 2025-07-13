@@ -29,12 +29,9 @@ import {
   deleteSolicitud,
 } from '@/Api/Solicitudes';
 import { getUsuarios } from '@/Api/Usuariosform';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-const ID_ROL_ACTUAL = 3; 
 
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
@@ -62,13 +59,6 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const SolicitudesPage = () => {
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
@@ -97,27 +87,8 @@ const SolicitudesPage = () => {
   };
 
   useEffect(() => {
-    cargarPermisos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    cargarDatos();
   }, []);
-
-  const cargarPermisos = async () => {
-    try {
-      const permisosObtenidos = await getPermisosPorRuta('/SolicitudesPage', ID_ROL_ACTUAL);
-      setPermisos(permisosObtenidos);
-      if (permisosObtenidos.puedeVer) {
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-    }
-  };
 
   const cargarDatos = async () => {
     try {
@@ -130,7 +101,6 @@ const SolicitudesPage = () => {
   };
 
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
     if (!window.confirm('¿Eliminar solicitud? No se podrá recuperar.')) return;
     await deleteSolicitud(id);
     notify(`🗑️ Solicitud eliminada: ID ${id}`);
@@ -138,27 +108,50 @@ const SolicitudesPage = () => {
   };
 
   const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
+    if (!fechaSolicitud) {
+      notify('La fecha es obligatoria');
+      return;
+    }
+    if (!estado) {
+      notify('El estado es obligatorio');
+      return;
+    }
+    if (!idSolicitante) {
+      notify('Debe seleccionar un solicitante');
+      return;
+    }
+
+    const usuarioSeleccionado = usuarios.find((u: any) => u.id === Number(idSolicitante));
     const payload = {
       fechaSolicitud,
       estadoSolicitud: estado,
-      idUsuarioSolicitante: idSolicitante ? { id: Number(idSolicitante) } : undefined,
+      idUsuarioSolicitante: usuarioSeleccionado
+        ? {
+            id: usuarioSeleccionado.id,
+            nombre: usuarioSeleccionado.nombre,
+            apellido: usuarioSeleccionado.apellido,
+          }
+        : undefined,
     };
-    if (editId) {
-      await updateSolicitud(editId, payload);
-      notify('✏️ Solicitud actualizada');
-    } else {
-      await createSolicitud(payload);
-      notify('✅ Solicitud creada');
+
+    try {
+      if (editId) {
+        await updateSolicitud(editId, payload);
+        notify('✏️ Solicitud actualizada');
+      } else {
+        await createSolicitud(payload);
+        notify('✅ Solicitud creada');
+      }
+      limpiarForm();
+      onClose();
+      cargarDatos();
+    } catch (error) {
+      notify('Error guardando solicitud');
+      console.error(error);
     }
-    limpiarForm();
-    onClose();
-    cargarDatos();
   };
 
   const abrirModalEditar = (s: any) => {
-    if (!permisos.puedeEditar) return;
     setEditId(s.id);
     setFechaSolicitud(s.fechaSolicitud);
     setEstado(
@@ -252,7 +245,6 @@ const SolicitudesPage = () => {
           </span>
         );
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -266,18 +258,12 @@ const SolicitudesPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {[
-                permisos.puedeEditar ? (
-                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                    Editar
-                  </DropdownItem>
-                ) : null,
-                permisos.puedeEliminar ? (
-                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                    Eliminar
-                  </DropdownItem>
-                ) : null,
-              ].filter(Boolean)}
+              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                Editar
+              </DropdownItem>
+              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -294,18 +280,6 @@ const SolicitudesPage = () => {
     });
   };
 
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
-
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -320,6 +294,16 @@ const SolicitudesPage = () => {
           onClear={() => setFilterValue('')}
         />
         <div className="flex gap-3">
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nueva Solicitud
+          </Button>
           <Dropdown>
             <DropdownTrigger>
               <Button variant="flat">Columnas</Button>
@@ -340,18 +324,6 @@ const SolicitudesPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarForm();
-                onOpen();
-              }}
-            >
-              Nueva Solicitud
-            </Button>
-          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -447,34 +419,26 @@ const SolicitudesPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">ID {s.id}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {[
-                          permisos.puedeEditar ? (
-                            <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
-                              Editar
-                            </DropdownItem>
-                          ) : null,
-                          permisos.puedeEliminar ? (
-                            <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null,
-                        ].filter(Boolean)}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Fecha:</span> {s.fechaSolicitud}

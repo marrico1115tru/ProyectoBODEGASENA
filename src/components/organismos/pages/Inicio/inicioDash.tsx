@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import DefaultLayout from "@/layouts/default";
 import { Card } from "@/components/ui/card";
 import { UserGroupIcon, CubeIcon, Squares2X2Icon, ChartBarSquareIcon } from "@heroicons/react/24/outline";
@@ -238,7 +238,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Galería */}
+    
         <div className="mb-14">
           <h2 className="text-2xl font-bold mb-5 text-slate-700 border-b pb-2 border-gray-200">
             Galería Destacada

@@ -5,9 +5,9 @@ export const obtenerEstadisticasAreas = async () => {
   try {
     const res = await axios.get("http://localhost:3500/API/Areas");
 
-    const agrupadas = {};
+    const agrupadas: { [key: string]: number } = {};
 
-    res.data.forEach((area) => {
+    res.data.forEach((area: { centro_formacion: { nombre: any; }; }) => {
       const nombreCentro = area.centro_formacion.nombre;
       agrupadas[nombreCentro] = (agrupadas[nombreCentro] || 0) + 1;
     });

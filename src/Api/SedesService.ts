@@ -3,7 +3,6 @@ import { Sede, SedeFormValues } from '@/types/types/Sede';
 
 const API_URL = 'http://localhost:3000/sedes';
 
-// Config global (para incluir cookies, sesiones, etc.)
 const config = {
   withCredentials: true,
 };

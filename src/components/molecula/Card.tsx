@@ -1,6 +1,3 @@
-// src/components/molecules/Card.tsx
-import React from "react";
-
 interface CardProps {
   title: string;
   content: string;

@@ -1,4 +1,3 @@
-// src/pages/TituladosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,

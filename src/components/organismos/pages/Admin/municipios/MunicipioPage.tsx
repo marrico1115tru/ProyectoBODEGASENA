@@ -8,12 +8,9 @@ import {
 import {
   obtenerMunicipios, crearMunicipio, actualizarMunicipio, eliminarMunicipio,
 } from '@/Api/MunicipiosForm';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-const ID_ROL_ACTUAL = 1;
 
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
@@ -31,13 +28,6 @@ const columns = [
 const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'departamento', 'centros', 'actions'];
 
 const MunicipiosPage = () => {
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const [municipios, setMunicipios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
@@ -60,29 +50,8 @@ const MunicipiosPage = () => {
   };
 
   useEffect(() => {
-    cargarPermisos();
-    // eslint-disable-next-line
+    cargarMunicipios();
   }, []);
-
-  // 👇 CORREGIDO: usa permisosObtenidos DIRECTAMENTE
-  const cargarPermisos = async () => {
-    try {
-      const permisosObtenidos = await getPermisosPorRuta('/MunicipioPage', ID_ROL_ACTUAL);
-      console.log('Permisos recibidos:', permisosObtenidos);
-      setPermisos(permisosObtenidos);
-      if (permisosObtenidos.puedeVer) {
-        cargarMunicipios();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-    }
-  };
 
   const cargarMunicipios = async () => {
     try {
@@ -94,7 +63,6 @@ const MunicipiosPage = () => {
   };
 
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
     if (!window.confirm('¿Eliminar municipio? No se podrá recuperar.')) return;
     await eliminarMunicipio(id);
     notify(`🗑️ Municipio eliminado: ID ${id}`);
@@ -102,23 +70,33 @@ const MunicipiosPage = () => {
   };
 
   const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
-    const payload = { nombre, departamento };
-    if (editId) {
-      await actualizarMunicipio(editId, payload);
-      notify('✏️ Municipio actualizado');
-    } else {
-      await crearMunicipio(payload);
-      notify('✅ Municipio creado');
+    if (!nombre.trim()) {
+      notify('El nombre es obligatorio');
+      return;
     }
-    limpiarForm();
-    onClose();
-    cargarMunicipios();
+    if (!departamento.trim()) {
+      notify('El departamento es obligatorio');
+      return;
+    }
+    const payload = { nombre, departamento };
+    try {
+      if (editId) {
+        await actualizarMunicipio(editId, payload);
+        notify('✏️ Municipio actualizado');
+      } else {
+        await crearMunicipio(payload);
+        notify('✅ Municipio creado');
+      }
+      limpiarForm();
+      onClose();
+      cargarMunicipios();
+    } catch (error) {
+      notify('Error guardando municipio');
+      console.error(error);
+    }
   };
 
   const abrirModalEditar = (m: any) => {
-    if (!permisos.puedeEditar) return;
     setEditId(m.id);
     setNombre(m.nombre || '');
     setDepartamento(m.departamento || '');
@@ -169,7 +147,6 @@ const MunicipiosPage = () => {
       case 'centros':
         return <span className="text-sm text-gray-600">{item.centroFormacions?.length || 0}</span>;
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -178,18 +155,12 @@ const MunicipiosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {[
-                permisos.puedeEditar ? (
-                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                    Editar
-                  </DropdownItem>
-                ) : null,
-                permisos.puedeEliminar ? (
-                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                    Eliminar
-                  </DropdownItem>
-                ) : null,
-              ].filter(Boolean)}
+              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                Editar
+              </DropdownItem>
+              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -205,18 +176,6 @@ const MunicipiosPage = () => {
       return copy;
     });
   };
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   const topContent = (
     <div className="flex flex-col gap-4">
@@ -252,18 +211,16 @@ const MunicipiosPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarForm();
-                onOpen();
-              }}
-            >
-              Nuevo Municipio
-            </Button>
-          )}
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nuevo Municipio
+          </Button>
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -353,34 +310,26 @@ const MunicipiosPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">{m.nombre}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {[
-                          permisos.puedeEditar ? (
-                            <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
-                              Editar
-                            </DropdownItem>
-                          ) : null,
-                          permisos.puedeEliminar ? (
-                            <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null,
-                        ].filter(Boolean)}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Depto:</span> {m.departamento}
@@ -411,7 +360,6 @@ const MunicipiosPage = () => {
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
                   <Input
                     label="Departamento"
@@ -419,18 +367,13 @@ const MunicipiosPage = () => {
                     value={departamento}
                     onValueChange={setDepartamento}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
                 </ModalBody>
                 <ModalFooter>
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button
-                    variant="flat"
-                    onPress={guardar}
-                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
-                  >
+                  <Button variant="flat" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

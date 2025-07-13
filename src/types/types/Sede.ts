@@ -1,5 +1,3 @@
-// src/types/typesSede.ts
-
 import { CentroFormacion } from './typesCentroFormacion';
 
 export interface Sede {

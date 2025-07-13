@@ -29,12 +29,9 @@ import {
   deleteSede,
 } from '@/Api/SedesService';
 import { getCentrosFormacion } from '@/Api/centrosformacionTable';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-const ID_ROL_ACTUAL = 1; // Ajusta según el rol actual del usuario
 
 const Toast = ({ message }: { message: string }) => (
   <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
@@ -60,13 +57,6 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const SedesPage = () => {
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const [sedes, setSedes] = useState<any[]>([]);
   const [centros, setCentros] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
@@ -93,27 +83,8 @@ const SedesPage = () => {
   };
 
   useEffect(() => {
-    cargarPermisos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    cargarDatos();
   }, []);
-
-  const cargarPermisos = async () => {
-    try {
-      const permisosObtenidos = await getPermisosPorRuta('/SedesPage', ID_ROL_ACTUAL);
-      setPermisos(permisosObtenidos);
-      if (permisosObtenidos.puedeVer) {
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-    }
-  };
 
   const cargarDatos = async () => {
     try {
@@ -126,7 +97,6 @@ const SedesPage = () => {
   };
 
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
     if (!window.confirm('¿Eliminar sede? No se podrá recuperar.')) return;
     await deleteSede(id);
     notify(`🗑️ Sede eliminada: ID ${id}`);
@@ -134,27 +104,43 @@ const SedesPage = () => {
   };
 
   const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
+    if (!nombre.trim()) {
+      notify('El nombre es obligatorio');
+      return;
+    }
+    if (!ubicacion.trim()) {
+      notify('La ubicación es obligatoria');
+      return;
+    }
+    if (!idCentro) {
+      notify('Debe seleccionar un centro de formación');
+      return;
+    }
+
     const payload = {
       nombre,
       ubicacion,
-      idCentroFormacion: idCentro ? { id: Number(idCentro) } : null,
+      idCentroFormacion: { id: Number(idCentro) },
     };
-    if (editId) {
-      await updateSede(editId, payload);
-      notify('✏️ Sede actualizada');
-    } else {
-      await createSede(payload);
-      notify('✅ Sede creada');
+
+    try {
+      if (editId) {
+        await updateSede(editId, payload);
+        notify('✏️ Sede actualizada');
+      } else {
+        await createSede(payload);
+        notify('✅ Sede creada');
+      }
+      limpiarForm();
+      onClose();
+      cargarDatos();
+    } catch (error) {
+      notify('Error guardando sede');
+      console.error(error);
     }
-    limpiarForm();
-    onClose();
-    cargarDatos();
   };
 
   const abrirModalEditar = (s: any) => {
-    if (!permisos.puedeEditar) return;
     setEditId(s.id);
     setNombre(s.nombre || '');
     setUbicacion(s.ubicacion || '');
@@ -222,7 +208,6 @@ const SedesPage = () => {
           <span className="text-sm text-gray-600">{item.areas?.length || 0}</span>
         );
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -236,18 +221,12 @@ const SedesPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {[
-                permisos.puedeEditar ? (
-                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                    Editar
-                  </DropdownItem>
-                ) : null,
-                permisos.puedeEliminar ? (
-                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                    Eliminar
-                  </DropdownItem>
-                ) : null,
-              ].filter(Boolean)}
+              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                Editar
+              </DropdownItem>
+              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -263,18 +242,6 @@ const SedesPage = () => {
       return copy;
     });
   };
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   const topContent = (
     <div className="flex flex-col gap-4">
@@ -310,18 +277,16 @@ const SedesPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarForm();
-                onOpen();
-              }}
-            >
-              Nueva Sede
-            </Button>
-          )}
+          <Button
+            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+            endContent={<PlusIcon />}
+            onPress={() => {
+              limpiarForm();
+              onOpen();
+            }}
+          >
+            Nueva Sede
+          </Button>
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -418,34 +383,26 @@ const SedesPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">{s.nombre}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {[
-                          permisos.puedeEditar ? (
-                            <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
-                              Editar
-                            </DropdownItem>
-                          ) : null,
-                          permisos.puedeEliminar ? (
-                            <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null,
-                        ].filter(Boolean)}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="rounded-full text-[#0D1324]"
+                      >
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Ubicación:</span> {s.ubicacion}
@@ -480,7 +437,6 @@ const SedesPage = () => {
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
                   <Input
                     label="Ubicación"
@@ -488,9 +444,7 @@ const SedesPage = () => {
                     value={ubicacion}
                     onValueChange={setUbicacion}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
                   />
-                  {/* Centro de formación */}
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       Centro de Formación
@@ -499,7 +453,6 @@ const SedesPage = () => {
                       value={idCentro}
                       onChange={(e) => setIdCentro(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={!permisos.puedeCrear && !editId}
                     >
                       <option value="">Seleccione un centro</option>
                       {centros.map((c: any) => (
@@ -514,11 +467,7 @@ const SedesPage = () => {
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button
-                    variant="flat"
-                    onPress={guardar}
-                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
-                  >
+                  <Button variant="flat" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

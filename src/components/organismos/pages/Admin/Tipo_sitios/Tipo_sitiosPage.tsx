@@ -354,7 +354,7 @@ const TipoSitiosPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron tipos de sitio">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>

@@ -1,3 +1,5 @@
+import { ReactNode } from "react";
+
 export interface Rol {
   nombre: ReactNode;
   id: number;
