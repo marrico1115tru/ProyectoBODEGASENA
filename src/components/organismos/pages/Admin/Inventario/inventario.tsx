@@ -1,13 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Input, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
-  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
-  Checkbox, Select, SelectItem, useDisclosure, type SortDescriptor,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  Select,
+  SelectItem,
+  useDisclosure,
+  type SortDescriptor,
 } from '@heroui/react';
 
 import {
-  getInventarios, createInventario, updateInventario, deleteInventario,
+  getInventarios,
+  createInventario,
+  updateInventario,
+  deleteInventario,
 } from '@/Api/inventario';
 import { getProductos, createProducto } from '@/Api/Productosform';
 import { getSitios, createSitio } from '@/Api/SitioService';
@@ -20,19 +42,12 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-import type { InventarioFormValues } from '@/types/types/inventario';
-import type { ProductoFormValues } from '@/types/types/typesProductos';
-import type { SitioFormValues } from '@/types/types/Sitio';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
-const primaryBtn =
-  'bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow';
+const MySwal = withReactContent(Swal);
 
-// Componente Toast para mostrar mensajes
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 z-50 rounded bg-green-600 px-4 py-2 text-white shadow">
-    {message}
-  </div>
-);
+const primaryBtn = 'bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow';
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -41,12 +56,15 @@ const columns = [
   { name: 'Stock', uid: 'stock', sortable: true },
   { name: 'Acciones', uid: 'actions' },
 ] as const;
+
 type ColumnKey = (typeof columns)[number]['uid'];
+
 const DEFAULT_VISIBLE = new Set<ColumnKey>(['id', 'producto', 'sitio', 'stock', 'actions']);
 
 const ID_ROL_ACTUAL = 1;
 
 export default function InventarioPage() {
+  // Estados principales
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [sitios, setSitios] = useState<any[]>([]);
@@ -60,6 +78,7 @@ export default function InventarioPage() {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
+  // Form data y modales
   const [inv, setInv] = useState({ stock: '', idProductoId: '', fkSitioId: '' });
   const [invId, setInvId] = useState<number | null>(null);
   const invModal = useDisclosure();
@@ -70,14 +89,7 @@ export default function InventarioPage() {
   const [sit, setSit] = useState({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
   const sitModal = useDisclosure();
 
-  // Estado para mensaje toast
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (m: string) => {
-    setToastMsg(m);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
-
-  // Permisos
+  // Permisos y estado de carga
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -96,8 +108,9 @@ export default function InventarioPage() {
         if (permisosData.puedeVer) {
           await cargarDatos();
         }
-      } catch (e) {
+      } catch {
         setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
+        await MySwal.fire('Error', 'Error cargando permisos', 'error');
       } finally {
         setLoadingPermisos(false);
       }
@@ -108,8 +121,12 @@ export default function InventarioPage() {
   const cargarDatos = async () => {
     try {
       const [invD, prodD, sitD, catD, areaD, tipoD] = await Promise.all([
-        getInventarios(), getProductos(), getSitios(),
-        getCategoriasProductos(), getAreas(), getTiposSitio(),
+        getInventarios(),
+        getProductos(),
+        getSitios(),
+        getCategoriasProductos(),
+        getAreas(),
+        getTiposSitio(),
       ]);
       setInventarios(invD);
       setProductos(prodD);
@@ -119,129 +136,141 @@ export default function InventarioPage() {
       setTipos(tipoD);
     } catch (e) {
       console.error('Error cargando datos:', e);
+      await MySwal.fire('Error', 'Error cargando datos', 'error');
     }
   };
 
   const saveInv = async () => {
     if (!permisos.puedeCrear && !permisos.puedeEditar) {
-      notify('No tienes permiso para guardar');
+      await MySwal.fire('Acceso denegado', 'No tienes permiso para guardar', 'warning');
       return;
     }
     if (!inv.stock || !inv.idProductoId || !inv.fkSitioId) {
-      notify('Completa todos los campos');
+      await MySwal.fire('Error', 'Completa todos los campos', 'error');
       return;
     }
-    const payload: InventarioFormValues = {
+
+    const payload = {
       stock: Number(inv.stock),
       idProductoId: +inv.idProductoId,
       fkSitioId: +inv.fkSitioId,
     };
+
     try {
       if (invId) {
         if (!permisos.puedeEditar) {
-          notify('No tienes permiso para editar');
+          await MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
           return;
         }
         await updateInventario(invId, payload);
-        notify('Inventario actualizado');
+        await MySwal.fire('Éxito', 'Inventario actualizado', 'success');
       } else {
         if (!permisos.puedeCrear) {
-          notify('No tienes permiso para crear');
+          await MySwal.fire('Acceso denegado', 'No tienes permiso para crear', 'warning');
           return;
         }
         await createInventario(payload);
-        notify('Inventario creado');
+        await MySwal.fire('Éxito', 'Inventario creado', 'success');
       }
       invModal.onClose();
       setInv({ stock: '', idProductoId: '', fkSitioId: '' });
       setInvId(null);
-      setInventarios(await getInventarios());
-    } catch {
-      notify('Error al guardar inventario');
+      await cargarDatos();
+    } catch (e) {
+      console.error(e);
+      await MySwal.fire('Error', 'Error al guardar inventario', 'error');
     }
   };
 
   const delInv = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      notify('No tienes permiso para eliminar');
+      await MySwal.fire('Acceso denegado', 'No tienes permiso para eliminar', 'warning');
       return;
     }
-    if (!confirm('¿Eliminar registro?')) return;
+    const result = await MySwal.fire({
+      title: '¿Eliminar registro?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
     try {
       await deleteInventario(id);
-      notify('Inventario eliminado');
-      setInventarios(await getInventarios());
+      await MySwal.fire('Eliminado', 'Inventario eliminado correctamente', 'success');
+      await cargarDatos();
     } catch {
-      notify('Error al eliminar inventario');
+      await MySwal.fire('Error', 'Error al eliminar inventario', 'error');
     }
   };
 
   const saveProd = async () => {
     if (!prod.nombre || !prod.idCategoriaId) {
-      notify('Nombre y categoría requeridos');
+      await MySwal.fire('Error', 'Nombre y categoría requeridos', 'error');
       return;
     }
-    const payload: ProductoFormValues = {
-      nombre: prod.nombre,
-      descripcion: prod.descripcion || null,
-      idCategoriaId: +prod.idCategoriaId,
-    };
     try {
-      const nuevo = await createProducto(payload);
+      const nuevo = await createProducto({
+        nombre: prod.nombre,
+        descripcion: prod.descripcion || null,
+        idCategoriaId: +prod.idCategoriaId,
+      });
       setProductos(await getProductos());
       setInv(f => ({ ...f, idProductoId: String(nuevo.id) }));
       prodModal.onClose();
       setProd({ nombre: '', descripcion: '', idCategoriaId: '' });
-      notify('Producto creado');
+      await MySwal.fire('Éxito', 'Producto creado', 'success');
     } catch {
-      notify('Error al crear producto');
+      await MySwal.fire('Error', 'Error al crear producto', 'error');
     }
   };
 
   const saveSit = async () => {
     if (!sit.nombre || !sit.ubicacion || !sit.idAreaId || !sit.idTipoSitioId) {
-      notify('Completa todos los campos');
+      await MySwal.fire('Error', 'Completa todos los campos', 'error');
       return;
     }
-    const payload: SitioFormValues = {
-      nombre: sit.nombre,
-      ubicacion: sit.ubicacion,
-      idArea: { id: +sit.idAreaId },
-      idTipoSitio: { id: +sit.idTipoSitioId },
-    };
     try {
-      const nuevo = await createSitio(payload);
+      const nuevo = await createSitio({
+        nombre: sit.nombre,
+        ubicacion: sit.ubicacion,
+        idArea: { id: +sit.idAreaId },
+        idTipoSitio: { id: +sit.idTipoSitioId },
+      });
       setSitios(await getSitios());
       setInv(f => ({ ...f, fkSitioId: String(nuevo.id) }));
       sitModal.onClose();
       setSit({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
-      notify('Sitio creado');
+      await MySwal.fire('Éxito', 'Sitio creado', 'success');
     } catch {
-      notify('Error al crear sitio');
+      await MySwal.fire('Error', 'Error al crear sitio', 'error');
     }
   };
 
+  // Filtrado
   const filtered = useMemo(() => {
     if (!filter) return inventarios;
     return inventarios.filter(i =>
-      `${i.idProducto?.nombre ?? ''} ${i.fkSitio?.nombre ?? ''}`
-        .toLowerCase()
-        .includes(filter.toLowerCase())
+      `${i.idProducto?.nombre ?? ''} ${i.fkSitio?.nombre ?? ''}`.toLowerCase().includes(filter.toLowerCase())
     );
   }, [inventarios, filter]);
 
+  // Paginación y orden
   const totalPages = Math.max(1, Math.ceil(filtered.length / rows));
-
   const list = useMemo(() => {
     const slice = filtered.slice((page - 1) * rows, page * rows);
     const dir = sort.direction === 'ascending' ? 1 : -1;
     return [...slice].sort((a, b) => {
       const xa = sort.column === 'id' ? a.idProductoInventario : a[sort.column];
       const xb = sort.column === 'id' ? b.idProductoInventario : b[sort.column];
-      return xa === xb ? 0 : xa > xb ? dir : -dir;
+      if (xa === xb) return 0;
+      return xa > xb ? dir : -dir;
     });
   }, [filtered, page, rows, sort]);
 
+  // Render celdas
   const cell = (row: any, key: ColumnKey) => {
     switch (key) {
       case 'id': return row.idProductoInventario;
@@ -260,6 +289,7 @@ export default function InventarioPage() {
             <DropdownMenu>
               {permisos.puedeEditar ? (
                 <DropdownItem
+                  key={`editar-${row.idProductoInventario}`}
                   onPress={() => {
                     setInvId(row.idProductoInventario);
                     setInv({
@@ -269,13 +299,12 @@ export default function InventarioPage() {
                     });
                     invModal.onOpen();
                   }}
-                  key={`editar-${row.idProductoInventario}`}
                 >
                   Editar
                 </DropdownItem>
               ) : null}
               {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => delInv(row.idProductoInventario)} key={`eliminar-${row.idProductoInventario}`}>
+                <DropdownItem key={`eliminar-${row.idProductoInventario}`} onPress={() => delInv(row.idProductoInventario)}>
                   Eliminar
                 </DropdownItem>
               ) : null}
@@ -342,7 +371,7 @@ export default function InventarioPage() {
               ))}
             </DropdownMenu>
           </Dropdown>
-          {permisos.puedeCrear ? (
+          {permisos.puedeCrear && (
             <Button
               className={primaryBtn}
               endContent={<PlusIcon />}
@@ -354,7 +383,7 @@ export default function InventarioPage() {
             >
               Nuevo Inventario
             </Button>
-          ) : null}
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -380,8 +409,6 @@ export default function InventarioPage() {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
-
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -397,13 +424,9 @@ export default function InventarioPage() {
             topContent={topContent}
             bottomContent={
               <div className="flex items-center justify-center gap-2 p-2">
-                <Button size="sm" variant="flat" disabled={page === 1} onPress={() => setPage(p => p - 1)}>
-                  Anterior
-                </Button>
+                <Button size="sm" variant="flat" disabled={page === 1} onPress={() => setPage(p => p - 1)}>Anterior</Button>
                 <Pagination isCompact page={page} total={totalPages} onChange={setPage} showControls />
-                <Button size="sm" variant="flat" disabled={page === totalPages} onPress={() => setPage(p => p + 1)}>
-                  Siguiente
-                </Button>
+                <Button size="sm" variant="flat" disabled={page === totalPages} onPress={() => setPage(p => p + 1)}>Siguiente</Button>
               </div>
             }
             sortDescriptor={sort}
@@ -411,22 +434,15 @@ export default function InventarioPage() {
             classNames={{ th: 'bg-[#e8ecf4] py-3 px-4 text-sm font-semibold text-[#0D1324]', td: 'py-3 px-4 align-middle' }}
           >
             <TableHeader columns={columns.filter(c => visible.has(c.uid))}>
-              {col => (
-                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}>
-                  {col.name}
-                </TableColumn>
-              )}
+              {col => <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}>{col.name}</TableColumn>}
             </TableHeader>
             <TableBody items={list} emptyContent="No se encontraron registros">
-              {row => (
-                <TableRow key={row.idProductoInventario}>
-                  {key => <TableCell>{cell(row, key as ColumnKey)}</TableCell>}
-                </TableRow>
-              )}
+              {row => <TableRow key={row.idProductoInventario}>{key => <TableCell>{cell(row, key as ColumnKey)}</TableCell>}</TableRow>}
             </TableBody>
           </Table>
         </div>
 
+        {/* Mobile cards */}
         <div className="grid gap-4 md:hidden">
           {list.length ? (
             list.map(i => (
@@ -459,10 +475,7 @@ export default function InventarioPage() {
                             </DropdownItem>
                           ) : null}
                           {permisos.puedeEliminar ? (
-                            <DropdownItem
-                              onPress={() => delInv(i.idProductoInventario)}
-                              key={`eliminar-${i.idProductoInventario}`}
-                            >
+                            <DropdownItem onPress={() => delInv(i.idProductoInventario)} key={`eliminar-${i.idProductoInventario}`}>
                               Eliminar
                             </DropdownItem>
                           ) : null}
@@ -470,12 +483,8 @@ export default function InventarioPage() {
                       </Dropdown>
                     ) : null}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Sitio:</span> {i.fkSitio?.nombre ?? '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Stock:</span> {i.stock}
-                  </p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Sitio:</span> {i.fkSitio?.nombre ?? '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Stock:</span> {i.stock}</p>
                   <p className="text-xs text-gray-400">ID: {i.idProductoInventario}</p>
                 </CardContent>
               </Card>
@@ -495,17 +504,13 @@ export default function InventarioPage() {
                 <Select label="Producto" className="flex-1" selectedKeys={inv.idProductoId ? new Set([inv.idProductoId]) : new Set()} onSelectionChange={k => setInv(f => ({ ...f, idProductoId: [...k][0] as string }))}>
                   {productos.map(p => <SelectItem key={p.id}>{p.nombre}</SelectItem>)}
                 </Select>
-                <Button isIconOnly variant="flat" className={primaryBtn} onPress={prodModal.onOpen}>
-                  <PlusIcon size={18} />
-                </Button>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={prodModal.onOpen}><PlusIcon size={18} /></Button>
               </div>
               <div className="flex items-end gap-2">
                 <Select label="Sitio" className="flex-1" selectedKeys={inv.fkSitioId ? new Set([inv.fkSitioId]) : new Set()} onSelectionChange={k => setInv(f => ({ ...f, fkSitioId: [...k][0] as string }))}>
                   {sitios.map(s => <SelectItem key={s.id}>{s.nombre}</SelectItem>)}
                 </Select>
-                <Button isIconOnly variant="flat" className={primaryBtn} onPress={sitModal.onOpen}>
-                  <PlusIcon size={18} />
-                </Button>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={sitModal.onOpen}><PlusIcon size={18} /></Button>
               </div>
             </ModalBody>
             <ModalFooter>

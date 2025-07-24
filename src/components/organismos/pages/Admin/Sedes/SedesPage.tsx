@@ -33,11 +33,10 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -56,13 +55,11 @@ const INITIAL_VISIBLE_COLUMNS = [
   'actions',
 ];
 
-const SedesPage = () => {
+export default function SedesPage() {
   const [sedes, setSedes] = useState<any[]>([]);
   const [centros, setCentros] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -76,11 +73,6 @@ const SedesPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   useEffect(() => {
     cargarDatos();
@@ -93,27 +85,42 @@ const SedesPage = () => {
       setCentros(cfs);
     } catch (err) {
       console.error('Error cargando sedes', err);
+      await MySwal.fire('Error', 'No se pudo cargar las sedes y centros', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
-    if (!window.confirm('¿Eliminar sede? No se podrá recuperar.')) return;
-    await deleteSede(id);
-    notify(`🗑️ Sede eliminada: ID ${id}`);
-    cargarDatos();
+    const result = await MySwal.fire({
+      title: '¿Eliminar sede?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteSede(id);
+      await MySwal.fire('Eliminada', `Sede eliminada: ID ${id}`, 'success');
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'No se pudo eliminar la sede', 'error');
+    }
   };
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      notify('El nombre es obligatorio');
+      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
       return;
     }
     if (!ubicacion.trim()) {
-      notify('La ubicación es obligatoria');
+      await MySwal.fire('Error', 'La ubicación es obligatoria', 'error');
       return;
     }
     if (!idCentro) {
-      notify('Debe seleccionar un centro de formación');
+      await MySwal.fire('Error', 'Debe seleccionar un centro de formación', 'error');
       return;
     }
 
@@ -126,17 +133,17 @@ const SedesPage = () => {
     try {
       if (editId) {
         await updateSede(editId, payload);
-        notify('✏️ Sede actualizada');
+        await MySwal.fire('Actualizada', 'Sede actualizada', 'success');
       } else {
         await createSede(payload);
-        notify('✅ Sede creada');
+        await MySwal.fire('Creada', 'Sede creada', 'success');
       }
       limpiarForm();
       onClose();
-      cargarDatos();
+      await cargarDatos();
     } catch (error) {
-      notify('Error guardando sede');
       console.error(error);
+      await MySwal.fire('Error', 'Error guardando la sede', 'error');
     }
   };
 
@@ -155,21 +162,16 @@ const SedesPage = () => {
     setIdCentro('');
   };
 
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? sedes.filter((s) =>
-            (
-              `${s.nombre} ${s.ubicacion} ${s.idCentroFormacion?.nombre || ''}`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
-          )
-        : sedes,
-    [sedes, filterValue]
-  );
+  const filtered = useMemo(() => {
+    if (!filterValue) return sedes;
+    return sedes.filter((s) =>
+      `${s.nombre} ${s.ubicacion} ${s.idCentroFormacion?.nombre || ''}`
+        .toLowerCase()
+        .includes(filterValue.toLowerCase())
+    );
+  }, [sedes, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -198,25 +200,14 @@ const SedesPage = () => {
       case 'ubicacion':
         return <span className="text-sm text-gray-600">{item.ubicacion}</span>;
       case 'centro':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idCentroFormacion?.nombre || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idCentroFormacion?.nombre || '—'}</span>;
       case 'areas':
-        return (
-          <span className="text-sm text-gray-600">{item.areas?.length || 0}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.areas?.length || 0}</span>;
       case 'actions':
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
@@ -238,7 +229,8 @@ const SedesPage = () => {
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
+      if (copy.has(key)) copy.delete(key);
+      else copy.add(key);
       return copy;
     });
   };
@@ -314,11 +306,11 @@ const SedesPage = () => {
 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+      <Button isDisabled={page === 1} size="sm" variant="flat" onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+      <Button isDisabled={page === pages} size="sm" variant="flat" onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -326,19 +318,12 @@ const SedesPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🏢 Gestión de Sedes
-          </h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra las sedes y sus áreas.
-          </p>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🏢 Gestión de Sedes</h1>
+          <p className="text-sm text-gray-600">Consulta y administra las sedes y sus áreas.</p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de sedes"
@@ -354,11 +339,7 @@ const SedesPage = () => {
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
-                <TableColumn
-                  key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 260 : undefined}
-                >
+                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'} width={col.uid === 'nombre' ? 260 : undefined}>
                   {col.name}
                 </TableColumn>
               )}
@@ -373,82 +354,47 @@ const SedesPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
+          {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron sedes</p>
+          ) : (
+            sorted.map((s) => (
+              <Card key={s.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg">{s.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>Editar</DropdownItem>
+                        <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>Eliminar</DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Ubicación:</span> {s.ubicacion}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Centro:</span> {s.idCentroFormacion?.nombre || '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Áreas:</span> {s.areas?.length || 0}</p>
+                  <p className="text-xs text-gray-400">ID: {s.id}</p>
+                </CardContent>
+              </Card>
+            ))
           )}
-          {sorted.map((s) => (
-            <Card key={s.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">{s.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Ubicación:</span> {s.ubicacion}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Centro:</span> {s.idCentroFormacion?.nombre || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Áreas:</span> {s.areas?.length || 0}
-                </p>
-                <p className="text-xs text-gray-400">ID: {s.id}</p>
-              </CardContent>
-            </Card>
-          ))}
         </div>
 
-        {/* Modal CRUD */}
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
             {(onCloseLocal) => (
               <>
                 <ModalHeader>{editId ? 'Editar Sede' : 'Nueva Sede'}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  <Input
-                    label="Nombre"
-                    placeholder="Ej: Sede Principal"
-                    value={nombre}
-                    onValueChange={setNombre}
-                    radius="sm"
-                  />
-                  <Input
-                    label="Ubicación"
-                    placeholder="Dirección física"
-                    value={ubicacion}
-                    onValueChange={setUbicacion}
-                    radius="sm"
-                  />
+                  <Input label="Nombre" placeholder="Ej: Sede Principal" value={nombre} onValueChange={setNombre} radius="sm" />
+                  <Input label="Ubicación" placeholder="Dirección física" value={ubicacion} onValueChange={setUbicacion} radius="sm" />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Centro de Formación
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Centro de Formación</label>
                     <select
                       value={idCentro}
                       onChange={(e) => setIdCentro(Number(e.target.value) || '')}
@@ -456,20 +402,14 @@ const SedesPage = () => {
                     >
                       <option value="">Seleccione un centro</option>
                       {centros.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                        </option>
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
                       ))}
                     </select>
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
                 </ModalFooter>
               </>
             )}
@@ -478,6 +418,4 @@ const SedesPage = () => {
       </div>
     </DefaultLayout>
   );
-};
-
-export default SedesPage;
+}

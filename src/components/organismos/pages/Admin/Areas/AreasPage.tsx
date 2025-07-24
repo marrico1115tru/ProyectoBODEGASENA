@@ -1,73 +1,46 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from "react";
+import {
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
+  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
+  Checkbox, useDisclosure, type SortDescriptor
+} from "@heroui/react";
 
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  Input,
-  Button,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  DropdownTrigger,
-  Pagination,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Checkbox,
-  useDisclosure,
-  type SortDescriptor,
-} from '@heroui/react';
+  getAreas, createArea, updateArea, deleteArea
+} from "@/Api/AreasService";
 
-import {
-  getAreas,
-  createArea,
-  updateArea,
-  deleteArea,
-} from '@/Api/AreasService';
+import { getPermisosPorRuta } from "@/Api/getPermisosPorRuta/PermisosService";
 
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
+import DefaultLayout from "@/layouts/default";
+import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
 
-import DefaultLayout from '@/layouts/default';
-import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+
+const MySwal = withReactContent(Swal);
 
 const ID_ROL_ACTUAL = 1;
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
-
 const columns = [
-  { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Nombre', uid: 'nombreArea', sortable: false },
-  { name: 'Acciones', uid: 'actions' },
+  { name: "ID", uid: "id", sortable: true },
+  { name: "Nombre", uid: "nombreArea", sortable: false },
+  { name: "Acciones", uid: "actions" }
 ];
 
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombreArea', 'actions'];
+const INITIAL_VISIBLE_COLUMNS = ["id", "nombreArea", "actions"];
 
 const AreasPage = () => {
   const [areas, setAreas] = useState<any[]>([]);
-  const [filterValue, setFilterValue] = useState('');
+  const [filterValue, setFilterValue] = useState("");
   const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
-  });
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: "id", direction: "ascending" });
 
-  const [nombre, setNombre] = useState('');
+  const [nombre, setNombre] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
   const [permisos, setPermisos] = useState({
@@ -77,25 +50,20 @@ const AreasPage = () => {
     puedeEliminar: false,
   });
 
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
-
   useEffect(() => {
     cargarPermisos();
   }, []);
 
   const cargarPermisos = async () => {
     try {
-      const p = await getPermisosPorRuta('/AreasPage', ID_ROL_ACTUAL);
+      const p = await getPermisosPorRuta("/AreasPage", ID_ROL_ACTUAL);
       setPermisos(p);
       if (p.puedeVer) {
         cargarAreas();
       }
     } catch (error) {
-      console.error('Error al cargar permisos:', error);
-      notify('Error al cargar permisos');
+      console.error("Error al cargar permisos:", error);
+      await MySwal.fire("Error", "Error al cargar permisos", "error");
     }
   };
 
@@ -104,42 +72,52 @@ const AreasPage = () => {
       const data = await getAreas();
       setAreas(data);
     } catch (error) {
-      console.error('Error al cargar áreas:', error);
-      notify('Error al cargar áreas');
+      console.error("Error al cargar áreas:", error);
+      await MySwal.fire("Error", "Error al cargar áreas", "error");
     }
   };
 
+  // Función eliminar con SweetAlert2
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar área? No se podrá recuperar.')) return;
-    try {
-      await deleteArea(id);
-      notify(`🗑️ Área eliminada: ID ${id}`);
-      cargarAreas();
-    } catch (error) {
-      console.error('Error al eliminar área:', error);
-      notify('Error al eliminar área');
+    const result = await MySwal.fire({
+      title: "¿Eliminar área?",
+      text: "No se podrá recuperar.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteArea(id);
+        await MySwal.fire("Eliminado", `Área eliminada: ID ${id}`, "success");
+        cargarAreas();
+      } catch (error) {
+        await MySwal.fire("Error", "Error al eliminar área", "error");
+      }
     }
   };
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      notify('El nombre es obligatorio');
+      await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
       return;
     }
+
     const payload = { nombreArea: nombre };
     try {
       if (editId) {
         await updateArea(editId, payload);
-        notify('✅ Área actualizada');
+        await MySwal.fire("Éxito", "Área actualizada", "success");
       } else {
         await createArea(payload);
-        notify('✅ Área creada');
+        await MySwal.fire("Éxito", "Área creada", "success");
       }
       cerrarModal();
       cargarAreas();
     } catch (error) {
-      console.error('Error al guardar área:', error);
-      notify('Error al guardar área');
+      await MySwal.fire("Error", "Error al guardar área", "error");
     }
   };
 
@@ -151,15 +129,13 @@ const AreasPage = () => {
 
   const cerrarModal = () => {
     setEditId(null);
-    setNombre('');
+    setNombre("");
     onClose();
   };
 
   const filtered = useMemo(() => {
     return filterValue
-      ? areas.filter((a) =>
-          (a.nombreArea || '').toLowerCase().includes(filterValue.toLowerCase())
-        )
+      ? areas.filter((a) => (a.nombreArea || "").toLowerCase().includes(filterValue.toLowerCase()))
       : areas;
   }, [areas, filterValue]);
 
@@ -176,16 +152,16 @@ const AreasPage = () => {
     items.sort((a, b) => {
       const x = a[column as keyof typeof a];
       const y = b[column as keyof typeof b];
-      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+      return x === y ? 0 : (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
     });
     return items;
   }, [sliced, sortDescriptor]);
 
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
-      case 'nombreArea':
-        return <span className="font-medium text-gray-800">{item.nombreArea || '—'}</span>;
-      case 'actions':
+      case "nombreArea":
+        return <span className="font-medium text-gray-800">{item.nombreArea || "—"}</span>;
+      case "actions":
         if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
@@ -209,7 +185,7 @@ const AreasPage = () => {
           </Dropdown>
         );
       default:
-        return item[columnKey as keyof typeof item] || '—';
+        return item[columnKey as keyof typeof item] || "—";
     }
   };
 
@@ -235,7 +211,6 @@ const AreasPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -260,7 +235,7 @@ const AreasPage = () => {
                     startContent={<SearchIcon className="text-[#0D1324]" />}
                     value={filterValue}
                     onValueChange={setFilterValue}
-                    onClear={() => setFilterValue('')}
+                    onClear={() => setFilterValue("")}
                   />
                   <div className="flex gap-3">
                     <Dropdown>
@@ -269,7 +244,7 @@ const AreasPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          .filter((c) => c.uid !== 'actions')
+                          .filter((c) => c.uid !== "actions")
                           .map((col) => (
                             <DropdownItem key={col.uid} className="py-1 px-2">
                               <Checkbox
@@ -318,11 +293,21 @@ const AreasPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === 1}
+                  onPress={() => setPage(page - 1)}
+                >
                   Anterior
                 </Button>
                 <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === pages}
+                  onPress={() => setPage(page + 1)}
+                >
                   Siguiente
                 </Button>
               </div>
@@ -330,16 +315,16 @@ const AreasPage = () => {
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
+              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
+              td: "align-middle py-3 px-4",
             }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
                 <TableColumn
                   key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombreArea' ? 300 : undefined}
+                  align={col.uid === "actions" ? "center" : "start"}
+                  width={col.uid === "nombreArea" ? 300 : undefined}
                 >
                   {col.name}
                 </TableColumn>
@@ -355,48 +340,12 @@ const AreasPage = () => {
           </Table>
         </div>
 
-        {/* Tarjetas Móvil */}
-        <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron áreas</p>}
-          {sorted.map((area) => (
-            <Card key={area.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{area.nombreArea}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem key={`editar-${area.id}`} onPress={() => abrirModalEditar(area)}>
-                            Editar
-                          </DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem key={`eliminar-${area.id}`} onPress={() => eliminar(area.id)}>
-                            Eliminar
-                          </DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
-                </div>
-                <p className="text-xs text-gray-400">ID: {area.id}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         {/* Modal */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center">
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
               <>
-                <ModalHeader>{editId ? 'Editar Área' : 'Nueva Área'}</ModalHeader>
+                <ModalHeader>{editId ? "Editar Área" : "Nueva Área"}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
                     label="Nombre"
@@ -404,14 +353,15 @@ const AreasPage = () => {
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
+                    autoFocus
                   />
                 </ModalBody>
-                <ModalFooter>
+                <ModalFooter className="flex justify-end gap-3">
                   <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
                   <Button color="primary" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
+                    {editId ? "Actualizar" : "Crear"}
                   </Button>
                 </ModalFooter>
               </>

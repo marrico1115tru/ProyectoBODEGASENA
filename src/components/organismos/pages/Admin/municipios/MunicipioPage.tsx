@@ -1,22 +1,41 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
-  Input, Button, Dropdown, DropdownMenu, DropdownItem, DropdownTrigger,
-  Pagination, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader,
-  Checkbox, useDisclosure, type SortDescriptor,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+  Pagination,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Checkbox,
+  useDisclosure,
+  type SortDescriptor,
 } from '@heroui/react';
 import {
-  obtenerMunicipios, crearMunicipio, actualizarMunicipio, eliminarMunicipio,
+  obtenerMunicipios,
+  crearMunicipio,
+  actualizarMunicipio,
+  eliminarMunicipio,
 } from '@/Api/MunicipiosForm';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -43,11 +62,6 @@ const MunicipiosPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   useEffect(() => {
     cargarMunicipios();
@@ -59,40 +73,55 @@ const MunicipiosPage = () => {
       setMunicipios(data);
     } catch (err) {
       console.error('Error cargando municipios', err);
+      await MySwal.fire('Error', 'No se pudo cargar los municipios', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
-    if (!window.confirm('¿Eliminar municipio? No se podrá recuperar.')) return;
-    await eliminarMunicipio(id);
-    notify(`🗑️ Municipio eliminado: ID ${id}`);
-    cargarMunicipios();
+    const result = await MySwal.fire({
+      title: '¿Eliminar municipio?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await eliminarMunicipio(id);
+      await MySwal.fire('Eliminado', `Municipio eliminado: ID ${id}`, 'success');
+      await cargarMunicipios();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'No se pudo eliminar el municipio', 'error');
+    }
   };
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      notify('El nombre es obligatorio');
+      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
       return;
     }
     if (!departamento.trim()) {
-      notify('El departamento es obligatorio');
+      await MySwal.fire('Error', 'El departamento es obligatorio', 'error');
       return;
     }
     const payload = { nombre, departamento };
     try {
       if (editId) {
         await actualizarMunicipio(editId, payload);
-        notify('✏️ Municipio actualizado');
+        await MySwal.fire('Actualizado', 'Municipio actualizado', 'success');
       } else {
         await crearMunicipio(payload);
-        notify('✅ Municipio creado');
+        await MySwal.fire('Creado', 'Municipio creado', 'success');
       }
       limpiarForm();
       onClose();
-      cargarMunicipios();
+      await cargarMunicipios();
     } catch (error) {
-      notify('Error guardando municipio');
       console.error(error);
+      await MySwal.fire('Error', 'Error guardando municipio', 'error');
     }
   };
 
@@ -260,15 +289,10 @@ const MunicipiosPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🗺️ Gestión de Municipios
-          </h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra los municipios registrados.
-          </p>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🗺️ Gestión de Municipios</h1>
+          <p className="text-sm text-gray-600">Consulta y administra los municipios registrados.</p>
         </header>
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
@@ -302,80 +326,55 @@ const MunicipiosPage = () => {
         </div>
 
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
+          {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron municipios</p>
+          ) : (
+            sorted.map((m) => (
+              <Card key={m.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg">{m.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
+                          Editar
+                        </DropdownItem>
+                        <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
+                          Eliminar
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Depto:</span> {m.departamento}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Centros:</span> {m.centroFormacions?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-400">ID: {m.id}</p>
+                </CardContent>
+              </Card>
+            ))
           )}
-          {sorted.map((m) => (
-            <Card key={m.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">{m.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Depto:</span> {m.departamento}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Centros:</span> {m.centroFormacions?.length || 0}
-                </p>
-                <p className="text-xs text-gray-400">ID: {m.id}</p>
-              </CardContent>
-            </Card>
-          ))}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
             {(onCloseLocal) => (
               <>
                 <ModalHeader>{editId ? 'Editar Municipio' : 'Nuevo Municipio'}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  <Input
-                    label="Nombre"
-                    placeholder="Ej: Neiva"
-                    value={nombre}
-                    onValueChange={setNombre}
-                    radius="sm"
-                  />
-                  <Input
-                    label="Departamento"
-                    placeholder="Ej: Huila"
-                    value={departamento}
-                    onValueChange={setDepartamento}
-                    radius="sm"
-                  />
+                  <Input label="Nombre" placeholder="Ej: Neiva" value={nombre} onValueChange={setNombre} radius="sm" />
+                  <Input label="Departamento" placeholder="Ej: Huila" value={departamento} onValueChange={setDepartamento} radius="sm" />
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
                 </ModalFooter>
               </>
             )}

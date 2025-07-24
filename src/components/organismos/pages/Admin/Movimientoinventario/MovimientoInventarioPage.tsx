@@ -9,9 +9,9 @@ import {
   Input,
   Button,
   Dropdown,
+  DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  DropdownTrigger,
   Pagination,
   Modal,
   ModalBody,
@@ -32,7 +32,11 @@ import { getInventarios } from '@/Api/inventario';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import Toast from "@/components/ui/Toast"; 
+
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -57,7 +61,6 @@ const MovimientosPage = () => {
     direction: 'ascending',
   });
 
- 
   const [tipoMovimiento, setTipoMovimiento] = useState('ENTRADA');
   const [cantidad, setCantidad] = useState<number | ''>('');
   const [fecha, setFecha] = useState('');
@@ -65,13 +68,8 @@ const MovimientosPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
- 
+  // Carga inicial
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -83,40 +81,54 @@ const MovimientosPage = () => {
       setInventarios(invs);
     } catch (error) {
       console.error('Error cargando datos:', error);
+      await MySwal.fire('Error', 'No se pudo cargar los datos', 'error');
     }
   };
 
-  
+  // Confirmación y eliminación con alerta SweetAlert2
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar movimiento? No se podrá recuperar.')) return;
-    await deleteMovimiento(id);
-    notify(`🗑️ Movimiento eliminado: ID ${id}`);
-    cargarDatos();
+    const result = await MySwal.fire({
+      title: '¿Eliminar movimiento?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await deleteMovimiento(id);
+      await MySwal.fire('Eliminado', `Movimiento eliminado: ID ${id}`, 'success');
+      cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error eliminando el movimiento', 'error');
+    }
   };
 
+  // Guardar movimiento con validaciones y notificaciones
   const guardar = async () => {
     if (!cantidad || cantidad <= 0) {
-      notify('La cantidad debe ser mayor que cero');
+      await MySwal.fire('Error', 'La cantidad debe ser mayor que cero', 'error');
       return;
     }
     if (!fecha) {
-      notify('La fecha es obligatoria');
+      await MySwal.fire('Error', 'La fecha es obligatoria', 'error');
       return;
     }
     if (!idInventario) {
-      notify('Debe seleccionar un inventario');
+      await MySwal.fire('Error', 'Debe seleccionar un inventario', 'error');
       return;
     }
 
     const inventarioSeleccionado = inventarios.find(inv => inv.idProductoInventario === Number(idInventario));
     if (!inventarioSeleccionado) {
-      notify('Inventario seleccionado no válido');
+      await MySwal.fire('Error', 'Inventario seleccionado no válido', 'error');
       return;
     }
 
-   
     const payload = {
-      id: editId ?? 0, 
+      id: editId ?? 0,
       tipoMovimiento,
       cantidad: Number(cantidad),
       fechaMovimiento: fecha,
@@ -131,17 +143,17 @@ const MovimientosPage = () => {
     try {
       if (editId) {
         await updateMovimiento(editId, payload);
-        notify('✏️ Movimiento actualizado');
+        await MySwal.fire('Actualizado', 'Movimiento actualizado', 'success');
       } else {
         await createMovimiento(payload);
-        notify('✅ Movimiento creado');
+        await MySwal.fire('Creado', 'Movimiento creado', 'success');
       }
       limpiarForm();
       onClose();
       cargarDatos();
     } catch (error) {
-      notify('Error guardando movimiento');
       console.error(error);
+      await MySwal.fire('Error', 'Error guardando movimiento', 'error');
     }
   };
 
@@ -162,7 +174,7 @@ const MovimientosPage = () => {
     setIdInventario('');
   };
 
-  
+  // Filtrado y orden
   const filtered = useMemo(() => {
     if (!filterValue) return movimientos;
     return movimientos.filter((m) =>
@@ -189,7 +201,6 @@ const MovimientosPage = () => {
     });
     return items;
   }, [sliced, sortDescriptor]);
-
 
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
@@ -230,7 +241,6 @@ const MovimientosPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -264,17 +274,19 @@ const MovimientosPage = () => {
                         <Button variant="flat">Columnas</Button>
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
-                        {columns.filter((c) => c.uid !== 'actions').map((col) => (
-                          <DropdownItem key={col.uid} className="py-1 px-2">
-                            <Checkbox
-                              isSelected={visibleColumns.has(col.uid)}
-                              onValueChange={() => toggleColumn(col.uid)}
-                              size="sm"
-                            >
-                              {col.name}
-                            </Checkbox>
-                          </DropdownItem>
-                        ))}
+                        {columns
+                          .filter((c) => c.uid !== 'actions')
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="py-1 px-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
                       </DropdownMenu>
                     </Dropdown>
                     <Button
@@ -384,12 +396,7 @@ const MovimientosPage = () => {
           ))}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
             {(onCloseLocal) => (
               <>

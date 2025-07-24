@@ -36,13 +36,12 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const ID_ROL_ACTUAL = 1; // Ajusta según tu sistema de autenticación
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+const MySwal = withReactContent(Swal);
+
+const ID_ROL_ACTUAL = 1;
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -64,15 +63,12 @@ const INITIAL_VISIBLE_COLUMNS = [
 ];
 
 const EntregaMaterialPage = () => {
-  /* Estado principal de datos */
   const [entregas, setEntregas] = useState<any[]>([]);
   const [fichas, setFichas] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -80,7 +76,6 @@ const EntregaMaterialPage = () => {
     direction: 'ascending',
   });
 
-  /* Permisos y estado de carga */
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -89,7 +84,6 @@ const EntregaMaterialPage = () => {
   });
   const [loadingPermisos, setLoadingPermisos] = useState(true);
 
-  /* Formulario modal */
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [idFicha, setIdFicha] = useState<number | ''>('');
@@ -97,38 +91,26 @@ const EntregaMaterialPage = () => {
   const [idResponsable, setIdResponsable] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* UI */
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
-  /* Carga inicial de permisos y datos */
   useEffect(() => {
-    const initPage = async () => {
+    const init = async () => {
       setLoadingPermisos(true);
       try {
         const p = await getPermisosPorRuta('/EntregaMaterialPage', ID_ROL_ACTUAL);
-        setPermisos(p.data || p); // Asegura compatibilidad con { data: ... } o solo el objeto
+        setPermisos(p.data || p);
         if ((p.data || p).puedeVer) {
           await cargarDatos();
         }
       } catch (error) {
         console.error('Error cargando permisos:', error);
-        setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
-        });
+        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
+        await MySwal.fire('Error', 'No se pudieron cargar los permisos', 'error');
       } finally {
         setLoadingPermisos(false);
       }
     };
-    initPage();
-    // eslint-disable-next-line
+    init();
   }, []);
 
   const cargarDatos = async () => {
@@ -145,38 +127,46 @@ const EntregaMaterialPage = () => {
       setUsuarios(usrs);
     } catch (err) {
       console.error('Error cargando datos', err);
+      await MySwal.fire('Error', 'Error cargando datos', 'error');
     }
   };
 
-  /* CRUD con protección de permisos */
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      notify('No tienes permiso para eliminar');
+      await MySwal.fire('Acceso denegado', 'No tienes permiso para eliminar', 'warning');
       return;
     }
-    if (!confirm('¿Eliminar entrega? No se podrá recuperar.')) return;
-    try {
-      await deleteEntregaMaterial(id);
-      notify(`🗑️ Entrega eliminada: ID ${id}`);
-      cargarDatos();
-    } catch (e) {
-      notify('Error eliminando entrega');
-      console.error(e);
+    const result = await MySwal.fire({
+      title: '¿Eliminar entrega?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (result.isConfirmed) {
+      try {
+        await deleteEntregaMaterial(id);
+        await MySwal.fire('Eliminado', `Entrega eliminada: ID ${id}`, 'success');
+        await cargarDatos();
+      } catch (e) {
+        console.error(e);
+        await MySwal.fire('Error', 'Error eliminando entrega', 'error');
+      }
     }
   };
 
   const guardar = async () => {
     if (editId && !permisos.puedeEditar) {
-      notify('No tienes permiso para editar');
+      await MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
       return;
     }
     if (!editId && !permisos.puedeCrear) {
-      notify('No tienes permiso para crear');
+      await MySwal.fire('Acceso denegado', 'No tienes permiso para crear', 'warning');
       return;
     }
-    // Validaciones básicas del formulario
     if (!fechaEntrega || !idFicha || !idSolicitud || !idResponsable) {
-      notify('Completa todos los campos obligatorios');
+      await MySwal.fire('Error', 'Completa todos los campos obligatorios', 'error');
       return;
     }
 
@@ -190,23 +180,23 @@ const EntregaMaterialPage = () => {
     try {
       if (editId) {
         await updateEntregaMaterial(editId, payload);
-        notify('✅ Entrega actualizada');
+        await MySwal.fire('Éxito', 'Entrega actualizada', 'success');
       } else {
         await createEntregaMaterial(payload);
-        notify('✅ Entrega creada');
+        await MySwal.fire('Éxito', 'Entrega creada', 'success');
       }
       onClose();
       limpiarFormulario();
-      cargarDatos();
+      await cargarDatos();
     } catch (e) {
-      notify('Error guardando entrega');
       console.error(e);
+      await MySwal.fire('Error', 'Error guardando entrega', 'error');
     }
   };
 
   const abrirModalEditar = (e: any) => {
     if (!permisos.puedeEditar) {
-      notify('No tienes permiso para editar');
+      MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
       return;
     }
     setEditId(e.id);
@@ -227,26 +217,18 @@ const EntregaMaterialPage = () => {
     setIdResponsable('');
   };
 
-  /* Filtro + Orden + Paginación */
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? entregas.filter((e) =>
-            (
-              `${e.fechaEntrega} ${e.observaciones || ''} ${
-                e.idFichaFormacion?.nombre || ''
-              } ${e.idSolicitud?.estadoSolicitud || ''} ${
-                e.idUsuarioResponsable?.nombre || ''
-              }`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
-          )
-        : entregas,
-    [entregas, filterValue]
-  );
+  const filtered = useMemo(() => {
+    if (!filterValue) return entregas;
+    const lowerFilter = filterValue.toLowerCase();
+    return entregas.filter(
+      (e) =>
+        `${e.fechaEntrega} ${e.observaciones || ''} ${e.idFichaFormacion?.nombre || ''} ${e.idSolicitud?.estadoSolicitud || ''} ${e.idUsuarioResponsable?.nombre || ''}`
+          .toLowerCase()
+          .includes(lowerFilter)
+    );
+  }, [entregas, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -259,65 +241,45 @@ const EntregaMaterialPage = () => {
     items.sort((a, b) => {
       const x = a[column as keyof typeof a];
       const y = b[column as keyof typeof b];
-      return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+      if (x === y) return 0;
+      return (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
     });
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Renderizado de celdas */
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'fecha':
         return <span className="text-sm text-gray-800">{item.fechaEntrega}</span>;
       case 'observaciones':
-        return (
-          <span className="text-sm text-gray-600 break-words max-w-[16rem]">
-            {item.observaciones || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600 break-words max-w-[16rem]">{item.observaciones || '—'}</span>;
       case 'ficha':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idFichaFormacion?.nombre || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idFichaFormacion?.nombre || '—'}</span>;
       case 'solicitud':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idSolicitud?.estadoSolicitud || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idSolicitud?.estadoSolicitud || '—'}</span>;
       case 'responsable':
         return (
           <span className="text-sm text-gray-600">
-            {item.idUsuarioResponsable
-              ? `${item.idUsuarioResponsable.nombre} ${item.idUsuarioResponsable.apellido}`
-              : '—'}
+            {item.idUsuarioResponsable ? `${item.idUsuarioResponsable.nombre} ${item.idUsuarioResponsable.apellido || ''}` : '—'}
           </span>
         );
       case 'actions':
-        // No renderiza acciones si no hay permisos de edición o eliminación
         if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
               {permisos.puedeEditar ? (
-                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
+                <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
                   Editar
                 </DropdownItem>
               ) : null}
               {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
+                <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
                   Eliminar
                 </DropdownItem>
               ) : null}
@@ -332,109 +294,19 @@ const EntregaMaterialPage = () => {
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
+      if (copy.has(key)) copy.delete(key);
+      else copy.add(key);
       return copy;
     });
   };
 
-  /* Contenido superior de la tabla */
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por ficha, solicitud o responsable"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={setFilterValue}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
-                    <Checkbox
-                      isSelected={visibleColumns.has(col.uid)}
-                      onValueChange={() => toggleColumn(col.uid)}
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
-            </DropdownMenu>
-          </Dropdown>
-          {permisos.puedeCrear && ( // Botón "Nueva Entrega" visible solo con permiso de crear
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarFormulario();
-                onOpen();
-              }}
-            >
-              Nueva Entrega
-            </Button>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {entregas.length} entregas
-        </span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-
-  /* Contenido inferior de la tabla (paginación) */
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
-        Siguiente
-      </Button>
-    </div>
-  );
-
-  /* Renderizado condicional basado en permisos y carga */
   if (loadingPermisos) {
     return (
       <DefaultLayout>
-        <div className="p-6 flex justify-center items-center h-64">
-          <span className="text-gray-500 text-lg">Cargando permisos...</span>
+        <div className="p-6">
+          <div className="bg-blue-100 text-blue-700 p-4 rounded shadow text-center">
+            Cargando permisos...
+          </div>
         </div>
       </DefaultLayout>
     );
@@ -452,28 +324,101 @@ const EntregaMaterialPage = () => {
     );
   }
 
-  /* Renderizado de la página principal */
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📦 Entrega de Material
           </h1>
-          <p className="text-sm text-gray-600">
-            Registra y gestiona las entregas a programas y solicitudes.
-          </p>
+          <p className="text-sm text-gray-600">Registra y gestiona las entregas a programas y solicitudes.</p>
         </header>
 
-        {/* Tabla desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de entregas"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por ficha, solicitud o responsable"
+                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  <div className="flex gap-3">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          .filter((c) => c.uid !== 'actions')
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="py-1 px-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={() => {
+                          limpiarFormulario();
+                          onOpen();
+                        }}
+                      >
+                        Nueva Entrega
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {entregas.length} entregas</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+                  Anterior
+                </Button>
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+                  Siguiente
+                </Button>
+              </div>
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
@@ -502,25 +447,18 @@ const EntregaMaterialPage = () => {
           </Table>
         </div>
 
-        {/* Cards móvil */}
+        {/* Mobile cards */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron entregas</p>
-          )}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron entregas</p>}
           {sorted.map((e) => (
             <Card key={e.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">Entrega ID {e.id}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) ? ( // Mostrar Dropdown solo si hay permisos
+                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                           <MoreVertical />
                         </Button>
                       </DropdownTrigger>
@@ -537,9 +475,7 @@ const EntregaMaterialPage = () => {
                         ) : null}
                       </DropdownMenu>
                     </Dropdown>
-                  ) : (
-                    null // Si no hay permisos, no renderiza el Dropdown
-                  )}
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Fecha:</span> {e.fechaEntrega}
@@ -555,9 +491,7 @@ const EntregaMaterialPage = () => {
                 </p>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Responsable:</span>{' '}
-                  {e.idUsuarioResponsable
-                    ? `${e.idUsuarioResponsable.nombre} ${e.idUsuarioResponsable.apellido}`
-                    : '—'}
+                  {e.idUsuarioResponsable ? `${e.idUsuarioResponsable.nombre} ${e.idUsuarioResponsable.apellido}` : '—'}
                 </p>
                 <p className="text-xs text-gray-400">ID: {e.id}</p>
               </CardContent>
@@ -565,7 +499,7 @@ const EntregaMaterialPage = () => {
           ))}
         </div>
 
-        {/* Modal CRUD */}
+        {/* Modal */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -592,16 +526,14 @@ const EntregaMaterialPage = () => {
                     radius="sm"
                   />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Ficha Formación
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Ficha Formación</label>
                     <select
                       value={idFicha}
                       onChange={(e) => setIdFicha(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione una ficha</option>
-                      {fichas.map((f: any) => (
+                      {fichas.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.nombre}
                         </option>
@@ -609,16 +541,14 @@ const EntregaMaterialPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Solicitud
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Solicitud</label>
                     <select
                       value={idSolicitud}
                       onChange={(e) => setIdSolicitud(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione una solicitud</option>
-                      {solicitudes.map((s: any) => (
+                      {solicitudes.map((s) => (
                         <option key={s.id} value={s.id}>
                           {`${s.id} - ${s.estadoSolicitud}`}
                         </option>
@@ -626,16 +556,14 @@ const EntregaMaterialPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Responsable
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Responsable</label>
                     <select
                       value={idResponsable}
                       onChange={(e) => setIdResponsable(Number(e.target.value) || '')}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Seleccione un responsable</option>
-                      {usuarios.map((u: any) => (
+                      {usuarios.map((u) => (
                         <option key={u.id} value={u.id}>
                           {`${u.nombre} ${u.apellido}`}
                         </option>
@@ -644,12 +572,8 @@ const EntregaMaterialPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
                 </ModalFooter>
               </>
             )}

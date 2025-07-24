@@ -34,11 +34,10 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -66,9 +65,7 @@ const SitiosPage = () => {
   const [areas, setAreas] = useState<any[]>([]);
   const [tipos, setTipos] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
+  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -84,11 +81,6 @@ const SitiosPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   useEffect(() => {
     cargarDatos();
@@ -106,31 +98,46 @@ const SitiosPage = () => {
       setTipos(t);
     } catch (err) {
       console.error('Error cargando sitios', err);
+      await MySwal.fire('Error', 'No se pudieron cargar los datos de sitios, áreas o tipos.', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
-    if (!window.confirm('¿Eliminar sitio? No se podrá recuperar.')) return;
-    await deleteSitio(id);
-    notify(`🗑️ Sitio eliminado: ID ${id}`);
-    cargarDatos();
+    const result = await MySwal.fire({
+      title: '¿Eliminar sitio?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteSitio(id);
+      await MySwal.fire('Eliminado', `Sitio eliminado: ID ${id}`, 'success');
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error eliminando sitio', 'error');
+    }
   };
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      notify('El nombre es obligatorio');
+      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
       return;
     }
     if (!ubicacion.trim()) {
-      notify('La ubicación es obligatoria');
+      await MySwal.fire('Error', 'La ubicación es obligatoria', 'error');
       return;
     }
     if (!idArea) {
-      notify('Debe seleccionar un área');
+      await MySwal.fire('Error', 'Debe seleccionar un área', 'error');
       return;
     }
     if (!idTipo) {
-      notify('Debe seleccionar un tipo de sitio');
+      await MySwal.fire('Error', 'Debe seleccionar un tipo de sitio', 'error');
       return;
     }
 
@@ -145,17 +152,17 @@ const SitiosPage = () => {
     try {
       if (editId) {
         await updateSitio(editId, payload);
-        notify('✏️ Sitio actualizado');
+        await MySwal.fire('Actualizado', 'Sitio actualizado', 'success');
       } else {
         await createSitio(payload);
-        notify('✅ Sitio creado');
+        await MySwal.fire('Creado', 'Sitio creado', 'success');
       }
       limpiarForm();
       onClose();
-      cargarDatos();
+      await cargarDatos();
     } catch (error) {
-      notify('Error guardando sitio');
       console.error(error);
+      await MySwal.fire('Error', 'Error guardando sitio', 'error');
     }
   };
 
@@ -178,23 +185,18 @@ const SitiosPage = () => {
     setIdTipo('');
   };
 
-  const filtered = useMemo(
-    () =>
-      filterValue
-        ? sitios.filter((s) =>
-            (
-              `${s.nombre} ${s.ubicacion} ${s.idArea?.nombreArea || ''} ${
-                s.idTipoSitio?.nombre || ''
-              }`
-            )
-              .toLowerCase()
-              .includes(filterValue.toLowerCase())
-          )
-        : sitios,
-    [sitios, filterValue]
-  );
+  const filtered = useMemo(() => {
+    if (!filterValue) return sitios;
+    return sitios.filter((s) =>
+      `${s.nombre} ${s.ubicacion} ${s.idArea?.nombreArea || ''} ${
+        s.idTipoSitio?.nombre || ''
+      }`
+        .toLowerCase()
+        .includes(filterValue.toLowerCase())
+    );
+  }, [sitios, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -281,7 +283,8 @@ const SitiosPage = () => {
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
+      if (copy.has(key)) copy.delete(key);
+      else copy.add(key);
       return copy;
     });
   };
@@ -357,11 +360,11 @@ const SitiosPage = () => {
 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+      <Button isDisabled={page === 1} size="sm" variant="flat" onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+      <Button isDisabled={page === pages} size="sm" variant="flat" onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -369,15 +372,10 @@ const SitiosPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🏷️ Gestión de Sitios
-          </h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra bodegas, ambientes y otros sitios.
-          </p>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🏷️ Gestión de Sitios</h1>
+          <p className="text-sm text-gray-600">Consulta y administra bodegas, ambientes y otros sitios.</p>
         </header>
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
@@ -395,11 +393,7 @@ const SitiosPage = () => {
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
-                <TableColumn
-                  key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 260 : undefined}
-                >
+                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'} width={col.uid === 'nombre' ? 260 : undefined}>
                   {col.name}
                 </TableColumn>
               )}
@@ -407,7 +401,7 @@ const SitiosPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron sitios">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
@@ -415,90 +409,53 @@ const SitiosPage = () => {
         </div>
 
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
+          {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron sitios</p>
+          ) : (
+            sorted.map((s) => (
+              <Card key={s.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg">{s.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>Editar</DropdownItem>
+                        <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>Eliminar</DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Ubicación:</span> {s.ubicacion}</p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Estado:</span>{' '}
+                    <span className={s.estado === 'INACTIVO' ? 'text-red-600' : 'text-green-600'}>
+                      {s.estado}
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Área:</span> {s.idArea?.nombreArea || '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Inventarios:</span> {s.inventarios?.length || 0}</p>
+                  <p className="text-xs text-gray-400">ID: {s.id}</p>
+                </CardContent>
+              </Card>
+            ))
           )}
-          {sorted.map((s) => (
-            <Card key={s.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">{s.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Ubicación:</span> {s.ubicacion}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Estado:</span>{' '}
-                  <span
-                    className={s.estado === 'INACTIVO' ? 'text-red-600' : 'text-green-600'}
-                  >
-                    {s.estado}
-                  </span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Área:</span> {s.idArea?.nombreArea || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Inventarios:</span> {s.inventarios?.length || 0}
-                </p>
-                <p className="text-xs text-gray-400">ID: {s.id}</p>
-              </CardContent>
-            </Card>
-          ))}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
             {(onCloseLocal) => (
               <>
                 <ModalHeader>{editId ? 'Editar Sitio' : 'Nuevo Sitio'}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  <Input
-                    label="Nombre"
-                    placeholder="Ej: Bodega Norte"
-                    value={nombre}
-                    onValueChange={setNombre}
-                    radius="sm"
-                  />
-                  <Input
-                    label="Ubicación"
-                    placeholder="Descripción de la ubicación"
-                    value={ubicacion}
-                    onValueChange={setUbicacion}
-                    radius="sm"
-                  />
+                  <Input label="Nombre" placeholder="Ej: Bodega Norte" value={nombre} onValueChange={setNombre} radius="sm" />
+                  <Input label="Ubicación" placeholder="Descripción de la ubicación" value={ubicacion} onValueChange={setUbicacion} radius="sm" />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Estado
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Estado</label>
                     <select
                       value={estado}
                       onChange={(e) => setEstado(e.target.value as 'ACTIVO' | 'INACTIVO')}
@@ -509,9 +466,7 @@ const SitiosPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Área
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Área</label>
                     <select
                       value={idArea}
                       onChange={(e) => setIdArea(Number(e.target.value) || '')}
@@ -519,16 +474,12 @@ const SitiosPage = () => {
                     >
                       <option value="">Seleccione un área</option>
                       {areas.map((a: any) => (
-                        <option key={a.id} value={a.id}>
-                          {a.nombreArea}
-                        </option>
+                        <option key={a.id} value={a.id}>{a.nombreArea}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Tipo de Sitio
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Tipo de Sitio</label>
                     <select
                       value={idTipo}
                       onChange={(e) => setIdTipo(Number(e.target.value) || '')}
@@ -536,20 +487,14 @@ const SitiosPage = () => {
                     >
                       <option value="">Seleccione un tipo</option>
                       {tipos.map((t: any) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nombre}
-                        </option>
+                        <option key={t.id} value={t.id}>{t.nombre}</option>
                       ))}
                     </select>
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
                 </ModalFooter>
               </>
             )}

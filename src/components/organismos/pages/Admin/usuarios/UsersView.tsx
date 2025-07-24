@@ -88,7 +88,6 @@ const UsuariosPage = () => {
     cedula: '',
     email: '',
     telefono: '',
-    cargo: '',
     password: '',
     idArea: '',
     idFicha: '',
@@ -164,7 +163,6 @@ const UsuariosPage = () => {
       cedula: form.cedula || null,
       email: form.email || null,
       telefono: form.telefono || null,
-      cargo: form.cargo || null,
       idArea: areaObj,
       idFichaFormacion: fichaObj,
       rol: rolObj,
@@ -189,7 +187,6 @@ const UsuariosPage = () => {
         cedula: '',
         email: '',
         telefono: '',
-        cargo: '',
         password: '',
         idArea: '',
         idFicha: '',
@@ -211,7 +208,6 @@ const UsuariosPage = () => {
       cedula: u.cedula || '',
       email: u.email || '',
       telefono: u.telefono || '',
-      cargo: u.cargo || '',
       password: '',
       idArea: u.idArea?.id?.toString() || '',
       idFicha: u.idFichaFormacion?.id?.toString() || '',
@@ -362,7 +358,6 @@ const UsuariosPage = () => {
                           cedula: '',
                           email: '',
                           telefono: '',
-                          cargo: '',
                           password: '',
                           idArea: '',
                           idFicha: '',
@@ -487,12 +482,6 @@ const UsuariosPage = () => {
                       label="Teléfono"
                       value={form.telefono}
                       onValueChange={v => setForm(p => ({ ...p, telefono: v }))}
-                      radius="sm"
-                    />
-                    <Input
-                      label="Cargo"
-                      value={form.cargo}
-                      onValueChange={v => setForm(p => ({ ...p, cargo: v }))}
                       radius="sm"
                     />
                     {!editId && (

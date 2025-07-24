@@ -16,7 +16,7 @@ const Login = () => {
     try {
       await login(email.trim(), password.trim());
 
-      // ✅ Si todo sale bien, redirige
+     
       navigate("/Home");
     } catch (err: any) {
       console.error("❌ Error de autenticación:", err);
@@ -84,8 +84,6 @@ const Login = () => {
             Iniciar
           </Button>
         </div>
-
-        {/* ✅ Enlace corregido */}
         <p
           onClick={() => navigate("/recuperar")}
           className="text-center text-xs text-white/70 mt-4 hover:underline cursor-pointer"

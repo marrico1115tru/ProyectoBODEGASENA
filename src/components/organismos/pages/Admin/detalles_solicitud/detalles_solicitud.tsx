@@ -35,13 +35,12 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const ID_ROL_ACTUAL = 1;
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+const MySwal = withReactContent(Swal);
+
+const ID_ROL_ACTUAL = 1;
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -89,11 +88,6 @@ const DetalleSolicitudesPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   useEffect(() => {
     cargarPermisos();
@@ -115,6 +109,7 @@ const DetalleSolicitudesPage = () => {
         puedeEditar: false,
         puedeEliminar: false,
       });
+      await MySwal.fire('Error', 'No se pudieron cargar los permisos', 'error');
     } finally {
       setLoadingPermisos(false);
     }
@@ -122,28 +117,34 @@ const DetalleSolicitudesPage = () => {
 
   const cargarDatos = async () => {
     try {
-      const [det, prods, sols] = await Promise.all([
-        getDetalleSolicitudes(),
-        getProductos(),
-        getSolicitudes(),
-      ]);
+      const [det, prods, sols] = await Promise.all([getDetalleSolicitudes(), getProductos(), getSolicitudes()]);
       setDetalles(det);
       setProductos(prods);
       setSolicitudes(sols);
     } catch (err) {
       console.error('Error cargando datos', err);
+      await MySwal.fire('Error', 'Error cargando datos', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) return;
-    if (!confirm('¿Eliminar registro? No se podrá recuperar.')) return;
+    const result = await MySwal.fire({
+      title: '¿Eliminar registro?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
     try {
       await deleteDetalleSolicitud(id);
-      notify(`🗑️ Registro eliminado: ID ${id}`);
-      cargarDatos();
-    } catch (e) {
-      notify('Error eliminando registro');
+      await MySwal.fire('Eliminado', `Registro eliminado: ID ${id}`, 'success');
+      await cargarDatos();
+    } catch {
+      await MySwal.fire('Error', 'Error eliminando registro', 'error');
     }
   };
 
@@ -151,19 +152,18 @@ const DetalleSolicitudesPage = () => {
     if (!permisos.puedeCrear && !permisos.puedeEditar) return;
 
     if (!cantidad || cantidad <= 0) {
-      notify('La cantidad solicitada debe ser mayor que cero');
+      await MySwal.fire('Error', 'La cantidad solicitada debe ser mayor que cero', 'error');
       return;
     }
     if (!productoSeleccionado) {
-      notify('Debes seleccionar un producto');
+      await MySwal.fire('Error', 'Debes seleccionar un producto', 'error');
       return;
     }
     if (!solicitudSeleccionada) {
-      notify('Debes seleccionar una solicitud');
+      await MySwal.fire('Error', 'Debes seleccionar una solicitud', 'error');
       return;
     }
 
-    // Aquí enviamos el objeto completo para cumplir el tipo
     const payload = {
       cantidadSolicitada: cantidad,
       observaciones: observaciones || null,
@@ -180,17 +180,17 @@ const DetalleSolicitudesPage = () => {
       if (editId) {
         if (!permisos.puedeEditar) return;
         await updateDetalleSolicitud(editId, payload);
-        notify('✅ Detalle actualizado');
+        await MySwal.fire('Éxito', 'Detalle actualizado', 'success');
       } else {
         if (!permisos.puedeCrear) return;
         await createDetalleSolicitud(payload);
-        notify('✅ Detalle creado');
+        await MySwal.fire('Éxito', 'Detalle creado', 'success');
       }
       onClose();
       limpiarFormulario();
-      cargarDatos();
-    } catch (e) {
-      notify('Error guardando registro');
+      await cargarDatos();
+    } catch {
+      await MySwal.fire('Error', 'Error guardando registro', 'error');
     }
   };
 
@@ -266,7 +266,7 @@ const DetalleSolicitudesPage = () => {
           </span>
         );
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return <></>;
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -301,98 +301,11 @@ const DetalleSolicitudesPage = () => {
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
+      if (copy.has(key)) copy.delete(key);
+      else copy.add(key);
       return copy;
     });
   };
-
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por observación, producto o estado"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={setFilterValue}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
-                    <Checkbox
-                      isSelected={visibleColumns.has(col.uid)}
-                      onValueChange={() => toggleColumn(col.uid)}
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
-            </DropdownMenu>
-          </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarFormulario();
-                onOpen();
-              }}
-            >
-              Nuevo Detalle
-            </Button>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {detalles.length} registros</span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
-        Siguiente
-      </Button>
-    </div>
-  );
 
   if (loadingPermisos) {
     return (
@@ -420,7 +333,6 @@ const DetalleSolicitudesPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -433,8 +345,103 @@ const DetalleSolicitudesPage = () => {
           <Table
             aria-label="Tabla detalle solicitud"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por observación, producto o estado"
+                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  <div className="flex gap-3">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          .filter((c) => c.uid !== 'actions')
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="py-1 px-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={() => {
+                          limpiarFormulario();
+                          onOpen();
+                        }}
+                      >
+                        Nuevo Detalle
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {detalles.length} registros</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === 1}
+                  onPress={() => setPage(page - 1)}
+                >
+                  Anterior
+                </Button>
+                <Pagination
+                  isCompact
+                  showControls
+                  page={page}
+                  total={pages}
+                  onChange={setPage}
+                />
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === pages}
+                  onPress={() => setPage(page + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
@@ -493,7 +500,7 @@ const DetalleSolicitudesPage = () => {
                         ) : null}
                       </DropdownMenu>
                     </Dropdown>
-                  ) : <></>}
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-600 break-words">
                   <span className="font-medium">Obs:</span> {d.observaciones || '—'}
@@ -511,13 +518,8 @@ const DetalleSolicitudesPage = () => {
           ))}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {(onCloseLocal) => (
               <>
                 <ModalHeader>{editId ? 'Editar Detalle' : 'Nuevo Detalle'}</ModalHeader>
@@ -581,12 +583,8 @@ const DetalleSolicitudesPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
-                  <Button variant="flat" onPress={guardar}>
-                    {editId ? 'Actualizar' : 'Crear'}
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
                 </ModalFooter>
               </>
             )}
