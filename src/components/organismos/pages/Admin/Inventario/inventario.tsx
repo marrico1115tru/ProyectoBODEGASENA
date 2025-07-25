@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -37,7 +38,6 @@ import { getCategoriasProductos } from '@/Api/Categorias';
 import { getAreas } from '@/Api/AreasService';
 import { getTiposSitio } from '@/Api/Tipo_sitios';
 
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -60,8 +60,6 @@ const columns = [
 type ColumnKey = (typeof columns)[number]['uid'];
 
 const DEFAULT_VISIBLE = new Set<ColumnKey>(['id', 'producto', 'sitio', 'stock', 'actions']);
-
-const ID_ROL_ACTUAL = 1;
 
 export default function InventarioPage() {
   // Estados principales
@@ -89,33 +87,9 @@ export default function InventarioPage() {
   const [sit, setSit] = useState({ nombre: '', ubicacion: '', idAreaId: '', idTipoSitioId: '' });
   const sitModal = useDisclosure();
 
-  // Permisos y estado de carga
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-  const [loadingPermisos, setLoadingPermisos] = useState(true);
-
+  // Cargar datos iniciales
   useEffect(() => {
-    const cargarPermisos = async () => {
-      setLoadingPermisos(true);
-      try {
-        const p = await getPermisosPorRuta('/InventarioPage', ID_ROL_ACTUAL);
-        const permisosData = p.data || p;
-        setPermisos(permisosData);
-        if (permisosData.puedeVer) {
-          await cargarDatos();
-        }
-      } catch {
-        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
-        await MySwal.fire('Error', 'Error cargando permisos', 'error');
-      } finally {
-        setLoadingPermisos(false);
-      }
-    };
-    cargarPermisos();
+    cargarDatos();
   }, []);
 
   const cargarDatos = async () => {
@@ -140,11 +114,8 @@ export default function InventarioPage() {
     }
   };
 
+  // Guardar inventario (crear o actualizar)
   const saveInv = async () => {
-    if (!permisos.puedeCrear && !permisos.puedeEditar) {
-      await MySwal.fire('Acceso denegado', 'No tienes permiso para guardar', 'warning');
-      return;
-    }
     if (!inv.stock || !inv.idProductoId || !inv.fkSitioId) {
       await MySwal.fire('Error', 'Completa todos los campos', 'error');
       return;
@@ -158,17 +129,9 @@ export default function InventarioPage() {
 
     try {
       if (invId) {
-        if (!permisos.puedeEditar) {
-          await MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
-          return;
-        }
         await updateInventario(invId, payload);
         await MySwal.fire('Éxito', 'Inventario actualizado', 'success');
       } else {
-        if (!permisos.puedeCrear) {
-          await MySwal.fire('Acceso denegado', 'No tienes permiso para crear', 'warning');
-          return;
-        }
         await createInventario(payload);
         await MySwal.fire('Éxito', 'Inventario creado', 'success');
       }
@@ -182,11 +145,8 @@ export default function InventarioPage() {
     }
   };
 
+  // Eliminar inventario con confirmación
   const delInv = async (id: number) => {
-    if (!permisos.puedeEliminar) {
-      await MySwal.fire('Acceso denegado', 'No tienes permiso para eliminar', 'warning');
-      return;
-    }
     const result = await MySwal.fire({
       title: '¿Eliminar registro?',
       text: 'No se podrá recuperar.',
@@ -206,6 +166,7 @@ export default function InventarioPage() {
     }
   };
 
+  // Guardar producto (crear)
   const saveProd = async () => {
     if (!prod.nombre || !prod.idCategoriaId) {
       await MySwal.fire('Error', 'Nombre y categoría requeridos', 'error');
@@ -227,6 +188,7 @@ export default function InventarioPage() {
     }
   };
 
+  // Guardar sitio (crear)
   const saveSit = async () => {
     if (!sit.nombre || !sit.ubicacion || !sit.idAreaId || !sit.idTipoSitioId) {
       await MySwal.fire('Error', 'Completa todos los campos', 'error');
@@ -249,7 +211,7 @@ export default function InventarioPage() {
     }
   };
 
-  // Filtrado
+  // Filtrado de inventarios
   const filtered = useMemo(() => {
     if (!filter) return inventarios;
     return inventarios.filter(i =>
@@ -270,7 +232,7 @@ export default function InventarioPage() {
     });
   }, [filtered, page, rows, sort]);
 
-  // Render celdas
+  // Renderizar celdas tabla
   const cell = (row: any, key: ColumnKey) => {
     switch (key) {
       case 'id': return row.idProductoInventario;
@@ -278,7 +240,6 @@ export default function InventarioPage() {
       case 'sitio': return row.fkSitio?.nombre ?? '—';
       case 'stock': return row.stock;
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -287,27 +248,23 @@ export default function InventarioPage() {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem
-                  key={`editar-${row.idProductoInventario}`}
-                  onPress={() => {
-                    setInvId(row.idProductoInventario);
-                    setInv({
-                      stock: row.stock.toString(),
-                      idProductoId: row.idProducto?.id.toString() || '',
-                      fkSitioId: row.fkSitio?.id.toString() || '',
-                    });
-                    invModal.onOpen();
-                  }}
-                >
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem key={`eliminar-${row.idProductoInventario}`} onPress={() => delInv(row.idProductoInventario)}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
+              <DropdownItem
+                key={`editar-${row.idProductoInventario}`}
+                onPress={() => {
+                  setInvId(row.idProductoInventario);
+                  setInv({
+                    stock: row.stock.toString(),
+                    idProductoId: row.idProducto?.id.toString() || '',
+                    fkSitioId: row.fkSitio?.id.toString() || '',
+                  });
+                  invModal.onOpen();
+                }}
+              >
+                Editar
+              </DropdownItem>
+              <DropdownItem key={`eliminar-${row.idProductoInventario}`} onPress={() => delInv(row.idProductoInventario)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -323,28 +280,6 @@ export default function InventarioPage() {
       return newSet;
     });
   };
-
-  if (loadingPermisos) {
-    return (
-      <DefaultLayout>
-        <div className="p-6 flex justify-center items-center h-64">
-          <span className="text-gray-500 text-lg">Cargando permisos...</span>
-        </div>
-      </DefaultLayout>
-    );
-  }
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   const topContent = (
     <div className="flex flex-col gap-4">
@@ -371,19 +306,17 @@ export default function InventarioPage() {
               ))}
             </DropdownMenu>
           </Dropdown>
-          {permisos.puedeCrear && (
-            <Button
-              className={primaryBtn}
-              endContent={<PlusIcon />}
-              onPress={() => {
-                setInv({ stock: '', idProductoId: '', fkSitioId: '' });
-                setInvId(null);
-                invModal.onOpen();
-              }}
-            >
-              Nuevo Inventario
-            </Button>
-          )}
+          <Button
+            className={primaryBtn}
+            endContent={<PlusIcon />}
+            onPress={() => {
+              setInv({ stock: '', idProductoId: '', fkSitioId: '' });
+              setInvId(null);
+              invModal.onOpen();
+            }}
+          >
+            Nuevo Inventario
+          </Button>
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -450,38 +383,32 @@ export default function InventarioPage() {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex justify-between items-start">
                     <h3 className="text-lg font-semibold break-words">{i.idProducto?.nombre ?? 'Producto'}</h3>
-                    {(permisos.puedeEditar || permisos.puedeEliminar) ? (
-                      <Dropdown>
-                        <DropdownTrigger>
-                          <Button isIconOnly variant="light" size="sm" className="rounded-full text-[#0D1324]">
-                            <MoreVertical />
-                          </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu>
-                          {permisos.puedeEditar ? (
-                            <DropdownItem
-                              onPress={() => {
-                                setInvId(i.idProductoInventario);
-                                setInv({
-                                  stock: i.stock.toString(),
-                                  idProductoId: i.idProducto?.id.toString() || '',
-                                  fkSitioId: i.fkSitio?.id.toString() || '',
-                                });
-                                invModal.onOpen();
-                              }}
-                              key={`editar-${i.idProductoInventario}`}
-                            >
-                              Editar
-                            </DropdownItem>
-                          ) : null}
-                          {permisos.puedeEliminar ? (
-                            <DropdownItem onPress={() => delInv(i.idProductoInventario)} key={`eliminar-${i.idProductoInventario}`}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null}
-                        </DropdownMenu>
-                      </Dropdown>
-                    ) : null}
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly variant="light" size="sm" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        <DropdownItem
+                          onPress={() => {
+                            setInvId(i.idProductoInventario);
+                            setInv({
+                              stock: i.stock.toString(),
+                              idProductoId: i.idProducto?.id.toString() || '',
+                              fkSitioId: i.fkSitio?.id.toString() || '',
+                            });
+                            invModal.onOpen();
+                          }}
+                          key={`editar-${i.idProductoInventario}`}
+                        >
+                          Editar
+                        </DropdownItem>
+                        <DropdownItem onPress={() => delInv(i.idProductoInventario)} key={`eliminar-${i.idProductoInventario}`}>
+                          Eliminar
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
                   </div>
                   <p className="text-sm text-gray-600"><span className="font-medium">Sitio:</span> {i.fkSitio?.nombre ?? '—'}</p>
                   <p className="text-sm text-gray-600"><span className="font-medium">Stock:</span> {i.stock}</p>
@@ -504,13 +431,17 @@ export default function InventarioPage() {
                 <Select label="Producto" className="flex-1" selectedKeys={inv.idProductoId ? new Set([inv.idProductoId]) : new Set()} onSelectionChange={k => setInv(f => ({ ...f, idProductoId: [...k][0] as string }))}>
                   {productos.map(p => <SelectItem key={p.id}>{p.nombre}</SelectItem>)}
                 </Select>
-                <Button isIconOnly variant="flat" className={primaryBtn} onPress={prodModal.onOpen}><PlusIcon size={18} /></Button>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={prodModal.onOpen} aria-label="Agregar Producto">
+                  <PlusIcon size={18} />
+                </Button>
               </div>
               <div className="flex items-end gap-2">
                 <Select label="Sitio" className="flex-1" selectedKeys={inv.fkSitioId ? new Set([inv.fkSitioId]) : new Set()} onSelectionChange={k => setInv(f => ({ ...f, fkSitioId: [...k][0] as string }))}>
                   {sitios.map(s => <SelectItem key={s.id}>{s.nombre}</SelectItem>)}
                 </Select>
-                <Button isIconOnly variant="flat" className={primaryBtn} onPress={sitModal.onOpen}><PlusIcon size={18} /></Button>
+                <Button isIconOnly variant="flat" className={primaryBtn} onPress={sitModal.onOpen} aria-label="Agregar Sitio">
+                  <PlusIcon size={18} />
+                </Button>
               </div>
             </ModalBody>
             <ModalFooter>

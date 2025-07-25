@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+// src/pages/CategoriasProductosPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableHeader,
@@ -30,8 +31,6 @@ import {
   deleteCategoriaProducto,
 } from "@/Api/Categorias";
 
-import { getPermisosPorRuta } from "@/Api/getPermisosPorRuta/PermisosService";
-
 import DefaultLayout from "@/layouts/default";
 import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,8 +39,6 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 
 const MySwal = withReactContent(Swal);
-
-const ID_ROL_ACTUAL = 1;
 
 const columns = [
   { name: "ID", uid: "id", sortable: true },
@@ -70,31 +67,7 @@ const CategoriasProductosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
-  useEffect(() => {
-    cargarPermisos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const cargarPermisos = async () => {
-    try {
-      const p = await getPermisosPorRuta("/CategoriasProductosPage", ID_ROL_ACTUAL);
-      setPermisos(p);
-      if (p.puedeVer) {
-        cargarCategorias();
-      }
-    } catch (error) {
-      console.error("Error al cargar permisos:", error);
-      await MySwal.fire("Error", "Error al cargar permisos", "error");
-    }
-  };
-
+  // Load categories
   const cargarCategorias = async () => {
     try {
       const data = await getCategoriasProductos();
@@ -105,6 +78,11 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  useEffect(() => {
+    cargarCategorias();
+  }, []);
+
+  // Delete category with confirmation alert
   const eliminar = async (id: number) => {
     const result = await MySwal.fire({
       icon: "warning",
@@ -115,25 +93,27 @@ const CategoriasProductosPage = () => {
       cancelButtonText: "Cancelar",
     });
 
-    if (result.isConfirmed) {
-      try {
-        await deleteCategoriaProducto(id);
-        await MySwal.fire("Eliminado", `Categoría eliminada: ID ${id}`, "success");
-        cargarCategorias();
-      } catch (error) {
-        console.error("Error al eliminar categoría:", error);
-        await MySwal.fire("Error", "Error al eliminar categoría", "error");
-      }
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteCategoriaProducto(id);
+      await MySwal.fire("Eliminado", `Categoría eliminada: ID ${id}`, "success");
+      await cargarCategorias();
+    } catch (error) {
+      console.error("Error al eliminar categoría:", error);
+      await MySwal.fire("Error", "Error al eliminar categoría", "error");
     }
   };
 
+  // Save (create or update) category with alerts
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
       return;
     }
 
-    const payload = { nombre, unpsc: unpsc || undefined };
+    const payload = { nombre: nombre.trim(), unpsc: unpsc.trim() || undefined };
+
     try {
       if (editId) {
         await updateCategoriaProducto(editId, payload);
@@ -143,13 +123,14 @@ const CategoriasProductosPage = () => {
         await MySwal.fire("Éxito", "Categoría creada", "success");
       }
       cerrarModal();
-      cargarCategorias();
+      await cargarCategorias();
     } catch (error) {
       console.error("Error al guardar categoría:", error);
       await MySwal.fire("Error", "Error al guardar categoría", "error");
     }
   };
 
+  // Open modal to edit category
   const abrirModalEditar = (cat: any) => {
     setEditId(cat.id);
     setNombre(cat.nombre);
@@ -157,6 +138,7 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
+  // Close modal and reset state
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
@@ -164,23 +146,26 @@ const CategoriasProductosPage = () => {
     onClose();
   };
 
+  // Filter categories by name or UNPSC
   const filtered = useMemo(() => {
-    return filterValue
-      ? categorias.filter(
-          (c) =>
-            c.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
-            (c.unpsc || "").toLowerCase().includes(filterValue.toLowerCase())
-        )
-      : categorias;
+    if (!filterValue) return categorias;
+    const lowerFilter = filterValue.toLowerCase();
+    return categorias.filter(
+      (c) =>
+        c.nombre.toLowerCase().includes(lowerFilter) ||
+        (c.unpsc || "").toLowerCase().includes(lowerFilter)
+    );
   }, [categorias, filterValue]);
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
+  // Slice for pagination
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
+  // Sorted items by descriptor
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -192,6 +177,7 @@ const CategoriasProductosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
+  // Render table cells
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case "nombre":
@@ -201,7 +187,6 @@ const CategoriasProductosPage = () => {
       case "productos":
         return <span className="text-sm text-gray-600">{item.productos?.length || 0}</span>;
       case "actions":
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -210,16 +195,12 @@ const CategoriasProductosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
+              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+                Editar
+              </DropdownItem>
+              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -228,6 +209,7 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  // Toggle visible columns
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -235,18 +217,6 @@ const CategoriasProductosPage = () => {
       return copy;
     });
   };
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   return (
     <DefaultLayout>
@@ -258,7 +228,7 @@ const CategoriasProductosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Tabla Desktop */}
+        {/* Desktop Table */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
@@ -297,15 +267,13 @@ const CategoriasProductosPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-                    {permisos.puedeCrear && (
-                      <Button
-                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                        endContent={<PlusIcon />}
-                        onPress={onOpen}
-                      >
-                        Nueva Categoría
-                      </Button>
-                    )}
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={onOpen}
+                    >
+                      Nueva Categoría
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -332,21 +300,11 @@ const CategoriasProductosPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="flat"
-                  isDisabled={page === 1}
-                  onPress={() => setPage(page - 1)}
-                >
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
                   Anterior
                 </Button>
                 <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-                <Button
-                  size="sm"
-                  variant="flat"
-                  isDisabled={page === pages}
-                  onPress={() => setPage(page + 1)}
-                >
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
                   Siguiente
                 </Button>
               </div>
@@ -379,7 +337,7 @@ const CategoriasProductosPage = () => {
           </Table>
         </div>
 
-        {/* Tarjetas Móvil */}
+        {/* Mobile Cards */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
           {sorted.map((cat) => (
@@ -387,27 +345,21 @@ const CategoriasProductosPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg break-words max-w-[14rem]">{cat.nombre}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
-                            Editar
-                          </DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
-                            Eliminar
-                          </DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  )}
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                        <MoreVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu>
+                      <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </div>
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">UNPSC:</span> {cat.unpsc || "—"}
@@ -422,8 +374,8 @@ const CategoriasProductosPage = () => {
         </div>
 
         {/* Modal */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center">
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md w-full p-6">
             {() => (
               <>
                 <ModalHeader>{editId ? "Editar Categoría" : "Nueva Categoría"}</ModalHeader>
@@ -444,7 +396,7 @@ const CategoriasProductosPage = () => {
                     radius="sm"
                   />
                 </ModalBody>
-                <ModalFooter>
+                <ModalFooter className="flex justify-end gap-3">
                   <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>

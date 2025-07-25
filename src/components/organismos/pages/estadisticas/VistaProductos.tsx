@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { BarChart } from './Graficasbases/GraficasBaseProductos'; // Ajusta la ruta si es necesario
+import { BarChart } from './Graficasbases/GraficasBaseProductos'; 
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 
@@ -46,7 +46,7 @@ const VistaEstadisticasProductos: React.FC = () => {
     fetchEstadisticas();
   }, []);
 
-  // --- Procesamiento de datos para productos solicitados ---
+  
   const labelsSolicitados = solicitados
     .filter(
       (p) =>
@@ -69,7 +69,7 @@ const VistaEstadisticasProductos: React.FC = () => {
 
   const coloresSolicitados = labelsSolicitados.map(() => '#3B82F6');
 
-  // --- Procesamiento de datos para productos con mayor movimiento ---
+  
   const labelsMovimientos = movimientos
     .filter(
       (p) =>
@@ -92,7 +92,7 @@ const VistaEstadisticasProductos: React.FC = () => {
 
   const coloresMovimientos = labelsMovimientos.map(() => '#F59E0B');
 
-  // --- Configuración para las gráficas ---
+
   const dataBarSolicitados = {
     labels: labelsSolicitados,
     datasets: [
@@ -127,7 +127,7 @@ const VistaEstadisticasProductos: React.FC = () => {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Productos solicitados */}
+          
             <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
               <h2 className="text-xl font-bold mb-2 text-center">Productos más solicitados</h2>
               <p className="text-sm text-gray-600 text-center mb-4">
@@ -138,7 +138,7 @@ const VistaEstadisticasProductos: React.FC = () => {
               </div>
             </Card>
 
-            {/* Productos con mayor movimiento */}
+          
             <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
               <h2 className="text-xl font-bold mb-2 text-center">Productos con mayor movimiento</h2>
               <p className="text-sm text-gray-600 text-center mb-4">

@@ -19,16 +19,21 @@ import {
   ModalFooter,
   ModalHeader,
   Checkbox,
+  Select,
+  SelectItem,
   useDisclosure,
   type SortDescriptor,
 } from '@heroui/react';
 import {
-  getTiposSitio,
-  createTipoSitio,
-  updateTipoSitio,
-  deleteTipoSitio,
-} from '@/Api/Tipo_sitios';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
+  getProductos,
+  createProducto,
+  updateProducto,
+  deleteProducto,
+} from '@/Api/Productosform';
+import {
+  getCategoriasProductos,
+  createCategoriaProducto,
+} from '@/Api/Categorias';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,27 +43,38 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-const ID_ROL_ACTUAL = 1; // Ajusta según entorno
-
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
-  { name: '# Sitios', uid: 'sitios', sortable: false },
+  { name: 'Descripción', uid: 'descripcion', sortable: false },
+  { name: 'Categoría', uid: 'categoria', sortable: false },
+  { name: 'Stock', uid: 'stock', sortable: false },
+  { name: 'Vencimiento', uid: 'fechaVencimiento', sortable: false },
   { name: 'Acciones', uid: 'actions' },
-];
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'sitios', 'actions'];
+] as const;
 
-const TipoSitiosPage = () => {
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
+const INITIAL_VISIBLE_COLUMNS = [
+  'id',
+  'nombre',
+  'descripcion',
+  'categoria',
+  'stock',
+  'fechaVencimiento',
+  'actions',
+] as const;
 
-  const [tipos, setTipos] = useState<any[]>([]);
+type ColumnKey = (typeof columns)[number]['uid'];
+
+const ProductosPage = () => {
+ 
+  const [productos, setProductos] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<any[]>([]);
+
+
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(
+    new Set<string>(INITIAL_VISIBLE_COLUMNS),
+  );
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -66,123 +82,137 @@ const TipoSitiosPage = () => {
     direction: 'ascending',
   });
 
-  const [nombre, setNombre] = useState('');
+
+  const [form, setForm] = useState({
+    nombre: '',
+    descripcion: '',
+    fechaVencimiento: '',
+    idCategoriaId: '',
+  });
   const [editId, setEditId] = useState<number | null>(null);
 
-  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+ 
+  const [catForm, setCatForm] = useState({ nombre: '', unpsc: '' });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const p = await getPermisosPorRuta('/Tipo_sitiosPage', ID_ROL_ACTUAL);
-        setPermisos(p);
-        if (p.puedeVer) await cargarDatos();
-      } catch {
-        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
-      }
-    })();
-  }, []);
+  
+  const [prodOpen, setProdOpen] = useState(false); 
+  const { isOpen: catOpen, onOpenChange: setCatOpen } = useDisclosure(); 
 
+  
   const cargarDatos = async () => {
     try {
-      const data = await getTiposSitio();
-      setTipos(data);
-    } catch {
-      await MySwal.fire('Error', 'No se pudieron cargar los tipos de sitio', 'error');
+      const [prod, cat] = await Promise.all([getProductos(), getCategoriasProductos()]);
+      setProductos(prod);
+      setCategorias(cat);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+      await MySwal.fire('Error', 'Error cargando productos y categorías', 'error');
+    }
+  };
+  useEffect(() => { cargarDatos(); }, []);
+
+ 
+  const guardarProducto = async () => {
+    if (!form.nombre.trim()) {
+      await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
+      return;
+    }
+    const payload = {
+      nombre: form.nombre,
+      descripcion: form.descripcion.trim() ? form.descripcion : null,
+      fechaVencimiento: form.fechaVencimiento || undefined,
+      idCategoriaId: Number(form.idCategoriaId),
+    };
+    try {
+      if (editId) {
+        await updateProducto(editId, payload);
+        await MySwal.fire('Éxito', 'Producto actualizado', 'success');
+      } else {
+        await createProducto(payload);
+        await MySwal.fire('Éxito', 'Producto creado', 'success');
+      }
+      setProdOpen(false);
+      setEditId(null);
+      setForm({ nombre: '', descripcion: '', fechaVencimiento: '', idCategoriaId: '' });
+      await cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error guardando producto', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
-
     const result = await MySwal.fire({
+      title: '¿Eliminar producto?',
+      text: 'Esta acción no se puede deshacer.',
       icon: 'warning',
-      title: '¿Eliminar tipo de sitio?',
-      text: 'No se podrá recuperar.',
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
-      customClass: {
-        confirmButton: 'bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md',
-        cancelButton: 'bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md',
-      },
-      buttonsStyling: false,
     });
-
     if (!result.isConfirmed) return;
-
     try {
-      await deleteTipoSitio(id);
-      await MySwal.fire('Eliminado', `Tipo eliminado: ID ${id}`, 'success');
+      await deleteProducto(id);
+      await MySwal.fire('Eliminado', `Producto ID ${id} eliminado`, 'success');
       await cargarDatos();
-    } catch {
-      await MySwal.fire('Error', 'No se pudo eliminar el tipo de sitio', 'error');
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error eliminando producto', 'error');
     }
   };
 
-  const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
+  const abrirNuevo = () => {
+    setEditId(null);
+    setForm({ nombre: '', descripcion: '', fechaVencimiento: '', idCategoriaId: '' });
+    setProdOpen(true);
+  };
 
-    if (!nombre.trim()) {
-      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
+  const abrirEditar = (p: any) => {
+    setEditId(p.id);
+    setForm({
+      nombre: p.nombre,
+      descripcion: p.descripcion || '',
+      fechaVencimiento: p.fechaVencimiento || '',
+      idCategoriaId: p.idCategoria?.id?.toString() || '',
+    });
+    setProdOpen(true);
+  };
+
+ 
+  const guardarCategoria = async () => {
+    if (!catForm.nombre.trim()) {
+      await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
       return;
     }
-
-    const payload = { nombre };
-
     try {
-      if (editId) {
-        await updateTipoSitio(editId, payload);
-        await MySwal.fire('Actualizado', 'Tipo actualizado', 'success');
-      } else {
-        await createTipoSitio(payload);
-        await MySwal.fire('Creado', 'Tipo creado', 'success');
-      }
-      limpiarForm();
-      onClose();
+      await createCategoriaProducto({ nombre: catForm.nombre, unpsc: catForm.unpsc || undefined });
       await cargarDatos();
-    } catch {
-      await MySwal.fire('Error', 'Error guardando el tipo de sitio', 'error');
+      setCatForm({ nombre: '', unpsc: '' });
+      setCatOpen();
+      await MySwal.fire('Éxito', 'Categoría creada', 'success');
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error creando categoría', 'error');
     }
   };
 
-  const abrirModalEditar = (t: any) => {
-    if (!permisos.puedeEditar) return;
-    setEditId(t.id);
-    setNombre(t.nombre || '');
-    onOpen();
-  };
 
-  const limpiarForm = () => {
-    setEditId(null);
-    setNombre('');
-  };
-
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
-
-  const filtered = useMemo(() => {
-    if (!filterValue) return tipos;
-    return tipos.filter(t => (`${t.id} ${t.nombre}`).toLowerCase().includes(filterValue.toLowerCase()));
-  }, [tipos, filterValue]);
-
-  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-
-  const sliced = useMemo(() => {
-    const start = (page - 1) * rowsPerPage;
-    return filtered.slice(start, start + rowsPerPage);
-  }, [filtered, page, rowsPerPage]);
-
+  const filtered = useMemo(
+    () =>
+      filterValue
+        ? productos.filter((p) =>
+            `${p.nombre} ${p.descripcion ?? ''} ${p.idCategoria?.nombre ?? ''}`
+              .toLowerCase()
+              .includes(filterValue.toLowerCase()),
+          )
+        : productos,
+    [productos, filterValue],
+  );
+  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  const sliced = useMemo(
+    () => filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage),
+    [filtered, page, rowsPerPage],
+  );
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -194,22 +224,26 @@ const TipoSitiosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const toggleColumn = (key: string) => {
-    setVisibleColumns(prev => {
-      const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
-      return copy;
-    });
-  };
 
-  const renderCell = (item: any, columnKey: string) => {
-    switch (columnKey) {
-      case 'nombre':
-        return <span className="font-medium text-gray-800 break-words max-w-[16rem]">{item.nombre}</span>;
-      case 'sitios':
-        return <span className="text-sm text-gray-600">{item.sitios?.length || 0}</span>;
+  const totalStock = (inv: any[]) =>
+    inv?.reduce((acc, i) => acc + (i.stock ?? 0), 0) ?? 0;
+
+
+  const renderCell = (item: any, key: ColumnKey) => {
+    switch (key) {
+      case 'descripcion':
+        return <span className="text-sm text-gray-600 break-words max-w-[18rem]">{item.descripcion ?? '—'}</span>;
+      case 'categoria':
+        return <span className="text-sm text-gray-600">{item.idCategoria?.nombre ?? '—'}</span>;
+      case 'stock':
+        return <span className="text-sm text-gray-600">{totalStock(item.inventarios)}</span>;
+      case 'fechaVencimiento':
+        return (
+          <span className="text-sm text-gray-600">
+            {item.fechaVencimiento ? new Date(item.fechaVencimiento).toLocaleDateString() : '—'}
+          </span>
+        );
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -218,62 +252,64 @@ const TipoSitiosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
+              <DropdownItem onPress={() => abrirEditar(item)} key={'editar'}>
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key={'eliminar'}>
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
       default:
-        return item[columnKey];
+        return item[key];
     }
   };
 
+  const toggleColumn = (key: ColumnKey) =>
+    setVisibleColumns((prev) => {
+      const copy = new Set(prev);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
+      return copy;
+    });
+
+  
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
+        
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🏷️ Gestión de Tipos de Sitio</h1>
-          <p className="text-sm text-gray-600">Consulta y administra los tipos de sitio registrados.</p>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
+            🛠️ Gestión de Productos
+          </h1>
+          <p className="text-sm text-gray-600">Consulta y administra los productos disponibles.</p>
         </header>
 
+        
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
-            aria-label="Tabla de tipos de sitio"
+            aria-label="Tabla de productos"
             isHeaderSticky
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
+            }}
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
                   <Input
                     isClearable
-                    className="w-full md:max-w-[44%]"
                     radius="lg"
-                    placeholder="Buscar por nombre o ID"
+                    placeholder="Buscar por nombre, descripción o categoría"
                     startContent={<SearchIcon className="text-[#0D1324]" />}
                     value={filterValue}
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue('')}
                   />
                   <div className="flex gap-3">
-                    {permisos.puedeCrear && (
-                      <Button
-                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                        endContent={<PlusIcon />}
-                        onPress={() => {
-                          limpiarForm();
-                          onOpen();
-                        }}
-                      >
-                        Nuevo Tipo
-                      </Button>
-                    )}
+                  
                     <Dropdown>
                       <DropdownTrigger>
                         <Button variant="flat">Columnas</Button>
@@ -282,7 +318,7 @@ const TipoSitiosPage = () => {
                         {columns
                           .filter((c) => c.uid !== 'actions')
                           .map((col) => (
-                            <DropdownItem key={col.uid} className="py-1 px-2">
+                            <DropdownItem key={col.uid}>
                               <Checkbox
                                 isSelected={visibleColumns.has(col.uid)}
                                 onValueChange={() => toggleColumn(col.uid)}
@@ -294,24 +330,30 @@ const TipoSitiosPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
+                    
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={abrirNuevo}
+                    >
+                      Nuevo Producto
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-default-400 text-sm">Total {tipos.length} tipos</span>
+                  <span className="text-default-400 text-sm">Total {productos.length} productos</span>
                   <label className="flex items-center text-default-400 text-sm">
-                    Filas por página:&nbsp;
+                    Filas:&nbsp;
                     <select
                       className="bg-transparent outline-none text-default-600 ml-1"
                       value={rowsPerPage}
                       onChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value, 10));
+                        setRowsPerPage(parseInt(e.target.value));
                         setPage(1);
                       }}
                     >
                       {[5, 10, 15].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
+                        <option key={n}>{n}</option>
                       ))}
                     </select>
                   </label>
@@ -323,104 +365,163 @@ const TipoSitiosPage = () => {
                 <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
                   Anterior
                 </Button>
-                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Pagination isCompact showControls page={page} total={Math.max(pages, 1)} onChange={setPage} />
                 <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
                   Siguiente
                 </Button>
               </div>
             }
-            sortDescriptor={sortDescriptor}
-            onSortChange={setSortDescriptor}
-            classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
-            }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
                 <TableColumn
                   key={col.uid}
                   align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 260 : undefined}
+                  width={col.uid === 'descripcion' ? 300 : undefined}
                 >
                   {col.name}
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={sorted} emptyContent="No se encontraron tipos de sitio">
+            <TableBody items={sorted} emptyContent="No se encontraron productos">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(colKey) => <TableCell>{renderCell(item, colKey as ColumnKey)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
+    
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 ? (
-            <p className="text-center text-gray-500">No se encontraron tipos de sitio</p>
-          ) : (
-            sorted.map((t) => (
-              <Card key={t.id} className="shadow-sm">
+          {sorted.length ? (
+            sorted.map((p) => (
+              <Card key={p.id} className="shadow-sm">
                 <CardContent className="space-y-2 p-4">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-lg">{t.nombre}</h3>
-                    {(permisos.puedeEditar || permisos.puedeEliminar) && (
-                      <Dropdown>
-                        <DropdownTrigger>
-                          <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                            <MoreVertical />
-                          </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu>
-                          {permisos.puedeEditar ? (
-                            <DropdownItem key={`editar-${t.id}`} onPress={() => abrirModalEditar(t)}>
-                              Editar
-                            </DropdownItem>
-                          ) : null}
-                          {permisos.puedeEliminar ? (
-                            <DropdownItem key={`eliminar-${t.id}`} onPress={() => eliminar(t.id)}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null}
-                        </DropdownMenu>
-                      </Dropdown>
-                    )}
+                    <h3 className="font-semibold text-lg">{p.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        <DropdownItem onPress={() => abrirEditar(p)} key={'editar'}>
+                          Editar
+                        </DropdownItem>
+                        <DropdownItem onPress={() => eliminar(p.id)} key={'eliminar'}>
+                          Eliminar
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
                   </div>
+                  <p className="text-sm text-gray-600">{p.descripcion ?? 'Sin descripción'}</p>
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium">Sitios:</span> {t.sitios?.length || 0}
+                    <span className="font-medium">Categoría:</span> {p.idCategoria?.nombre ?? '—'}
                   </p>
-                  <p className="text-xs text-gray-400">ID: {t.id}</p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Stock:</span> {totalStock(p.inventarios)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Vencimiento:</span>{' '}
+                    {p.fechaVencimiento ? new Date(p.fechaVencimiento).toLocaleDateString() : '—'}
+                  </p>
+                  <p className="text-xs text-gray-400">ID: {p.id}</p>
                 </CardContent>
               </Card>
             ))
+          ) : (
+            <p className="text-center text-gray-500">No se encontraron productos</p>
           )}
         </div>
 
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
+      
+        <Modal
+          isOpen={prodOpen}
+          onOpenChange={setProdOpen}
+          isDismissable={false}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            <>
-              <ModalHeader>{editId ? 'Editar Tipo' : 'Nuevo Tipo'}</ModalHeader>
-              <ModalBody className="space-y-4">
-                <Input
-                  label="Nombre"
-                  placeholder="Ej: Bodega Central"
-                  value={nombre}
-                  onValueChange={setNombre}
-                  radius="sm"
-                  disabled={!permisos.puedeCrear && !editId}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Cancelar
-                </Button>
-                <Button variant="flat" onPress={guardar} isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}>
-                  {editId ? 'Actualizar' : 'Crear'}
-                </Button>
-              </ModalFooter>
-            </>
+            {() => (
+              <>
+                <ModalHeader>{editId ? 'Editar Producto' : 'Nuevo Producto'}</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input label="Nombre" value={form.nombre} onValueChange={(v) => setForm((p) => ({ ...p, nombre: v }))} />
+                  <Input label="Descripción" value={form.descripcion} onValueChange={(v) => setForm((p) => ({ ...p, descripcion: v }))} />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.fechaVencimiento}
+                    onValueChange={(v) => setForm((p) => ({ ...p, fechaVencimiento: v }))}
+                  />
+                  
+                  <div className="flex items-end gap-2">
+                    <Select
+                      label="Categoría"
+                      className="flex-1"
+                      selectedKeys={form.idCategoriaId ? new Set([form.idCategoriaId]) : new Set()}
+                      onSelectionChange={(k) =>
+                        setForm((p) => ({ ...p, idCategoriaId: Array.from(k)[0] as string }))
+                      }
+                    >
+                      {categorias.map((c) => (
+                        <SelectItem key={c.id}>{c.nombre}</SelectItem>
+                      ))}
+                    </Select>
+                  
+                    <Button
+                      isIconOnly
+                      variant="solid"
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white"
+                      onPress={() => setCatOpen()}
+                    >
+                      <PlusIcon size={18} />
+                    </Button>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={() => setProdOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardarProducto}>
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+      
+        <Modal
+          isOpen={catOpen}
+          onOpenChange={setCatOpen}
+          isDismissable={false}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+            {() => (
+              <>
+                <ModalHeader>Nueva Categoría</ModalHeader>
+                <ModalBody className="space-y-4">
+                  <Input label="Nombre" value={catForm.nombre} onValueChange={(v) => setCatForm((p) => ({ ...p, nombre: v }))} />
+                  <Input label="Código UNPSC (opcional)" value={catForm.unpsc} onValueChange={(v) => setCatForm((p) => ({ ...p, unpsc: v }))} />
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={() => setCatOpen()}>
+                    Cancelar
+                  </Button>
+                  <Button variant="flat" onPress={guardarCategoria}>
+                    Crear
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
           </ModalContent>
         </Modal>
       </div>
@@ -428,4 +529,4 @@ const TipoSitiosPage = () => {
   );
 };
 
-export default TipoSitiosPage;
+export default ProductosPage;

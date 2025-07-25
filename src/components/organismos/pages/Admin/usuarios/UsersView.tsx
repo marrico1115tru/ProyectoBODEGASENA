@@ -1,3 +1,4 @@
+// src/pages/UsuariosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -29,11 +30,16 @@ import {
   updateUsuario,
   deleteUsuario,
 } from '@/Api/Usuariosform';
-import { getAreas } from '@/Api/AreasService';
-import { getFichasFormacion } from '@/Api/fichasFormacion';
-import { getRoles } from '@/Api/RolService';
+import { getAreas, createArea } from '@/Api/AreasService';
+import { getFichasFormacion, createFichaFormacion } from '@/Api/fichasFormacion';
+import { getRoles, createRol } from '@/Api/RolService';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -58,12 +64,6 @@ const INITIAL_VISIBLE_COLUMNS = [
   'actions',
 ];
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
-
 const UsuariosPage = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
@@ -79,8 +79,16 @@ const UsuariosPage = () => {
     direction: 'ascending',
   });
 
-  // Control del modal con useDisclosure
-  const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: userOpen,
+    onOpen: openUser,
+    onClose: closeUser,
+    onOpenChange: onUserOpenChange,
+  } = useDisclosure();
+
+  const areaModal = useDisclosure();
+  const fichaModal = useDisclosure();
+  const rolModal = useDisclosure();
 
   const [form, setForm] = useState({
     nombre: '',
@@ -95,11 +103,9 @@ const UsuariosPage = () => {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
+  const [newAreaName, setNewAreaName] = useState('');
+  const [newFichaName, setNewFichaName] = useState('');
+  const [newRolName, setNewRolName] = useState('');
 
   useEffect(() => {
     cargarDatos();
@@ -119,32 +125,40 @@ const UsuariosPage = () => {
       setRoles(r);
     } catch (err) {
       console.error('Error cargando datos', err);
-      notify('Error cargando datos');
+      await MySwal.fire('Error', 'Error cargando datos', 'error');
     }
   };
 
   const eliminar = async (id: number) => {
-    if (!window.confirm('¿Eliminar usuario? No se podrá recuperar.')) return;
+    const result = await MySwal.fire({
+      title: '¿Eliminar usuario?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteUsuario(id);
-      notify(`🗑️ Usuario eliminado: ID ${id}`);
-      cargarDatos();
+      await MySwal.fire('Eliminado', `Usuario ID ${id} eliminado`, 'success');
+      await cargarDatos();
     } catch {
-      notify('Error eliminando usuario');
+      await MySwal.fire('Error', 'Error eliminando usuario', 'error');
     }
   };
 
   const guardar = async () => {
     if (!form.nombre.trim()) {
-      notify('El nombre es obligatorio');
+      await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
       return;
     }
     if (!form.idArea || !form.idFicha || !form.idRol) {
-      notify('Debes seleccionar Área, Ficha y Rol');
+      await MySwal.fire('Atención', 'Debes seleccionar Área, Ficha y Rol', 'warning');
       return;
     }
     if (!editId && !form.password.trim()) {
-      notify('La contraseña es obligatoria para crear usuario');
+      await MySwal.fire('Atención', 'La contraseña es obligatoria para crear usuario', 'warning');
       return;
     }
 
@@ -153,7 +167,7 @@ const UsuariosPage = () => {
     const rolObj = roles.find(r => String(r.id) === form.idRol);
 
     if (!areaObj || !fichaObj || !rolObj) {
-      notify('Selección inválida de Área, Ficha o Rol');
+      await MySwal.fire('Error', 'Selección inválida de Área, Ficha o Rol', 'error');
       return;
     }
 
@@ -175,12 +189,12 @@ const UsuariosPage = () => {
     try {
       if (editId) {
         await updateUsuario(editId, payload);
-        notify('✏️ Usuario actualizado');
+        await MySwal.fire('Éxito', 'Usuario actualizado', 'success');
       } else {
         await createUsuario(payload);
-        notify('✅ Usuario creado');
+        await MySwal.fire('Éxito', 'Usuario creado', 'success');
       }
-      onClose();
+      closeUser();
       setForm({
         nombre: '',
         apellido: '',
@@ -193,10 +207,14 @@ const UsuariosPage = () => {
         idRol: '',
       });
       setEditId(null);
-      cargarDatos();
+      await cargarDatos();
     } catch (error: any) {
       console.error('Error guardando usuario:', error.response || error.message);
-      notify(`❌ Error: ${error.response?.data?.message || error.message || 'Servidor'}`);
+      await MySwal.fire(
+        'Error',
+        error.response?.data?.message || error.message || 'Error del servidor',
+        'error',
+      );
     }
   };
 
@@ -213,7 +231,7 @@ const UsuariosPage = () => {
       idFicha: u.idFichaFormacion?.id?.toString() || '',
       idRol: u.rol?.id?.toString() || '',
     });
-    onOpen();
+    openUser();
   };
 
   const filtered = useMemo(() => {
@@ -298,9 +316,59 @@ const UsuariosPage = () => {
     });
   };
 
+  const guardarArea = async () => {
+    if (!newAreaName.trim()) {
+      await MySwal.fire('Atención', 'El nombre del área es obligatorio', 'warning');
+      return;
+    }
+    try {
+      await createArea({ nombreArea: newAreaName.trim() });
+      await MySwal.fire('Éxito', 'Área creada', 'success');
+      setNewAreaName('');
+      areaModal.onClose();
+      cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error creando área', 'error');
+    }
+  };
+
+  const guardarFicha = async () => {
+    if (!newFichaName.trim()) {
+      await MySwal.fire('Atención', 'El nombre de la ficha es obligatorio', 'warning');
+      return;
+    }
+    try {
+      await createFichaFormacion({ nombre: newFichaName.trim() });
+      await MySwal.fire('Éxito', 'Ficha creada', 'success');
+      setNewFichaName('');
+      fichaModal.onClose();
+      cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error creando ficha', 'error');
+    }
+  };
+
+  const guardarRol = async () => {
+    if (!newRolName.trim()) {
+      await MySwal.fire('Atención', 'El nombre del rol es obligatorio', 'warning');
+      return;
+    }
+    try {
+      await createRol({ nombreRol: newRolName.trim() });
+      await MySwal.fire('Éxito', 'Rol creado', 'success');
+      setNewRolName('');
+      rolModal.onClose();
+      cargarDatos();
+    } catch (error) {
+      console.error(error);
+      await MySwal.fire('Error', 'Error creando rol', 'error');
+    }
+  };
+
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
@@ -363,7 +431,7 @@ const UsuariosPage = () => {
                           idFicha: '',
                           idRol: '',
                         });
-                        onOpen();
+                        openUser();
                       }}
                     >
                       Nuevo Usuario
@@ -431,9 +499,10 @@ const UsuariosPage = () => {
           </Table>
         </div>
 
+        {/* Modal Usuario */}
         <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
+          isOpen={userOpen}
+          onOpenChange={onUserOpenChange}
           placement="center"
           className="backdrop-blur-sm bg-black/30"
           isDismissable={false}
@@ -494,38 +563,81 @@ const UsuariosPage = () => {
                         required
                       />
                     )}
-                    <Select
-                      label="Área"
-                      selectedKeys={form.idArea ? new Set([form.idArea]) : new Set()}
-                      onSelectionChange={k => setForm(p => ({ ...p, idArea: String(Array.from(k)[0]) }))}
-                      radius="sm"
-                    >
-                      {areas.map(a => (
-                        <SelectItem key={a.id}>{a.nombreArea}</SelectItem>
-                      ))}
-                    </Select>
-                    <Select
-                      label="Ficha de Formación"
-                      selectedKeys={form.idFicha ? new Set([form.idFicha]) : new Set()}
-                      onSelectionChange={k => setForm(p => ({ ...p, idFicha: String(Array.from(k)[0]) }))}
-                      radius="sm"
-                    >
-                      {fichas.map(f => (
-                        <SelectItem key={f.id}>{f.nombre}</SelectItem>
-                      ))}
-                    </Select>
-                    <Select
-                      label="Rol"
-                      selectedKeys={form.idRol ? new Set([form.idRol]) : new Set()}
-                      onSelectionChange={k => setForm(p => ({ ...p, idRol: String(Array.from(k)[0]) }))}
-                      radius="sm"
-                    >
-                      {roles.map(r => (
-                        <SelectItem key={r.id}>{r.nombreRol}</SelectItem>
-                      ))}
-                    </Select>
+
+                    <div className="flex items-center gap-2">
+                      <Select
+                        label="Área"
+                        selectedKeys={form.idArea ? new Set([form.idArea]) : new Set()}
+                        onSelectionChange={k => setForm(p => ({ ...p, idArea: String(Array.from(k)[0]) }))}
+                        radius="sm"
+                        className="flex-grow"
+                      >
+                        {areas.map(a => (
+                          <SelectItem key={String(a.id)}>{a.nombreArea}</SelectItem>
+                        ))}
+                      </Select>
+                      <Button
+                        isIconOnly
+                        variant="solid"
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white"
+                        onPress={areaModal.onOpen}
+                        aria-label="Agregar Área"
+                        title="Agregar Área"
+                      >
+                        <PlusIcon size={18} />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Select
+                        label="Ficha de Formación"
+                        selectedKeys={form.idFicha ? new Set([form.idFicha]) : new Set()}
+                        onSelectionChange={k => setForm(p => ({ ...p, idFicha: String(Array.from(k)[0]) }))}
+                        radius="sm"
+                        className="flex-grow"
+                      >
+                        {fichas.map(f => (
+                          <SelectItem key={String(f.id)}>{f.nombre}</SelectItem>
+                        ))}
+                      </Select>
+                      <Button
+                        isIconOnly
+                        variant="solid"
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white"
+                        onPress={fichaModal.onOpen}
+                        aria-label="Agregar Ficha de Formación"
+                        title="Agregar Ficha de Formación"
+                      >
+                        <PlusIcon size={18} />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Select
+                        label="Rol"
+                        selectedKeys={form.idRol ? new Set([form.idRol]) : new Set()}
+                        onSelectionChange={k => setForm(p => ({ ...p, idRol: String(Array.from(k)[0]) }))}
+                        radius="sm"
+                        className="flex-grow"
+                      >
+                        {roles.map(r => (
+                          <SelectItem key={String(r.id)}>{r.nombreRol}</SelectItem>
+                        ))}
+                      </Select>
+                      <Button
+                        isIconOnly
+                        variant="solid"
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white"
+                        onPress={rolModal.onOpen}
+                        aria-label="Agregar Rol"
+                        title="Agregar Rol"
+                      >
+                        <PlusIcon size={18} />
+                      </Button>
+                    </div>
+
                     <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-                      <Button variant="light" onPress={onCloseLocal} type="button">
+                      <Button variant="light" onClick={onCloseLocal} type="button">
                         Cancelar
                       </Button>
                       <Button variant="flat" type="submit">
@@ -536,6 +648,102 @@ const UsuariosPage = () => {
                 </ModalBody>
               </>
             )}
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Nueva Área */}
+        <Modal
+          isOpen={areaModal.isOpen}
+          onOpenChange={areaModal.onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md p-6">
+            <>
+              <ModalHeader>Nueva Área</ModalHeader>
+              <ModalBody>
+                <Input
+                  label="Nombre del área"
+                  value={newAreaName}
+                  onValueChange={setNewAreaName}
+                  radius="sm"
+                  autoFocus
+                />
+              </ModalBody>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="light" onPress={areaModal.onClose}>
+                  Cancelar
+                </Button>
+                <Button variant="flat" onPress={guardarArea}>
+                  Crear
+                </Button>
+              </div>
+            </>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Nueva Ficha */}
+        <Modal
+          isOpen={fichaModal.isOpen}
+          onOpenChange={fichaModal.onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md p-6">
+            <>
+              <ModalHeader>Nueva Ficha de Formación</ModalHeader>
+              <ModalBody>
+                <Input
+                  label="Nombre de la ficha"
+                  value={newFichaName}
+                  onValueChange={setNewFichaName}
+                  radius="sm"
+                  autoFocus
+                />
+              </ModalBody>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="light" onPress={fichaModal.onClose}>
+                  Cancelar
+                </Button>
+                <Button variant="flat" onPress={guardarFicha}>
+                  Crear
+                </Button>
+              </div>
+            </>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Nuevo Rol */}
+        <Modal
+          isOpen={rolModal.isOpen}
+          onOpenChange={rolModal.onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md p-6">
+            <>
+              <ModalHeader>Nuevo Rol</ModalHeader>
+              <ModalBody>
+                <Input
+                  label="Nombre del rol"
+                  value={newRolName}
+                  onValueChange={setNewRolName}
+                  radius="sm"
+                  autoFocus
+                />
+              </ModalBody>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="light" onPress={rolModal.onClose}>
+                  Cancelar
+                </Button>
+                <Button variant="flat" onPress={guardarRol}>
+                  Crear
+                </Button>
+              </div>
+            </>
           </ModalContent>
         </Modal>
       </div>

@@ -1,3 +1,4 @@
+// src/pages/TituladosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -32,14 +33,11 @@ import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-/* 🟢 Toast */
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
-/* 📊 Columnas */
+const MySwal = withReactContent(Swal);
+
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
@@ -63,14 +61,7 @@ const TituladosPage = () => {
   const [nombre, setNombre] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
 
-  const [toastMsg, setToastMsg] = useState('');
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-
-  /* Toast helper */
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   /* Cargar datos */
   const cargarTitulados = async () => {
@@ -79,6 +70,7 @@ const TituladosPage = () => {
       setTitulados(data);
     } catch (err) {
       console.error('Error cargando titulados', err);
+      await MySwal.fire('Error', 'Error cargando titulados', 'error');
     }
   };
 
@@ -88,19 +80,50 @@ const TituladosPage = () => {
 
   /* CRUD */
   const eliminar = async (id: number) => {
-    if (!confirm('¿Eliminar titulado? No se podrá recuperar.')) return;
-    await deleteTitulado(id);
-    cargarTitulados();
-    notify(`🗑️ Titulado eliminado: ID ${id}`);
+    const result = await MySwal.fire({
+      title: '¿Eliminar titulado?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteTitulado(id);
+      await MySwal.fire('Eliminado', `Titulado ID ${id} eliminado`, 'success');
+      await cargarTitulados();
+    } catch (error) {
+      console.error('Error eliminando titulado:', error);
+      await MySwal.fire('Error', 'Error eliminando titulado', 'error');
+    }
   };
 
   const guardar = async () => {
-    const payload = { nombre };
-    editId ? await updateTitulado(editId, payload) : await createTitulado(payload);
-    onClose();
-    setNombre('');
-    setEditId(null);
-    cargarTitulados();
+    if (!nombre.trim()) {
+      await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
+      return;
+    }
+
+    const payload = { nombre: nombre.trim() };
+
+    try {
+      if (editId) {
+        await updateTitulado(editId, payload);
+        await MySwal.fire('Éxito', 'Titulado actualizado', 'success');
+      } else {
+        await createTitulado(payload);
+        await MySwal.fire('Éxito', 'Titulado creado', 'success');
+      }
+      onClose();
+      setNombre('');
+      setEditId(null);
+      await cargarTitulados();
+    } catch (error) {
+      console.error('Error guardando titulado:', error);
+      await MySwal.fire('Error', 'Error guardando titulado', 'error');
+    }
   };
 
   const abrirModalEditar = (t: any) => {
@@ -113,9 +136,7 @@ const TituladosPage = () => {
   const filtered = useMemo(
     () =>
       filterValue
-        ? titulados.filter((t) =>
-            t.nombre.toLowerCase().includes(filterValue.toLowerCase()),
-          )
+        ? titulados.filter((t) => t.nombre.toLowerCase().includes(filterValue.toLowerCase()))
         : titulados,
     [titulados, filterValue],
   );
@@ -149,26 +170,23 @@ const TituladosPage = () => {
         );
       case 'fichas':
         return (
-          <span className="text-sm text-gray-600">
-            {item.fichasFormacions?.length ?? 0}
-          </span>
+          <span className="text-sm text-gray-600">{item.fichasFormacions?.length ?? 0}</span>
         );
       case 'actions':
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="rounded-full text-[#0D1324]"
-              >
+              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={''}>Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={''}>Eliminar</DropdownItem>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -235,9 +253,7 @@ const TituladosPage = () => {
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {titulados.length} titulados
-        </span>
+        <span className="text-default-400 text-sm">Total {titulados.length} titulados</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -266,12 +282,7 @@ const TituladosPage = () => {
         Anterior
       </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button
-        size="sm"
-        variant="flat"
-        isDisabled={page === pages}
-        onPress={() => setPage(page + 1)}
-      >
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -279,7 +290,6 @@ const TituladosPage = () => {
 
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         {/* Encabezado */}
         <header className="space-y-1">
@@ -348,8 +358,12 @@ const TituladosPage = () => {
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(t)} key={''}>Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(t.id)} key={''}>Eliminar</DropdownItem>
+                      <DropdownItem onPress={() => abrirModalEditar(t)} key="editar">
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem onPress={() => eliminar(t.id)} key="eliminar">
+                        Eliminar
+                      </DropdownItem>
                     </DropdownMenu>
                   </Dropdown>
                 </div>
@@ -368,8 +382,9 @@ const TituladosPage = () => {
           onOpenChange={onOpenChange}
           placement="center"
           className="backdrop-blur-sm bg-black/30"
+          isDismissable={false}
         >
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md w-full p-6">
             {(onCloseLocal) => (
               <>
                 <ModalHeader>{editId ? 'Editar Titulado' : 'Nuevo Titulado'}</ModalHeader>
@@ -379,6 +394,7 @@ const TituladosPage = () => {
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
+                    autoFocus
                   />
                 </ModalBody>
                 <ModalFooter>
