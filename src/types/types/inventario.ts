@@ -1,10 +1,12 @@
 export interface Sitio {
+  nombreSitio: string;
   id: number;
   nombre: string;
   ubicacion: string;
 }
 
 export interface Producto {
+  nombreProducto: any;
   id: number;
   nombre: string;
   descripcion: string;
