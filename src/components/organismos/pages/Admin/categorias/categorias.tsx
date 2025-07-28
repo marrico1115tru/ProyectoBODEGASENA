@@ -1,4 +1,4 @@
-// src/pages/CategoriasProductosPage.tsx
+""// src/pages/CategoriasProductosPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -19,7 +19,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Checkbox,
   useDisclosure,
   type SortDescriptor,
 } from "@heroui/react";
@@ -32,7 +31,7 @@ import {
 } from "@/Api/Categorias";
 
 import DefaultLayout from "@/layouts/default";
-import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
+import { Plus, MoreVertical, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 import Swal from "sweetalert2";
@@ -53,7 +52,7 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "nombre", "unpsc", "productos", "actions"
 const CategoriasProductosPage = () => {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -67,7 +66,6 @@ const CategoriasProductosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Load categories
   const cargarCategorias = async () => {
     try {
       const data = await getCategoriasProductos();
@@ -82,7 +80,6 @@ const CategoriasProductosPage = () => {
     cargarCategorias();
   }, []);
 
-  // Delete category with confirmation alert
   const eliminar = async (id: number) => {
     const result = await MySwal.fire({
       icon: "warning",
@@ -105,7 +102,6 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Save (create or update) category with alerts
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
@@ -130,7 +126,6 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Open modal to edit category
   const abrirModalEditar = (cat: any) => {
     setEditId(cat.id);
     setNombre(cat.nombre);
@@ -138,7 +133,6 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
-  // Close modal and reset state
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
@@ -146,7 +140,6 @@ const CategoriasProductosPage = () => {
     onClose();
   };
 
-  // Filter categories by name or UNPSC
   const filtered = useMemo(() => {
     if (!filterValue) return categorias;
     const lowerFilter = filterValue.toLowerCase();
@@ -159,13 +152,11 @@ const CategoriasProductosPage = () => {
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
-  // Slice for pagination
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
-  // Sorted items by descriptor
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -177,7 +168,6 @@ const CategoriasProductosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Render table cells
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case "nombre":
@@ -209,14 +199,6 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Toggle visible columns
-  const toggleColumn = (key: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
-      return copy;
-    });
-  };
 
   return (
     <DefaultLayout>
@@ -228,7 +210,7 @@ const CategoriasProductosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Desktop Table */}
+        {/* Tabla Desktop */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
@@ -241,40 +223,18 @@ const CategoriasProductosPage = () => {
                     className="w-full md:max-w-[44%]"
                     radius="lg"
                     placeholder="Buscar por nombre o UNPSC"
-                    startContent={<SearchIcon className="text-[#0D1324]" />}
+                    startContent={<Search className="text-[#0D1324]" />}
                     value={filterValue}
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  <div className="flex gap-3">
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button variant="flat">Columnas</Button>
-                      </DropdownTrigger>
-                      <DropdownMenu aria-label="Seleccionar columnas">
-                        {columns
-                          .filter((c) => c.uid !== "actions")
-                          .map((col) => (
-                            <DropdownItem key={col.uid} className="py-1 px-2">
-                              <Checkbox
-                                isSelected={visibleColumns.has(col.uid)}
-                                onValueChange={() => toggleColumn(col.uid)}
-                                size="sm"
-                              >
-                                {col.name}
-                              </Checkbox>
-                            </DropdownItem>
-                          ))}
-                      </DropdownMenu>
-                    </Dropdown>
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={onOpen}
-                    >
-                      Nueva Categoría
-                    </Button>
-                  </div>
+                  <Button
+                    className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                    endContent={<Plus />}
+                    onPress={onOpen}
+                  >
+                    Nueva Categoría
+                  </Button>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>
@@ -337,7 +297,7 @@ const CategoriasProductosPage = () => {
           </Table>
         </div>
 
-        {/* Mobile Cards */}
+        {/* Cards Mobile */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
           {sorted.map((cat) => (

@@ -1,4 +1,3 @@
-// src/pages/CentrosFormacionPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -479,4 +478,4 @@ const CentrosFormacionPage = () => {
   );
 };
 
-export default CentrosFormacionPage;
+export default CentrosFormacionPage;  

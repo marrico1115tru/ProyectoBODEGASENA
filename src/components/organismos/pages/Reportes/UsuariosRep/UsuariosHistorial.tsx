@@ -14,7 +14,12 @@ export default function UsuariosMayorUso() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-mayor-uso-productos"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:3000/usuarios/usuarios-top-solicitudes");
+      const res = await axios.get(
+        "http://localhost:3000/usuarios/usuarios-top-solicitudes",
+        {
+          withCredentials: true, // ✅ Esto permite enviar cookies HTTP-only
+        }
+      );
       return res.data;
     },
   });
