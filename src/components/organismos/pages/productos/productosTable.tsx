@@ -40,6 +40,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
+import axios from 'axios';
 
 const MySwal = withReactContent(Swal);
 
@@ -69,8 +71,6 @@ const ProductosPage = () => {
  
   const [productos, setProductos] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
-
-
   const [filterValue, setFilterValue] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(
     new Set<string>(INITIAL_VISIBLE_COLUMNS),
@@ -81,8 +81,6 @@ const ProductosPage = () => {
     column: 'id',
     direction: 'ascending',
   });
-
-
   const [form, setForm] = useState({
     nombre: '',
     descripcion: '',
@@ -90,12 +88,15 @@ const ProductosPage = () => {
     idCategoriaId: '',
   });
   const [editId, setEditId] = useState<number | null>(null);
-
- 
   const [catForm, setCatForm] = useState({ nombre: '', unpsc: '' });
-
-  
   const [prodOpen, setProdOpen] = useState(false); 
+  const [permisos, setPermisos] = useState({
+  puedeVer: false,
+  puedeCrear: false,
+  puedeEditar: false,
+  puedeEliminar: false
+});
+
   const { isOpen: catOpen, onOpenChange: setCatOpen } = useDisclosure(); 
 
   
@@ -110,6 +111,30 @@ const ProductosPage = () => {
     }
   };
   useEffect(() => { cargarDatos(); }, []);
+  
+  useEffect(() => {
+      const fetchModulos = async () => {
+        try {
+          const userData = getDecodedTokenFromCookies("token");
+          const rolId = userData?.rol?.id;
+          if (!rolId) return;
+  
+          //const url = `http://localhost:3000/permisos/modulos/${rolId}`;
+          const url = `http://localhost:3000/permisos/por-ruta?ruta=/productos/listar&idRol=${rolId}`;
+          const response = await axios.get(url, { withCredentials: true });
+  
+          console.log('Permisos para productos listar:', response.data.data);
+          setPermisos(permisosData); 
+        } catch (err) {
+          //setError("Error al obtener permisos de módulos");
+          console.error(err);
+        } finally {
+          //setLoading(false);
+        }
+      };
+  
+      fetchModulos();
+    }, []);
 
  
   const guardarProducto = async () => {
@@ -255,9 +280,11 @@ const ProductosPage = () => {
               <DropdownItem onPress={() => abrirEditar(item)} key={'editar'}>
                 Editar
               </DropdownItem>
+              {permisos.puedeEliminar && (
               <DropdownItem onPress={() => eliminar(item.id)} key={'eliminar'}>
                 Eliminar
               </DropdownItem>
+              )}
             </DropdownMenu>
           </Dropdown>
         );
