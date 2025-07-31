@@ -1,4 +1,4 @@
-""// src/pages/CategoriasProductosPage.tsx
+// src/pages/CategoriasProductosPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -36,6 +36,8 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import axios from "axios";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
@@ -45,14 +47,15 @@ const columns = [
   { name: "UNPSC", uid: "unpsc", sortable: false },
   { name: "Productos", uid: "productos", sortable: false },
   { name: "Acciones", uid: "actions" },
-];
+] as const;
 
-const INITIAL_VISIBLE_COLUMNS = ["id", "nombre", "unpsc", "productos", "actions"];
+const INITIAL_VISIBLE_COLUMNS = ["id", "nombre", "unpsc", "productos", "actions"] as const;
+type ColumnKey = (typeof columns)[number]["uid"];
 
 const CategoriasProductosPage = () => {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -66,7 +69,58 @@ const CategoriasProductosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Ruta para permisos categorías de productos
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/CategoriasProductosPage/listar&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Cargar categorías solo si tiene permiso de ver
   const cargarCategorias = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const data = await getCategoriasProductos();
       setCategorias(data);
@@ -78,9 +132,15 @@ const CategoriasProductosPage = () => {
 
   useEffect(() => {
     cargarCategorias();
-  }, []);
+  }, [permisos]);
 
+  // Funciones CRUD con validación de permisos
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar categorías.", "warning");
+      return;
+    }
+
     const result = await MySwal.fire({
       icon: "warning",
       title: "¿Eliminar categoría?",
@@ -107,6 +167,14 @@ const CategoriasProductosPage = () => {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
       return;
     }
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar categorías.", "warning");
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear categorías.", "warning");
+      return;
+    }
 
     const payload = { nombre: nombre.trim(), unpsc: unpsc.trim() || undefined };
 
@@ -127,9 +195,24 @@ const CategoriasProductosPage = () => {
   };
 
   const abrirModalEditar = (cat: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para editar categorías.", "warning");
+      return;
+    }
     setEditId(cat.id);
     setNombre(cat.nombre);
     setUnpsc(cat.unpsc || "");
+    onOpen();
+  };
+
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para crear categorías.", "warning");
+      return;
+    }
+    setEditId(null);
+    setNombre("");
+    setUnpsc("");
     onOpen();
   };
 
@@ -140,6 +223,7 @@ const CategoriasProductosPage = () => {
     onClose();
   };
 
+  // Filtrado
   const filtered = useMemo(() => {
     if (!filterValue) return categorias;
     const lowerFilter = filterValue.toLowerCase();
@@ -168,7 +252,8 @@ const CategoriasProductosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  // Renderizado de celdas con control de permisos en acciones
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombre":
         return <span className="font-medium text-gray-800">{item.nombre}</span>;
@@ -177,6 +262,28 @@ const CategoriasProductosPage = () => {
       case "productos":
         return <span className="text-sm text-gray-600">{item.productos?.length || 0}</span>;
       case "actions":
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -184,14 +291,7 @@ const CategoriasProductosPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                Editar
-              </DropdownItem>
-              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
       default:
@@ -199,6 +299,16 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  // Bloquear vista completa si no puede ver
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>
@@ -228,13 +338,15 @@ const CategoriasProductosPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  <Button
-                    className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                    endContent={<Plus />}
-                    onPress={onOpen}
-                  >
-                    Nueva Categoría
-                  </Button>
+                  {permisos.puedeCrear && (
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<Plus />}
+                      onPress={abrirModalNuevo}
+                    >
+                      Nueva Categoría
+                    </Button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>
@@ -289,9 +401,7 @@ const CategoriasProductosPage = () => {
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron categorías">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
@@ -300,40 +410,59 @@ const CategoriasProductosPage = () => {
         {/* Cards Mobile */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
-          {sorted.map((cat) => (
-            <Card key={cat.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{cat.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem key={`editar-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem key={`eliminar-${cat.id}`} onPress={() => eliminar(cat.id)}>
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">UNPSC:</span> {cat.unpsc || "—"}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Productos:</span> {cat.productos?.length || 0}
-                </p>
-                <p className="text-xs text-gray-400">ID: {cat.id}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {sorted.map((cat) => {
+            // Menu acciones mobiles con control de permisos
+            const mobileDropdownItems = [];
+            if (permisos.puedeEditar) {
+              mobileDropdownItems.push(
+                <DropdownItem key={`editar-mobile-${cat.id}`} onPress={() => abrirModalEditar(cat)}>
+                  Editar
+                </DropdownItem>
+              );
+            }
+            if (permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key={`eliminar-mobile-${cat.id}`} onPress={() => eliminar(cat.id)}>
+                  Eliminar
+                </DropdownItem>
+              );
+            }
+            if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="sinAcciones-mobile" isDisabled>
+                  Sin acciones disponibles
+                </DropdownItem>
+              );
+            }
+
+            return (
+              <Card key={cat.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg break-words max-w-[14rem]">{cat.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>{mobileDropdownItems}</DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">UNPSC:</span> {cat.unpsc || "—"}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Productos:</span> {cat.productos?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-400">ID: {cat.id}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Modal */}
+        {/* Modal CRUD */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md w-full p-6">
             {() => (
@@ -347,6 +476,7 @@ const CategoriasProductosPage = () => {
                     onValueChange={setNombre}
                     radius="sm"
                     autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Input
                     label="UNPSC (opcional)"
@@ -354,13 +484,18 @@ const CategoriasProductosPage = () => {
                     value={unpsc}
                     onValueChange={setUnpsc}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                 </ModalBody>
                 <ModalFooter className="flex justify-end gap-3">
                   <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
-                  <Button color="primary" onPress={guardar}>
+                  <Button
+                    color="primary"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? "Actualizar" : "Crear"}
                   </Button>
                 </ModalFooter>

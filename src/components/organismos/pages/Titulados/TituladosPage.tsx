@@ -1,4 +1,3 @@
-// src/pages/TituladosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -35,6 +34,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import axios from 'axios';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
 
@@ -44,13 +45,14 @@ const columns = [
   { name: 'Fichas', uid: 'fichas', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'fichas', 'actions'];
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'fichas', 'actions'] as const;
+
+type ColumnKey = (typeof columns)[number]['uid'];
 
 const TituladosPage = () => {
-  /* Estado */
   const [titulados, setTitulados] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -63,8 +65,58 @@ const TituladosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  /* Cargar datos */
+  
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+ 
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/TituladosPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  /* Cargar datos con permiso para ver */
   const cargarTitulados = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const data = await getTitulados();
       setTitulados(data);
@@ -74,12 +126,17 @@ const TituladosPage = () => {
     }
   };
 
+ 
   useEffect(() => {
     cargarTitulados();
-  }, []);
+  }, [permisos]);
 
-  /* CRUD */
+ 
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar titulados.', 'warning');
+      return;
+    }
     const result = await MySwal.fire({
       title: '¿Eliminar titulado?',
       text: 'No se podrá recuperar.',
@@ -105,6 +162,14 @@ const TituladosPage = () => {
       await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
       return;
     }
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar titulados.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear titulados.', 'warning');
+      return;
+    }
 
     const payload = { nombre: nombre.trim() };
 
@@ -127,12 +192,26 @@ const TituladosPage = () => {
   };
 
   const abrirModalEditar = (t: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar titulados.', 'warning');
+      return;
+    }
     setEditId(t.id);
     setNombre(t.nombre);
     onOpen();
   };
 
-  /* Filtro + Orden + Paginación */
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear titulados.', 'warning');
+      return;
+    }
+    setEditId(null);
+    setNombre('');
+    onOpen();
+  };
+
+ 
   const filtered = useMemo(
     () =>
       filterValue
@@ -160,7 +239,7 @@ const TituladosPage = () => {
   }, [sliced, sortDescriptor]);
 
   /* Render Cell */
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'nombre':
         return (
@@ -169,10 +248,31 @@ const TituladosPage = () => {
           </span>
         );
       case 'fichas':
-        return (
-          <span className="text-sm text-gray-600">{item.fichasFormacions?.length ?? 0}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.fichasFormacions?.length ?? 0}</span>;
       case 'actions':
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key="editar" onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>,
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="eliminar" onPress={() => eliminar(item.id)}>
+              Eliminar
+            </DropdownItem>,
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>,
+          );
+        }
+
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -180,14 +280,7 @@ const TituladosPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">
-                Editar
-              </DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
       default:
@@ -195,7 +288,7 @@ const TituladosPage = () => {
     }
   };
 
-  /* Columnas visibles */
+ 
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -204,7 +297,6 @@ const TituladosPage = () => {
     });
   };
 
-  /* Top content */
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -239,17 +331,15 @@ const TituladosPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              setEditId(null);
-              setNombre('');
-              onOpen();
-            }}
-          >
-            Nuevo Titulado
-          </Button>
+          {permisos.puedeCrear && (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={abrirModalNuevo}
+            >
+              Nuevo Titulado
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -275,7 +365,7 @@ const TituladosPage = () => {
     </div>
   );
 
-  /* Bottom content */
+ 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
@@ -288,10 +378,21 @@ const TituladosPage = () => {
     </div>
   );
 
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
-        {/* Encabezado */}
+     
+
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🎓 Gestión de Titulados
@@ -299,7 +400,8 @@ const TituladosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra los programas titulados.</p>
         </header>
 
-        {/* Tabla desktop */}
+     
+
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de titulados"
@@ -326,57 +428,64 @@ const TituladosPage = () => {
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron titulados">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Cards móvil */}
+     
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron titulados</p>
-          )}
-          {sorted.map((t) => (
-            <Card key={t.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">
-                    {t.nombre}
-                  </h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(t)} key="editar">
-                        Editar
-                      </DropdownItem>
-                      <DropdownItem onPress={() => eliminar(t.id)} key="eliminar">
-                        Eliminar
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Fichas:</span> {t.fichasFormacions?.length ?? 0}
-                </p>
-                <p className="text-xs text-gray-400">ID: {t.id}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron titulados</p>}
+          {sorted.map((t) => {
+           
+            const mobileDropdownItems = [];
+            if (permisos.puedeEditar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="editar-mobile" onPress={() => abrirModalEditar(t)}>
+                  Editar
+                </DropdownItem>,
+              );
+            }
+            if (permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="eliminar-mobile" onPress={() => eliminar(t.id)}>
+                  Eliminar
+                </DropdownItem>,
+              );
+            }
+            if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="sinAcciones-mobile" isDisabled>
+                  Sin acciones disponibles
+                </DropdownItem>,
+              );
+            }
+
+            return (
+              <Card key={t.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg break-words max-w-[14rem]">{t.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>{mobileDropdownItems}</DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Fichas:</span> {t.fichasFormacions?.length ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-400">ID: {t.id}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Modal CRUD */}
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -395,13 +504,18 @@ const TituladosPage = () => {
                     onValueChange={setNombre}
                     radius="sm"
                     autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                 </ModalBody>
                 <ModalFooter>
                   <Button variant="light" onPress={onCloseLocal}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

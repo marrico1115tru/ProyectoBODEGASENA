@@ -18,7 +18,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Checkbox,
   useDisclosure,
   type SortDescriptor,
 } from '@heroui/react';
@@ -30,17 +29,14 @@ import {
 } from '@/Api/detalles_solicitud';
 import { getProductos } from '@/Api/Productosform';
 import { getSolicitudes } from '@/Api/Solicitudes';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
+import axios from 'axios';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
-
-const ID_ROL_ACTUAL = 1;
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
@@ -49,7 +45,7 @@ const columns = [
   { name: 'Producto', uid: 'producto', sortable: false },
   { name: 'Solicitud', uid: 'solicitud', sortable: false },
   { name: 'Acciones', uid: 'actions' },
-];
+] as const;
 
 const INITIAL_VISIBLE_COLUMNS = [
   'id',
@@ -58,20 +54,18 @@ const INITIAL_VISIBLE_COLUMNS = [
   'producto',
   'solicitud',
   'actions',
-];
+] as const;
+type ColumnKey = (typeof columns)[number]['uid'];
 
 const DetalleSolicitudesPage = () => {
   const [detalles, setDetalles] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
-  });
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
   const [permisos, setPermisos] = useState({
     puedeVer: false,
@@ -79,7 +73,6 @@ const DetalleSolicitudesPage = () => {
     puedeEditar: false,
     puedeEliminar: false,
   });
-  const [loadingPermisos, setLoadingPermisos] = useState(true);
 
   const [cantidad, setCantidad] = useState<number | undefined>(undefined);
   const [observaciones, setObservaciones] = useState('');
@@ -89,33 +82,50 @@ const DetalleSolicitudesPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  // Cargar permisos basados en rol y ruta (igual que en Areas)
   useEffect(() => {
-    cargarPermisos();
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Cambia la ruta para esta página detallada
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/DetalleSolicitudPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
   }, []);
 
-  const cargarPermisos = async () => {
-    setLoadingPermisos(true);
-    try {
-      const p = await getPermisosPorRuta('/DetalleSolicitudPage', ID_ROL_ACTUAL);
-      setPermisos(p.data || p);
-      if ((p.data || p).puedeVer) {
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-      await MySwal.fire('Error', 'No se pudieron cargar los permisos', 'error');
-    } finally {
-      setLoadingPermisos(false);
-    }
-  };
-
+  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const [det, prods, sols] = await Promise.all([getDetalleSolicitudes(), getProductos(), getSolicitudes()]);
       setDetalles(det);
@@ -127,8 +137,16 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
+  useEffect(() => {
+    cargarDatos();
+  }, [permisos]);
+
+  // Acciones CRUD con validación de permisos igual que en Areas
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar', 'warning');
+      return;
+    }
     const result = await MySwal.fire({
       title: '¿Eliminar registro?',
       text: 'No se podrá recuperar.',
@@ -149,7 +167,14 @@ const DetalleSolicitudesPage = () => {
   };
 
   const guardar = async () => {
-    if (!permisos.puedeCrear && !permisos.puedeEditar) return;
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear.', 'warning');
+      return;
+    }
 
     if (!cantidad || cantidad <= 0) {
       await MySwal.fire('Error', 'La cantidad solicitada debe ser mayor que cero', 'error');
@@ -178,11 +203,9 @@ const DetalleSolicitudesPage = () => {
 
     try {
       if (editId) {
-        if (!permisos.puedeEditar) return;
         await updateDetalleSolicitud(editId, payload);
         await MySwal.fire('Éxito', 'Detalle actualizado', 'success');
       } else {
-        if (!permisos.puedeCrear) return;
         await createDetalleSolicitud(payload);
         await MySwal.fire('Éxito', 'Detalle creado', 'success');
       }
@@ -195,6 +218,10 @@ const DetalleSolicitudesPage = () => {
   };
 
   const abrirModalEditar = (d: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar.', 'warning');
+      return;
+    }
     setEditId(d.id);
     setCantidad(d.cantidadSolicitada);
     setObservaciones(d.observaciones || '');
@@ -215,9 +242,9 @@ const DetalleSolicitudesPage = () => {
     return filterValue
       ? detalles.filter((d) =>
           (
-            `${d.cantidadSolicitada} ${d.observaciones || ''} ${
-              d.idProducto?.nombre || ''
-            } ${d.idSolicitud?.estadoSolicitud || ''}`
+            `${d.cantidadSolicitada} ${d.observaciones || ''} ${d.idProducto?.nombre || ''} ${
+              d.idSolicitud?.estadoSolicitud || ''
+            }`
           )
             .toLowerCase()
             .includes(filterValue.toLowerCase())
@@ -243,30 +270,52 @@ const DetalleSolicitudesPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'cantidadSolicitada':
         return <span className="text-sm text-gray-800">{item.cantidadSolicitada}</span>;
+
       case 'observaciones':
         return (
           <span className="text-sm text-gray-600 break-words max-w-[16rem]">
             {item.observaciones || '—'}
           </span>
         );
+
       case 'producto':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idProducto?.nombre || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idProducto?.nombre || '—'}</span>;
+
       case 'solicitud':
-        return (
-          <span className="text-sm text-gray-600">
-            {item.idSolicitud?.estadoSolicitud || '—'}
-          </span>
-        );
+        return <span className="text-sm text-gray-600">{item.idSolicitud?.estadoSolicitud || '—'}</span>;
+
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`eliminar-${item.id}`}
+              onPress={() => eliminar(item.id)}
+              className="text-danger"
+            >
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
+
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -279,53 +328,20 @@ const DetalleSolicitudesPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || '—';
     }
   };
-
-  const toggleColumn = (key: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
-      return copy;
-    });
-  };
-
-  if (loadingPermisos) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-blue-100 text-blue-700 p-4 rounded shadow text-center">
-            Cargando permisos...
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
         </div>
       </DefaultLayout>
     );
@@ -358,40 +374,18 @@ const DetalleSolicitudesPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue('')}
                   />
-                  <div className="flex gap-3">
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button variant="flat">Columnas</Button>
-                      </DropdownTrigger>
-                      <DropdownMenu aria-label="Seleccionar columnas">
-                        {columns
-                          .filter((c) => c.uid !== 'actions')
-                          .map((col) => (
-                            <DropdownItem key={col.uid} className="py-1 px-2">
-                              <Checkbox
-                                isSelected={visibleColumns.has(col.uid)}
-                                onValueChange={() => toggleColumn(col.uid)}
-                                size="sm"
-                              >
-                                {col.name}
-                              </Checkbox>
-                            </DropdownItem>
-                          ))}
-                      </DropdownMenu>
-                    </Dropdown>
-                    {permisos.puedeCrear && (
-                      <Button
-                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                        endContent={<PlusIcon />}
-                        onPress={() => {
-                          limpiarFormulario();
-                          onOpen();
-                        }}
-                      >
-                        Nuevo Detalle
-                      </Button>
-                    )}
-                  </div>
+                  {permisos.puedeCrear && (
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon />}
+                      onPress={() => {
+                        limpiarFormulario();
+                        onOpen();
+                      }}
+                    >
+                      Nuevo Detalle
+                    </Button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {detalles.length} registros</span>
@@ -417,27 +411,11 @@ const DetalleSolicitudesPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="flat"
-                  isDisabled={page === 1}
-                  onPress={() => setPage(page - 1)}
-                >
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
                   Anterior
                 </Button>
-                <Pagination
-                  isCompact
-                  showControls
-                  page={page}
-                  total={pages}
-                  onChange={setPage}
-                />
-                <Button
-                  size="sm"
-                  variant="flat"
-                  isDisabled={page === pages}
-                  onPress={() => setPage(page + 1)}
-                >
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
                   Siguiente
                 </Button>
               </div>
@@ -463,64 +441,17 @@ const DetalleSolicitudesPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron registros">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron registros</p>
-          )}
-          {sorted.map((d) => (
-            <Card key={d.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">Cant: {d.cantidadSolicitada}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="rounded-full text-[#0D1324]"
-                        >
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem onPress={() => abrirModalEditar(d)} key={`editar-${d.id}`}>Editar</DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem onPress={() => eliminar(d.id)} key={`eliminar-${d.id}`}>Eliminar</DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  ) : null}
-                </div>
-                <p className="text-sm text-gray-600 break-words">
-                  <span className="font-medium">Obs:</span> {d.observaciones || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Producto:</span> {d.idProducto?.nombre || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Solicitud:</span>{' '}
-                  {d.idSolicitud?.estadoSolicitud || '—'}
-                </p>
-                <p className="text-xs text-gray-400">ID: {d.id}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
+        {/* Modal para creación/edición */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
-            {(onCloseLocal) => (
+            {() => (
               <>
                 <ModalHeader>{editId ? 'Editar Detalle' : 'Nuevo Detalle'}</ModalHeader>
                 <ModalBody className="space-y-4">
@@ -531,6 +462,8 @@ const DetalleSolicitudesPage = () => {
                     value={typeof cantidad === 'number' ? cantidad.toString() : ''}
                     onValueChange={(v) => setCantidad(v ? Number(v) : undefined)}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    autoFocus
                   />
                   <Input
                     label="Observaciones"
@@ -538,11 +471,10 @@ const DetalleSolicitudesPage = () => {
                     value={observaciones}
                     onValueChange={setObservaciones}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Producto
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Producto</label>
                     <select
                       value={productoSeleccionado?.id || ''}
                       onChange={(e) => {
@@ -551,6 +483,7 @@ const DetalleSolicitudesPage = () => {
                         setProductoSeleccionado(producto);
                       }}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione un producto</option>
                       {productos.map((p) => (
@@ -561,9 +494,7 @@ const DetalleSolicitudesPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Solicitud
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Solicitud</label>
                     <select
                       value={solicitudSeleccionada?.id || ''}
                       onChange={(e) => {
@@ -572,6 +503,7 @@ const DetalleSolicitudesPage = () => {
                         setSolicitudSeleccionada(solicitud);
                       }}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione una solicitud</option>
                       {solicitudes.map((s) => (
@@ -582,9 +514,17 @@ const DetalleSolicitudesPage = () => {
                     </select>
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
-                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
+                <ModalFooter className="flex justify-end gap-3">
+                  <Button variant="light" onPress={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    color="primary"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
                 </ModalFooter>
               </>
             )}

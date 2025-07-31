@@ -1,3 +1,4 @@
+// src/pages/CentrosFormacionPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -30,12 +31,15 @@ import {
   updateCentroFormacion,
   deleteCentroFormacion,
 } from "@/Api/centrosformacionTable";
+
 import { obtenerMunicipios } from "@/Api/MunicipiosForm";
 import DefaultLayout from "@/layouts/default";
 import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import axios from "axios";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
@@ -48,7 +52,7 @@ const columns = [
   { name: "Municipio", uid: "municipio", sortable: false },
   { name: "# Sedes", uid: "sedes", sortable: false },
   { name: "Acciones", uid: "actions" },
-];
+] as const;
 
 const INITIAL_VISIBLE_COLUMNS = [
   "id",
@@ -59,13 +63,15 @@ const INITIAL_VISIBLE_COLUMNS = [
   "municipio",
   "sedes",
   "actions",
-];
+] as const;
+
+type ColumnKey = (typeof columns)[number]["uid"];
 
 const CentrosFormacionPage = () => {
   const [centros, setCentros] = useState<any[]>([]);
   const [municipios, setMunicipios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -80,11 +86,60 @@ const CentrosFormacionPage = () => {
   const [idMunicipio, setIdMunicipio] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  // Control manual del modal (sin isDismissable)
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Cargar centros
+  // Estado para permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Asegúrate que esta es la ruta correcta para los permisos de centros formación:
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/CentrosFormaciones&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Cargar datos solo si puedeVer
   const cargarCentros = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const data = await getCentrosFormacion();
       setCentros(data);
@@ -94,7 +149,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Cargar municipios
+  // Cargar municipios (sin restricción normalmente)
   const cargarMunicipios = async () => {
     try {
       const data = await obtenerMunicipios();
@@ -105,13 +160,21 @@ const CentrosFormacionPage = () => {
     }
   };
 
+  // Recarga al cambiar permisos
   useEffect(() => {
     cargarCentros();
+  }, [permisos]);
+
+  useEffect(() => {
     cargarMunicipios();
   }, []);
 
-  // Eliminar centro con confirmación
+  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar centros.", "warning");
+      return;
+    }
     const result = await MySwal.fire({
       title: "¿Eliminar centro?",
       text: "No se podrá recuperar.",
@@ -120,7 +183,6 @@ const CentrosFormacionPage = () => {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
-
     if (!result.isConfirmed) return;
 
     try {
@@ -133,7 +195,6 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Guardar (crear o actualizar)
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
@@ -142,6 +203,15 @@ const CentrosFormacionPage = () => {
 
     if (!idMunicipio) {
       await MySwal.fire("Aviso", "Debe seleccionar un municipio", "info");
+      return;
+    }
+
+    if (editId !== null && !permisos.puedeEditar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar centros.", "warning");
+      return;
+    }
+    if (editId === null && !permisos.puedeCrear) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear centros.", "warning");
       return;
     }
 
@@ -180,6 +250,10 @@ const CentrosFormacionPage = () => {
   };
 
   const abrirModalEditar = (c: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para editar centros.", "warning");
+      return;
+    }
     setEditId(c.id);
     setNombre(c.nombre || "");
     setUbicacion(c.ubicacion || "");
@@ -189,13 +263,21 @@ const CentrosFormacionPage = () => {
     setIsModalOpen(true);
   };
 
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para crear centros.", "warning");
+      return;
+    }
+    limpiarFormulario();
+    setIsModalOpen(true);
+  };
+
+  // Filtro
   const filtered = useMemo(() => {
     if (!filterValue) return centros;
     const lowerFilter = filterValue.toLowerCase();
     return centros.filter((c) =>
-      `${c.nombre} ${c.ubicacion} ${c.email} ${c.idMunicipio?.nombre || ""}`
-        .toLowerCase()
-        .includes(lowerFilter)
+      `${c.nombre} ${c.ubicacion} ${c.email} ${c.idMunicipio?.nombre || ""}`.toLowerCase().includes(lowerFilter)
     );
   }, [centros, filterValue]);
 
@@ -218,7 +300,8 @@ const CentrosFormacionPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  // Render celdas con control de permisos en acciones
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombre":
         return (
@@ -233,12 +316,32 @@ const CentrosFormacionPage = () => {
       case "email":
         return <span className="text-sm text-gray-600">{item.email}</span>;
       case "municipio":
-        return (
-          <span className="text-sm text-gray-600">{item.idMunicipio?.nombre || "—"}</span>
-        );
+        return <span className="text-sm text-gray-600">{item.idMunicipio?.nombre || "—"}</span>;
       case "sedes":
         return <span className="text-sm text-gray-600">{item.sedes?.length || 0}</span>;
-      case "actions":
+      case "actions": {
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -246,22 +349,17 @@ const CentrosFormacionPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
-                Editar
-              </DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+      }
       default:
         return item[columnKey as keyof typeof item];
     }
   };
 
-  const toggleColumn = (key: string) => {
+  // Toggle columnas visibles
+  const toggleColumn = (key: ColumnKey) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
       copy.has(key) ? copy.delete(key) : copy.add(key);
@@ -269,7 +367,17 @@ const CentrosFormacionPage = () => {
     });
   };
 
-  // Removed permissions check, so directly render the page
+  // Mensaje si no puede ver nada
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
@@ -318,13 +426,15 @@ const CentrosFormacionPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={() => setIsModalOpen(true)}
-                    >
-                      Nuevo Centro
-                    </Button>
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nuevo Centro
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -397,7 +507,7 @@ const CentrosFormacionPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron centros">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
@@ -425,6 +535,7 @@ const CentrosFormacionPage = () => {
                     onValueChange={setNombre}
                     radius="sm"
                     autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Input
                     label="Ubicación"
@@ -432,6 +543,7 @@ const CentrosFormacionPage = () => {
                     value={ubicacion}
                     onValueChange={setUbicacion}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Input
                     label="Teléfono"
@@ -439,6 +551,7 @@ const CentrosFormacionPage = () => {
                     value={telefono}
                     onValueChange={setTelefono}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Input
                     label="Email"
@@ -446,6 +559,7 @@ const CentrosFormacionPage = () => {
                     value={email}
                     onValueChange={setEmail}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Select
                     label="Municipio"
@@ -455,6 +569,7 @@ const CentrosFormacionPage = () => {
                       const val = Array.from(keys)[0];
                       setIdMunicipio(val ? String(val) : "");
                     }}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   >
                     {municipios.map((m) => (
                       <SelectItem key={String(m.id)}>{m.nombre}</SelectItem>
@@ -465,7 +580,11 @@ const CentrosFormacionPage = () => {
                   <Button variant="light" onPress={() => setIsModalOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button variant="flat" onPress={guardar}>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? "Actualizar" : "Crear"}
                   </Button>
                 </ModalFooter>
@@ -478,4 +597,4 @@ const CentrosFormacionPage = () => {
   );
 };
 
-export default CentrosFormacionPage;  
+export default CentrosFormacionPage;

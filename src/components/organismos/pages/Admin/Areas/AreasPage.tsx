@@ -1,4 +1,3 @@
-// pages/areas.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -41,6 +40,8 @@ import {
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import axios from "axios";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
@@ -48,14 +49,15 @@ const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombreArea", sortable: false },
   { name: "Acciones", uid: "actions" },
-];
+] as const;
 
-const INITIAL_VISIBLE_COLUMNS = ["id", "nombreArea", "actions"];
+const INITIAL_VISIBLE_COLUMNS = ["id", "nombreArea", "actions"] as const;
+type ColumnKey = (typeof columns)[number]["uid"];
 
 const AreasPage = () => {
   const [areas, setAreas] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: "id", direction: "ascending" });
@@ -65,7 +67,58 @@ const AreasPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Ajusta la ruta para permisos áreas
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/AreasPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Cargar datos solo si puedeVer
   const cargarAreas = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const data = await getAreas();
       setAreas(data);
@@ -77,9 +130,14 @@ const AreasPage = () => {
 
   useEffect(() => {
     cargarAreas();
-  }, []);
+  }, [permisos]);
 
+  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar áreas.", "warning");
+      return;
+    }
     const result = await MySwal.fire({
       title: "¿Eliminar área?",
       text: "No se podrá recuperar.",
@@ -88,7 +146,6 @@ const AreasPage = () => {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
-
     if (!result.isConfirmed) return;
 
     try {
@@ -104,6 +161,14 @@ const AreasPage = () => {
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
+      return;
+    }
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar áreas.", "warning");
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear áreas.", "warning");
       return;
     }
 
@@ -126,8 +191,22 @@ const AreasPage = () => {
   };
 
   const abrirModalEditar = (area: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para editar áreas.", "warning");
+      return;
+    }
     setEditId(area.id);
     setNombre(area.nombreArea);
+    onOpen();
+  };
+
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para crear áreas.", "warning");
+      return;
+    }
+    setEditId(null);
+    setNombre("");
     onOpen();
   };
 
@@ -161,11 +240,43 @@ const AreasPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombreArea":
         return <span className="font-medium text-gray-800">{item.nombreArea || "—"}</span>;
+
       case "actions":
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`editar-${item.id}`}
+              onPress={() => abrirModalEditar(item)}
+              startContent={<Pencil size={16} />}
+            >
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`eliminar-${item.id}`}
+              onPress={() => eliminar(item.id)}
+              startContent={<Trash size={16} />}
+              className="text-danger"
+            >
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -173,20 +284,24 @@ const AreasPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)} startContent={<Pencil size={16} />}>
-                Editar
-              </DropdownItem>
-              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} startContent={<Trash size={16} />} className="text-danger">
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+
       default:
         return item[columnKey as keyof typeof item] || "—";
     }
   };
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>
@@ -215,13 +330,15 @@ const AreasPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  <Button
-                    className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                    endContent={<PlusIcon size={18} />}
-                    onPress={onOpen}
-                  >
-                    Nueva Área
-                  </Button>
+                  {permisos.puedeCrear && (
+                    <Button
+                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                      endContent={<PlusIcon size={18} />}
+                      onPress={abrirModalNuevo}
+                    >
+                      Nueva Área
+                    </Button>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {areas.length} áreas</span>
@@ -276,14 +393,13 @@ const AreasPage = () => {
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron áreas">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
+        {/* Modal CRUD */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
@@ -297,13 +413,18 @@ const AreasPage = () => {
                     onValueChange={setNombre}
                     radius="sm"
                     autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                 </ModalBody>
                 <ModalFooter className="flex justify-end gap-3">
                   <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
-                  <Button color="primary" onPress={guardar}>
+                  <Button
+                    color="primary"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? "Actualizar" : "Crear"}
                   </Button>
                 </ModalFooter>
