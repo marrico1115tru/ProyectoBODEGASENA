@@ -19,6 +19,7 @@ import {
   ModalFooter,
   ModalHeader,
   useDisclosure,
+  Checkbox,
   type SortDescriptor,
 } from '@heroui/react';
 import {
@@ -62,7 +63,8 @@ const DetalleSolicitudesPage = () => {
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
+  // Cambio aquí: visibleColumns es ahora un Set y uso un setter para actualizarlo
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
@@ -81,6 +83,23 @@ const DetalleSolicitudesPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
+  // Función para alternar columnas visibles
+  const toggleColumn = (uid: string) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        // Prevenir ocultar siempre todas las columnas excepto actions para evitar que tabla quede vacía
+        if (uid === 'actions') {
+          return prev;
+        }
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
 
   // Cargar permisos basados en rol y ruta (igual que en Areas)
   useEffect(() => {
@@ -374,18 +393,43 @@ const DetalleSolicitudesPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue('')}
                   />
-                  {permisos.puedeCrear && (
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={() => {
-                        limpiarFormulario();
-                        onOpen();
-                      }}
-                    >
-                      Nuevo Detalle
-                    </Button>
-                  )}
+
+                  {/* Aquí agregamos el botón de columnas junto al botón nuevo */}
+                  <div className="flex gap-3 items-center">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          .filter((c) => c.uid !== 'actions') // Puedes incluir 'actions' si quieres
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="flex items-center gap-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={() => {
+                          limpiarFormulario();
+                          onOpen();
+                        }}
+                      >
+                        Nuevo Detalle
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {detalles.length} registros</span>

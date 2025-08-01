@@ -20,6 +20,7 @@ import {
   ModalFooter,
   ModalHeader,
   useDisclosure,
+  Checkbox,
   type SortDescriptor,
 } from "@heroui/react";
 
@@ -55,7 +56,10 @@ type ColumnKey = (typeof columns)[number]["uid"];
 const CategoriasProductosPage = () => {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
+
+  // Cambio: visibleColumns con setter para alternar columnas
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
+
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -77,6 +81,21 @@ const CategoriasProductosPage = () => {
     puedeEliminar: false,
   });
 
+  // Función para alternar columnas visibles
+  const toggleColumn = (uid: string) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        // Prevent hiding actions column to maintain accessibility
+        if (uid === "actions") return prev;
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
+
   // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
@@ -85,8 +104,7 @@ const CategoriasProductosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        // Ruta para permisos categorías de productos
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/CategoriasProductosPage/listar&idRol=${rolId}`;
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/CategoriasProductosPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;
@@ -338,15 +356,40 @@ const CategoriasProductosPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  {permisos.puedeCrear && (
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<Plus />}
-                      onPress={abrirModalNuevo}
-                    >
-                      Nueva Categoría
-                    </Button>
-                  )}
+
+                  {/* Botón columnas junto con botón nuevo */}
+                  <div className="flex gap-3 items-center">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          .filter((c) => c.uid !== "actions") /* acciones siempre visibles */
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="flex items-center gap-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<Plus />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nueva Categoría
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>

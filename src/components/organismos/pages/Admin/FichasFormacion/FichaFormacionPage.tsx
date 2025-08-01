@@ -36,6 +36,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import axios from 'axios';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
 
@@ -78,23 +80,81 @@ const FichasFormacionPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
   useEffect(() => {
-    cargarDatos();
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/FichaFormacionPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      const [fs, ts, us] = await Promise.all([getFichasFormacion(), getTitulados(), getUsuarios()]);
-      setFichas(fs);
-      setTitulados(ts);
-      setUsuarios(us);
-    } catch (err) {
-      console.error('Error cargando fichas', err);
-      await MySwal.fire('Error', 'No se pudo cargar la información', 'error');
-    }
-  };
+  // Cargar datos solo si puedeVer
+  useEffect(() => {
+    if (!permisos.puedeVer) return;
+    const cargarDatos = async () => {
+      try {
+        const [fs, ts, us] = await Promise.all([
+          getFichasFormacion(),
+          getTitulados(),
+          getUsuarios(),
+        ]);
+        setFichas(fs);
+        setTitulados(ts);
+        setUsuarios(us);
+      } catch (err) {
+        console.error('Error cargando fichas', err);
+        await MySwal.fire('Error', 'No se pudo cargar la información', 'error');
+      }
+    };
+    cargarDatos();
+  }, [permisos]);
 
+  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar fichas.', 'warning');
+      return;
+    }
     const result = await MySwal.fire({
       title: '¿Eliminar ficha?',
       text: 'No se podrá recuperar.',
@@ -103,13 +163,14 @@ const FichasFormacionPage = () => {
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
     });
-
     if (!result.isConfirmed) return;
 
     try {
       await deleteFichaFormacion(id);
       await MySwal.fire('Eliminada', `Ficha eliminada: ID ${id}`, 'success');
-      cargarDatos();
+      // Recargar datos
+      const fs = await getFichasFormacion();
+      setFichas(fs);
     } catch (error) {
       console.error(error);
       await MySwal.fire('Error', 'Error eliminando ficha', 'error');
@@ -118,11 +179,19 @@ const FichasFormacionPage = () => {
 
   const guardar = async () => {
     if (!nombre.trim()) {
-      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
+      await MySwal.fire('Aviso', 'El nombre es obligatorio', 'info');
       return;
     }
     if (!idTitulado) {
-      await MySwal.fire('Error', 'Debes seleccionar un titulado', 'error');
+      await MySwal.fire('Aviso', 'Debes seleccionar un titulado', 'info');
+      return;
+    }
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar fichas.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear fichas.', 'warning');
       return;
     }
 
@@ -135,21 +204,26 @@ const FichasFormacionPage = () => {
     try {
       if (editId) {
         await updateFichaFormacion(editId, payload);
-        await MySwal.fire('Actualizado', 'Ficha actualizada correctamente', 'success');
+        await MySwal.fire('Éxito', 'Ficha actualizada', 'success');
       } else {
         await createFichaFormacion(payload);
-        await MySwal.fire('Creado', 'Ficha creada correctamente', 'success');
+        await MySwal.fire('Éxito', 'Ficha creada', 'success');
       }
-      onClose();
-      limpiarForm();
-      cargarDatos();
+      cerrarModal();
+      // Recargar datos
+      const fs = await getFichasFormacion();
+      setFichas(fs);
     } catch (error) {
-      console.error(error);
-      await MySwal.fire('Error', 'Error guardando ficha', 'error');
+      console.error('Error al guardar ficha:', error);
+      await MySwal.fire('Error', 'Error al guardar ficha', 'error');
     }
   };
 
   const abrirModalEditar = (ficha: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar fichas.', 'warning');
+      return;
+    }
     setEditId(ficha.id);
     setNombre(ficha.nombre);
     setIdTitulado(ficha.idTitulado?.id?.toString() || '');
@@ -157,11 +231,24 @@ const FichasFormacionPage = () => {
     onOpen();
   };
 
-  const limpiarForm = () => {
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear fichas.', 'warning');
+      return;
+    }
     setEditId(null);
     setNombre('');
     setIdTitulado('');
     setIdResponsable('');
+    onOpen();
+  };
+
+  const cerrarModal = () => {
+    setEditId(null);
+    setNombre('');
+    setIdTitulado('');
+    setIdResponsable('');
+    onClose();
   };
 
   const filtered = useMemo(() => {
@@ -207,6 +294,28 @@ const FichasFormacionPage = () => {
       case 'entregas':
         return <span className="text-sm text-gray-600">{item.entregaMaterials?.length || 0}</span>;
       case 'actions':
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -214,14 +323,7 @@ const FichasFormacionPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key={`editar-${item.id}`}>
-                Editar
-              </DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key={`eliminar-${item.id}`}>
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
       default:
@@ -230,12 +332,23 @@ const FichasFormacionPage = () => {
   };
 
   const toggleColumn = (uid: string) => {
-    setVisibleColumns(prev => {
+    setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      copy.has(uid) ? copy.delete(uid) : copy.add(uid);
+      if (copy.has(uid)) copy.delete(uid);
+      else copy.add(uid);
       return copy;
     });
   };
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>
@@ -269,26 +382,34 @@ const FichasFormacionPage = () => {
                     value={filterValue}
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue('')}
+                    disabled={!permisos.puedeVer}
                   />
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
                         <Button variant="flat">Columnas</Button>
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
-                        {columns.filter(c => c.uid !== 'actions').map(col => (
-                          <DropdownItem key={col.uid} onPress={() => toggleColumn(col.uid)}>
-                            <Checkbox isSelected={visibleColumns.has(col.uid)} readOnly />
-                            {col.name}
-                          </DropdownItem>
-                        ))}
+                        {columns
+                          .filter((c) => c.uid !== 'actions')
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="flex items-center gap-2" onPress={() => toggleColumn(col.uid)}>
+                              <Checkbox isSelected={visibleColumns.has(col.uid)} readOnly size="sm" />
+                              {col.name}
+                            </DropdownItem>
+                          ))}
                       </DropdownMenu>
                     </Dropdown>
-                    <Button className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={onOpen}>
-                      Nueva Ficha
-                    </Button>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nueva Ficha
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -298,11 +419,17 @@ const FichasFormacionPage = () => {
                     <select
                       className="bg-transparent outline-none text-default-600 ml-1"
                       value={rowsPerPage}
-                      onChange={e => {
+                      disabled={!permisos.puedeVer}
+                      onChange={(e) => {
                         setRowsPerPage(parseInt(e.target.value));
                         setPage(1);
-                      }}>
-                      {[5, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
+                      }}
+                    >
+                      {[5, 10, 15].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -310,24 +437,27 @@ const FichasFormacionPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)} disabled={!permisos.puedeVer}>
+                  Anterior
+                </Button>
                 <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)} disabled={!permisos.puedeVer}>
+                  Siguiente
+                </Button>
               </div>
             }
           >
-            <TableHeader columns={columns.filter(c => visibleColumns.has(c.uid))}>
-              {col => (
-                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 300 : undefined}>
+            <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
+              {(col) => (
+                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'} width={col.uid === 'nombre' ? 300 : undefined}>
                   {col.name}
                 </TableColumn>
               )}
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron fichas">
-              {item => (
+              {(item) => (
                 <TableRow key={item.id}>
-                  {col => <TableCell>{renderCell(item, col as string)}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
@@ -336,60 +466,105 @@ const FichasFormacionPage = () => {
 
         {/* Mobile cards */}
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron fichas</p>
-          )}
-          {sorted.map(ficha => (
-            <Card key={ficha.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg break-words max-w-[14rem]">{ficha.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(ficha)} key="editar">Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(ficha.id)} key="eliminar">Eliminar</DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600">Titulado: {ficha.idTitulado?.nombre || '—'}</p>
-                <p className="text-sm text-gray-600">
-                  Responsable: {ficha.idUsuarioResponsable ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ''}` : '—'}
-                </p>
-                <p className="text-sm text-gray-600">Usuarios: {ficha.usuarios?.length || 0}</p>
-                <p className="text-sm text-gray-600">Entregas: {ficha.entregaMaterials?.length || 0}</p>
-                <p className="text-xs text-gray-400">ID: {ficha.id}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron fichas</p>}
+          {sorted.map((ficha) => {
+            // Crear array de elementos válidos para el dropdown móvil
+            const mobileDropdownItems = [];
+            
+            if (permisos.puedeEditar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="editar" onPress={() => abrirModalEditar(ficha)}>
+                  Editar
+                </DropdownItem>
+              );
+            }
+            
+            if (permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="eliminar" onPress={() => eliminar(ficha.id)}>
+                  Eliminar
+                </DropdownItem>
+              );
+            }
+            
+            if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+              mobileDropdownItems.push(
+                <DropdownItem key="sinAcciones" isDisabled>
+                  Sin acciones disponibles
+                </DropdownItem>
+              );
+            }
+
+            return (
+              <Card key={ficha.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg break-words max-w-[14rem]">{ficha.nombre}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>{mobileDropdownItems}</DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600">Titulado: {ficha.idTitulado?.nombre || '—'}</p>
+                  <p className="text-sm text-gray-600">
+                    Responsable:{' '}
+                    {ficha.idUsuarioResponsable ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ''}` : '—'}
+                  </p>
+                  <p className="text-sm text-gray-600">Usuarios: {ficha.usuarios?.length || 0}</p>
+                  <p className="text-sm text-gray-600">Entregas: {ficha.entregaMaterials?.length || 0}</p>
+                  <p className="text-xs text-gray-400">ID: {ficha.id}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* Modal */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {onCloseLocal => (
+        {/* Modal CRUD */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
+            {() => (
               <>
                 <ModalHeader>{editId ? 'Editar Ficha' : 'Nueva Ficha'}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  <Input label="Nombre" placeholder="Ej: Ficha 2567890 - ADSI" value={nombre} onValueChange={setNombre} radius="sm" />
+                  <Input
+                    label="Nombre"
+                    placeholder="Ej: Ficha 2567890 - ADSI"
+                    value={nombre}
+                    onValueChange={setNombre}
+                    radius="sm"
+                    autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  />
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Titulado</label>
-                    <select value={idTitulado} onChange={e => setIdTitulado(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={idTitulado}
+                      onChange={(e) => setIdTitulado(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    >
                       <option value="">Seleccione un titulado</option>
-                      {titulados.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      {titulados.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Responsable</label>
-                    <select value={idResponsable} onChange={e => setIdResponsable(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={idResponsable}
+                      onChange={(e) => setIdResponsable(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    >
                       <option value="">Seleccione un responsable</option>
-                      {usuarios.map(u => (
+                      {usuarios.map((u) => (
                         <option key={u.id} value={u.id}>
                           {`${u.nombre} ${u.apellido ?? ''}`}
                         </option>
@@ -397,9 +572,17 @@ const FichasFormacionPage = () => {
                     </select>
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
-                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
+                <ModalFooter className="flex justify-end gap-3">
+                  <Button variant="light" onPress={cerrarModal}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    color="primary"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
                 </ModalFooter>
               </>
             )}

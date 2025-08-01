@@ -19,6 +19,7 @@ import {
   ModalFooter,
   ModalHeader,
   useDisclosure,
+  Checkbox,
   type SortDescriptor,
 } from "@heroui/react";
 
@@ -57,7 +58,7 @@ type ColumnKey = (typeof columns)[number]["uid"];
 const AreasPage = () => {
   const [areas, setAreas] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-  const [visibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: "id", direction: "ascending" });
@@ -75,6 +76,21 @@ const AreasPage = () => {
     puedeEliminar: false,
   });
 
+  // Función para alternar columnas visibles
+  const toggleColumn = (uid: string) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        // Impide ocultar la columna acciones para no perder siempre el acceso a esas funciones
+        if (uid === 'actions') return prev;
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
+
   // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
@@ -83,7 +99,6 @@ const AreasPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        // Ajusta la ruta para permisos áreas
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/AreasPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
@@ -330,15 +345,40 @@ const AreasPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  {permisos.puedeCrear && (
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon size={18} />}
-                      onPress={abrirModalNuevo}
-                    >
-                      Nueva Área
-                    </Button>
-                  )}
+                  {/* Botón de columnas junto al botón nuevo */}
+                  <div className="flex gap-3 items-center">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          // Puedes decidir si 'actions' debe poder ocultarse, aquí la excluimos para que siempre esté
+                          .filter((c) => c.uid !== "actions")
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="flex items-center gap-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon size={18} />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nueva Área
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {areas.length} áreas</span>
@@ -391,6 +431,7 @@ const AreasPage = () => {
                 </TableColumn>
               )}
             </TableHeader>
+
             <TableBody items={sorted} emptyContent="No se encontraron áreas">
               {(item) => (
                 <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>

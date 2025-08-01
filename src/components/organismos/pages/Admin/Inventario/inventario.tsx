@@ -36,6 +36,9 @@ import {
   CubeIcon,
 } from "@heroicons/react/24/outline";
 
+import axios from "axios";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
+
 export default function InventarioPage() {
   const [inventarios, setInventarios] = useState<Inventario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -48,7 +51,65 @@ export default function InventarioPage() {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+          return;
+        }
+
+        // Ajustar la ruta según el sistema de permisos (ejemplo /inventario)
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/InventarioPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Cargar datos sólo si puede ver
   const loadData = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const [inv, prod, sit] = await Promise.all([
         getInventarios(),
@@ -69,9 +130,18 @@ export default function InventarioPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [permisos]);
 
+  // Manejar submit con validaciones de permisos
   const handleSubmit = async () => {
+    if (!permisos.puedeCrear && !editId) {
+      await Swal.fire("Acceso Denegado", "No tienes permiso para crear inventarios.", "warning");
+      return;
+    }
+    if (!permisos.puedeEditar && editId) {
+      await Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
+      return;
+    }
     if (!form.stock || !form.idProductoId || !form.fkSitioId) {
       Swal.fire({
         icon: "warning",
@@ -98,7 +168,13 @@ export default function InventarioPage() {
     }
   };
 
+  // Manejar eliminación con validación de permisos
   const handleDelete = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await Swal.fire("Acceso Denegado", "No tienes permiso para eliminar inventarios.", "warning");
+      return;
+    }
+
     const result = await Swal.fire({
       title: "¿Estás seguro?",
       text: "Esta acción eliminará el inventario.",
@@ -119,7 +195,12 @@ export default function InventarioPage() {
     }
   };
 
+  // Manejar edición con validación de permisos
   const handleEdit = (inv: Inventario) => {
+    if (!permisos.puedeEditar) {
+      Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
+      return;
+    }
     setForm({
       stock: inv.stock,
       idProductoId: inv.idProducto?.id || 0,
@@ -129,12 +210,24 @@ export default function InventarioPage() {
     document.getElementById("openDialog")?.click();
   };
 
+  // Agrupación por sitio
   const agrupado = inventarios.reduce<Record<string, Inventario[]>>((acc, inv) => {
     const sitio = inv.fkSitio?.nombre || "Sin sitio";
     if (!acc[sitio]) acc[sitio] = [];
     acc[sitio].push(inv);
     return acc;
   }, {});
+
+  // Bloquear vista completa si no puede ver
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permiso para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>
@@ -151,75 +244,85 @@ export default function InventarioPage() {
             </div>
           </div>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <HeroButton color="primary" id="openDialog" className="flex items-center gap-2">
-                <PlusIcon className="w-4 h-4" />
-                {editId ? "Editar Inventario" : "Nuevo Inventario"}
-              </HeroButton>
-            </DialogTrigger>
-            <DialogContent className="backdrop-blur-sm bg-white/90 max-w-md rounded-lg p-6">
-              <DialogHeader>
-                <DialogTitle className="text-black text-xl mb-2">
-                  {editId ? "Editar Inventario" : "Crear Inventario"}
-                </DialogTitle>
-              </DialogHeader>
+          {/* Solo mostrar botón nuevo si tiene permiso */}
+          {permisos.puedeCrear && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <HeroButton color="primary" id="openDialog" className="flex items-center gap-2">
+                  <PlusIcon className="w-4 h-4" />
+                  {editId ? "Editar Inventario" : "Nuevo Inventario"}
+                </HeroButton>
+              </DialogTrigger>
+              <DialogContent className="backdrop-blur-sm bg-white/90 max-w-md rounded-lg p-6">
+                <DialogHeader>
+                  <DialogTitle className="text-black text-xl mb-2">
+                    {editId ? "Editar Inventario" : "Crear Inventario"}
+                  </DialogTitle>
+                </DialogHeader>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Stock</label>
-                  <input
-                    type="number"
-                    placeholder="Cantidad"
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-                    className="w-full mt-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Stock</label>
+                    <input
+                      type="number"
+                      placeholder="Cantidad"
+                      value={form.stock}
+                      onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+                      className="w-full mt-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Producto</label>
-                  <select
-                    value={form.idProductoId}
-                    onChange={(e) => setForm({ ...form, idProductoId: Number(e.target.value) })}
-                    className="w-full mt-1 border p-2 rounded bg-white"
-                  >
-                    <option value="0">Selecciona un producto</option>
-                    {productos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Producto</label>
+                    <select
+                      value={form.idProductoId}
+                      onChange={(e) => setForm({ ...form, idProductoId: Number(e.target.value) })}
+                      className="w-full mt-1 border p-2 rounded bg-white"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    >
+                      <option value="0">Selecciona un producto</option>
+                      {productos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Sitio</label>
-                  <select
-                    value={form.fkSitioId}
-                    onChange={(e) => setForm({ ...form, fkSitioId: Number(e.target.value) })}
-                    className="w-full mt-1 border p-2 rounded bg-white"
-                  >
-                    <option value="0">Selecciona un sitio</option>
-                    {sitios.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Sitio</label>
+                    <select
+                      value={form.fkSitioId}
+                      onChange={(e) => setForm({ ...form, fkSitioId: Number(e.target.value) })}
+                      className="w-full mt-1 border p-2 rounded bg-white"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    >
+                      <option value="0">Selecciona un sitio</option>
+                      {sitios.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="flex justify-end gap-2 pt-2">
-                  <DialogClose asChild>
-                    <HeroButton variant="ghost">Cancelar</HeroButton>
-                  </DialogClose>
-                  <HeroButton color="primary" onClick={handleSubmit}>
-                    {editId ? "Guardar Cambios" : "Crear"}
-                  </HeroButton>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <DialogClose asChild>
+                      <HeroButton variant="ghost">Cancelar</HeroButton>
+                    </DialogClose>
+                    <HeroButton
+                      color="primary"
+                      onClick={handleSubmit}
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    >
+                      {editId ? "Guardar Cambios" : "Crear"}
+                    </HeroButton>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Filtro */}
@@ -236,9 +339,7 @@ export default function InventarioPage() {
         {/* Inventario agrupado */}
         <Accordion variant="splitted">
           {Object.entries(agrupado)
-            .filter(([sitio]) =>
-              sitio.toLowerCase().includes(filtro.toLowerCase())
-            )
+            .filter(([sitio]) => sitio.toLowerCase().includes(filtro.toLowerCase()))
             .map(([sitio, items]) => (
               <AccordionItem
                 key={sitio}
@@ -277,6 +378,7 @@ export default function InventarioPage() {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => handleEdit(inv)}
+                                  disabled={!permisos.puedeEditar}
                                 >
                                   <PencilSquareIcon className="w-4 h-4 text-blue-600" />
                                 </HeroButton>
@@ -285,6 +387,7 @@ export default function InventarioPage() {
                                   color="danger"
                                   variant="ghost"
                                   onClick={() => handleDelete(inv.idProductoInventario)}
+                                  disabled={!permisos.puedeEliminar}
                                 >
                                   <TrashIcon className="w-4 h-4" />
                                 </HeroButton>

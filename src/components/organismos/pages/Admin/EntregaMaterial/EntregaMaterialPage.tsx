@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+// src/pages/EntregaMaterialPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableHeader,
@@ -18,100 +19,149 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Checkbox,
   useDisclosure,
+  Checkbox,
   type SortDescriptor,
-} from '@heroui/react';
+} from "@heroui/react";
+
 import {
   getEntregasMaterial,
   createEntregaMaterial,
   updateEntregaMaterial,
   deleteEntregaMaterial,
-} from '@/Api/entregaMaterial';
-import { getFichasFormacion } from '@/Api/fichasFormacion';
-import { getSolicitudes } from '@/Api/Solicitudes';
-import { getUsuarios } from '@/Api/Usuariosform';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
-import DefaultLayout from '@/layouts/default';
-import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+} from "@/Api/entregaMaterial";
 
-import Swal from 'sweetalert2';
-import withReactContent from 'sweetalert2-react-content';
+import { getFichasFormacion } from "@/Api/fichasFormacion";
+import { getSolicitudes } from "@/Api/Solicitudes";
+import { getUsuarios } from "@/Api/Usuariosform";
+
+import DefaultLayout from "@/layouts/default";
+import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
+
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+import axios from "axios";
+import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
-const ID_ROL_ACTUAL = 1;
-
 const columns = [
-  { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Fecha', uid: 'fecha', sortable: false },
-  { name: 'Observaciones', uid: 'observaciones', sortable: false },
-  { name: 'Ficha', uid: 'ficha', sortable: false },
-  { name: 'Solicitud', uid: 'solicitud', sortable: false },
-  { name: 'Responsable', uid: 'responsable', sortable: false },
-  { name: 'Acciones', uid: 'actions' },
-];
+  { name: "ID", uid: "id", sortable: true },
+  { name: "Fecha", uid: "fechaEntrega", sortable: false },
+  { name: "Observaciones", uid: "observaciones", sortable: false },
+  { name: "Ficha", uid: "ficha", sortable: false },
+  { name: "Solicitud", uid: "solicitud", sortable: false },
+  { name: "Responsable", uid: "responsable", sortable: false },
+  { name: "Acciones", uid: "actions" },
+] as const;
+
 const INITIAL_VISIBLE_COLUMNS = [
-  'id',
-  'fecha',
-  'observaciones',
-  'ficha',
-  'solicitud',
-  'responsable',
-  'actions',
-];
+  "id",
+  "fechaEntrega",
+  "observaciones",
+  "ficha",
+  "solicitud",
+  "responsable",
+  "actions",
+] as const;
+
+type ColumnKey = (typeof columns)[number]["uid"];
 
 const EntregaMaterialPage = () => {
   const [entregas, setEntregas] = useState<any[]>([]);
   const [fichas, setFichas] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [filterValue, setFilterValue] = useState("");
+
+  // Cambio importante: ahora visibleColumns tiene setter para poder actualizarlo
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
+
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
+    column: "id",
+    direction: "ascending",
   });
 
+  const [fechaEntrega, setFechaEntrega] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [idFicha, setIdFicha] = useState<number | "">("");
+  const [idSolicitud, setIdSolicitud] = useState<number | "">("");
+  const [idResponsable, setIdResponsable] = useState<number | "">("");
+  const [editId, setEditId] = useState<number | null>(null);
+
+  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
+  // Permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
     puedeEditar: false,
     puedeEliminar: false,
   });
-  const [loadingPermisos, setLoadingPermisos] = useState(true);
 
-  const [fechaEntrega, setFechaEntrega] = useState('');
-  const [observaciones, setObservaciones] = useState('');
-  const [idFicha, setIdFicha] = useState<number | ''>('');
-  const [idSolicitud, setIdSolicitud] = useState<number | ''>('');
-  const [idResponsable, setIdResponsable] = useState<number | ''>('');
-  const [editId, setEditId] = useState<number | null>(null);
+  // Función para alternar columnas visibles
+  const toggleColumn = (uid: string) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        // Nunca ocultar la columna de acciones para mantener acceso a ellas
+        if (uid === "actions") return prev;
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
 
-  const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-
+  // Cargar permisos al montar
   useEffect(() => {
-    const init = async () => {
-      setLoadingPermisos(true);
+    const fetchPermisos = async () => {
       try {
-        const p = await getPermisosPorRuta('/EntregaMaterialPage', ID_ROL_ACTUAL);
-        setPermisos(p.data || p);
-        if ((p.data || p).puedeVer) {
-          await cargarDatos();
+        const userData = getDecodedTokenFromCookies("token");
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Ruta para permisos EntregaMaterialPage
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/EntregaMaterialPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
         }
       } catch (error) {
-        console.error('Error cargando permisos:', error);
-        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
-        await MySwal.fire('Error', 'No se pudieron cargar los permisos', 'error');
-      } finally {
-        setLoadingPermisos(false);
+        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
       }
     };
-    init();
+    fetchPermisos();
   }, []);
+
+  // Cargar datos si puede ver
+  useEffect(() => {
+    if (!permisos.puedeVer) return;
+    cargarDatos();
+  }, [permisos]);
 
   const cargarDatos = async () => {
     try {
@@ -126,47 +176,50 @@ const EntregaMaterialPage = () => {
       setSolicitudes(sols);
       setUsuarios(usrs);
     } catch (err) {
-      console.error('Error cargando datos', err);
-      await MySwal.fire('Error', 'Error cargando datos', 'error');
+      console.error("Error cargando datos", err);
+      await MySwal.fire("Error", "Error cargando datos", "error");
     }
   };
 
+  // CRUD con validación de permisos
+
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      await MySwal.fire('Acceso denegado', 'No tienes permiso para eliminar', 'warning');
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar.", "warning");
       return;
     }
     const result = await MySwal.fire({
-      title: '¿Eliminar entrega?',
-      text: 'No se podrá recuperar.',
-      icon: 'warning',
+      title: "¿Eliminar entrega?",
+      text: "No se podrá recuperar.",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
-    if (result.isConfirmed) {
-      try {
-        await deleteEntregaMaterial(id);
-        await MySwal.fire('Eliminado', `Entrega eliminada: ID ${id}`, 'success');
-        await cargarDatos();
-      } catch (e) {
-        console.error(e);
-        await MySwal.fire('Error', 'Error eliminando entrega', 'error');
-      }
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteEntregaMaterial(id);
+      await MySwal.fire("Eliminado", `Entrega eliminada: ID ${id}`, "success");
+      await cargarDatos();
+    } catch (e) {
+      console.error(e);
+      await MySwal.fire("Error", "Error eliminando entrega", "error");
     }
   };
 
   const guardar = async () => {
+    if (!fechaEntrega || !idFicha || !idSolicitud || !idResponsable) {
+      await MySwal.fire("Error", "Completa todos los campos obligatorios", "error");
+      return;
+    }
+
     if (editId && !permisos.puedeEditar) {
-      await MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar entregas.", "warning");
       return;
     }
     if (!editId && !permisos.puedeCrear) {
-      await MySwal.fire('Acceso denegado', 'No tienes permiso para crear', 'warning');
-      return;
-    }
-    if (!fechaEntrega || !idFicha || !idSolicitud || !idResponsable) {
-      await MySwal.fire('Error', 'Completa todos los campos obligatorios', 'error');
+      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear entregas.", "warning");
       return;
     }
 
@@ -177,54 +230,65 @@ const EntregaMaterialPage = () => {
       idSolicitud: { id: Number(idSolicitud) },
       idUsuarioResponsable: { id: Number(idResponsable) },
     };
+
     try {
       if (editId) {
         await updateEntregaMaterial(editId, payload);
-        await MySwal.fire('Éxito', 'Entrega actualizada', 'success');
+        await MySwal.fire("Éxito", "Entrega actualizada", "success");
       } else {
         await createEntregaMaterial(payload);
-        await MySwal.fire('Éxito', 'Entrega creada', 'success');
+        await MySwal.fire("Éxito", "Entrega creada", "success");
       }
       onClose();
       limpiarFormulario();
       await cargarDatos();
     } catch (e) {
       console.error(e);
-      await MySwal.fire('Error', 'Error guardando entrega', 'error');
+      await MySwal.fire("Error", "Error guardando entrega", "error");
     }
   };
 
-  const abrirModalEditar = (e: any) => {
+  const abrirModalEditar = (item: any) => {
     if (!permisos.puedeEditar) {
-      MySwal.fire('Acceso denegado', 'No tienes permiso para editar', 'warning');
+      MySwal.fire("Acceso Denegado", "No tienes permisos para editar.", "warning");
       return;
     }
-    setEditId(e.id);
-    setFechaEntrega(e.fechaEntrega);
-    setObservaciones(e.observaciones || '');
-    setIdFicha(e.idFichaFormacion?.id || '');
-    setIdSolicitud(e.idSolicitud?.id || '');
-    setIdResponsable(e.idUsuarioResponsable?.id || '');
+    setEditId(item.id);
+    setFechaEntrega(item.fechaEntrega);
+    setObservaciones(item.observaciones || "");
+    setIdFicha(item.idFichaFormacion?.id || "");
+    setIdSolicitud(item.idSolicitud?.id || "");
+    setIdResponsable(item.idUsuarioResponsable?.id || "");
+    onOpen();
+  };
+
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire("Acceso Denegado", "No tienes permisos para crear.", "warning");
+      return;
+    }
+    limpiarFormulario();
     onOpen();
   };
 
   const limpiarFormulario = () => {
     setEditId(null);
-    setFechaEntrega('');
-    setObservaciones('');
-    setIdFicha('');
-    setIdSolicitud('');
-    setIdResponsable('');
+    setFechaEntrega("");
+    setObservaciones("");
+    setIdFicha("");
+    setIdSolicitud("");
+    setIdResponsable("");
   };
 
   const filtered = useMemo(() => {
     if (!filterValue) return entregas;
     const lowerFilter = filterValue.toLowerCase();
-    return entregas.filter(
-      (e) =>
-        `${e.fechaEntrega} ${e.observaciones || ''} ${e.idFichaFormacion?.nombre || ''} ${e.idSolicitud?.estadoSolicitud || ''} ${e.idUsuarioResponsable?.nombre || ''}`
-          .toLowerCase()
-          .includes(lowerFilter)
+    return entregas.filter((e) =>
+      `${e.fechaEntrega} ${e.observaciones || ""} ${e.idFichaFormacion?.nombre || ""} ${e.idSolicitud?.estadoSolicitud || ""} ${
+        e.idUsuarioResponsable?.nombre || ""
+      }`
+        .toLowerCase()
+        .includes(lowerFilter)
     );
   }, [entregas, filterValue]);
 
@@ -242,29 +306,50 @@ const EntregaMaterialPage = () => {
       const x = a[column as keyof typeof a];
       const y = b[column as keyof typeof b];
       if (x === y) return 0;
-      return (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
+      return (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
     });
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
-      case 'fecha':
+      case "fechaEntrega":
         return <span className="text-sm text-gray-800">{item.fechaEntrega}</span>;
-      case 'observaciones':
-        return <span className="text-sm text-gray-600 break-words max-w-[16rem]">{item.observaciones || '—'}</span>;
-      case 'ficha':
-        return <span className="text-sm text-gray-600">{item.idFichaFormacion?.nombre || '—'}</span>;
-      case 'solicitud':
-        return <span className="text-sm text-gray-600">{item.idSolicitud?.estadoSolicitud || '—'}</span>;
-      case 'responsable':
+      case "observaciones":
+        return <span className="text-sm text-gray-600 break-words max-w-[16rem]">{item.observaciones || "—"}</span>;
+      case "ficha":
+        return <span className="text-sm text-gray-600">{item.idFichaFormacion?.nombre || "—"}</span>;
+      case "solicitud":
+        return <span className="text-sm text-gray-600">{item.idSolicitud?.estadoSolicitud || "—"}</span>;
+      case "responsable":
         return (
           <span className="text-sm text-gray-600">
-            {item.idUsuarioResponsable ? `${item.idUsuarioResponsable.nombre} ${item.idUsuarioResponsable.apellido || ''}` : '—'}
+            {item.idUsuarioResponsable ? `${item.idUsuarioResponsable.nombre} ${item.idUsuarioResponsable.apellido || ""}` : "—"}
           </span>
         );
-      case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
+      case "actions":
+        const dropdownItems = [];
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        if (!permisos.puedeEditar && !permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -272,53 +357,20 @@ const EntregaMaterialPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              {permisos.puedeEditar ? (
-                <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                  Editar
-                </DropdownItem>
-              ) : null}
-              {permisos.puedeEliminar ? (
-                <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                  Eliminar
-                </DropdownItem>
-              ) : null}
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || "—";
     }
   };
-
-  const toggleColumn = (key: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
-      return copy;
-    });
-  };
-
-  if (loadingPermisos) {
-    return (
-      <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-blue-100 text-blue-700 p-4 rounded shadow text-center">
-            Cargando permisos...
-          </div>
-        </div>
-      </DefaultLayout>
-    );
-  }
 
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
         </div>
       </DefaultLayout>
     );
@@ -349,18 +401,19 @@ const EntregaMaterialPage = () => {
                     startContent={<SearchIcon className="text-[#0D1324]" />}
                     value={filterValue}
                     onValueChange={setFilterValue}
-                    onClear={() => setFilterValue('')}
+                    onClear={() => setFilterValue("")}
                   />
-                  <div className="flex gap-3">
+                  {/* Botón columnas junto al botón nuevo */}
+                  <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
                         <Button variant="flat">Columnas</Button>
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          .filter((c) => c.uid !== 'actions')
+                          .filter((c) => c.uid !== "actions") /* acciones siempre visibles */
                           .map((col) => (
-                            <DropdownItem key={col.uid} className="py-1 px-2">
+                            <DropdownItem key={col.uid} className="flex items-center gap-2">
                               <Checkbox
                                 isSelected={visibleColumns.has(col.uid)}
                                 onValueChange={() => toggleColumn(col.uid)}
@@ -372,14 +425,12 @@ const EntregaMaterialPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
+
                     {permisos.puedeCrear && (
                       <Button
                         className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
                         endContent={<PlusIcon />}
-                        onPress={() => {
-                          limpiarFormulario();
-                          onOpen();
-                        }}
+                        onPress={abrirModalNuevo}
                       >
                         Nueva Entrega
                       </Button>
@@ -394,7 +445,7 @@ const EntregaMaterialPage = () => {
                       className="bg-transparent outline-none text-default-600 ml-1"
                       value={rowsPerPage}
                       onChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value));
+                        setRowsPerPage(parseInt(e.target.value, 10));
                         setPage(1);
                       }}
                     >
@@ -422,16 +473,16 @@ const EntregaMaterialPage = () => {
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
+              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
+              td: "align-middle py-3 px-4",
             }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
                 <TableColumn
                   key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'observaciones' ? 300 : undefined}
+                  align={col.uid === "actions" ? "center" : "start"}
+                  width={col.uid === "observaciones" ? 300 : undefined}
                 >
                   {col.name}
                 </TableColumn>
@@ -439,77 +490,18 @@ const EntregaMaterialPage = () => {
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron entregas">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Mobile cards */}
-        <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron entregas</p>}
-          {sorted.map((e) => (
-            <Card key={e.id} className="shadow-sm">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">Entrega ID {e.id}</h3>
-                  {(permisos.puedeEditar || permisos.puedeEliminar) ? (
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        {permisos.puedeEditar ? (
-                          <DropdownItem onPress={() => abrirModalEditar(e)} key={`editar-${e.id}`}>
-                            Editar
-                          </DropdownItem>
-                        ) : null}
-                        {permisos.puedeEliminar ? (
-                          <DropdownItem onPress={() => eliminar(e.id)} key={`eliminar-${e.id}`}>
-                            Eliminar
-                          </DropdownItem>
-                        ) : null}
-                      </DropdownMenu>
-                    </Dropdown>
-                  ) : null}
-                </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Fecha:</span> {e.fechaEntrega}
-                </p>
-                <p className="text-sm text-gray-600 break-words">
-                  <span className="font-medium">Obs:</span> {e.observaciones || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Ficha:</span> {e.idFichaFormacion?.nombre || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Solicitud:</span> {e.idSolicitud?.estadoSolicitud || '—'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Responsable:</span>{' '}
-                  {e.idUsuarioResponsable ? `${e.idUsuarioResponsable.nombre} ${e.idUsuarioResponsable.apellido}` : '—'}
-                </p>
-                <p className="text-xs text-gray-400">ID: {e.id}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Modal */}
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-        >
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {(onCloseLocal) => (
+        {/* Modal CRUD */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
+            {() => (
               <>
-                <ModalHeader>{editId ? 'Editar Entrega' : 'Nueva Entrega'}</ModalHeader>
+                <ModalHeader>{editId ? "Editar Entrega" : "Nueva Entrega"}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
                     label="Fecha de entrega (YYYY-MM-DD)"
@@ -517,6 +509,7 @@ const EntregaMaterialPage = () => {
                     value={fechaEntrega}
                     onValueChange={setFechaEntrega}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <Input
                     label="Observaciones"
@@ -524,13 +517,17 @@ const EntregaMaterialPage = () => {
                     value={observaciones}
                     onValueChange={setObservaciones}
                     radius="sm"
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">Ficha Formación</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">
+                      Ficha Formación
+                    </label>
                     <select
                       value={idFicha}
-                      onChange={(e) => setIdFicha(Number(e.target.value) || '')}
+                      onChange={(e) => setIdFicha(Number(e.target.value) || "")}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione una ficha</option>
                       {fichas.map((f) => (
@@ -544,8 +541,9 @@ const EntregaMaterialPage = () => {
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Solicitud</label>
                     <select
                       value={idSolicitud}
-                      onChange={(e) => setIdSolicitud(Number(e.target.value) || '')}
+                      onChange={(e) => setIdSolicitud(Number(e.target.value) || "")}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione una solicitud</option>
                       {solicitudes.map((s) => (
@@ -559,8 +557,9 @@ const EntregaMaterialPage = () => {
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Responsable</label>
                     <select
                       value={idResponsable}
-                      onChange={(e) => setIdResponsable(Number(e.target.value) || '')}
+                      onChange={(e) => setIdResponsable(Number(e.target.value) || "")}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione un responsable</option>
                       {usuarios.map((u) => (
@@ -571,9 +570,23 @@ const EntregaMaterialPage = () => {
                     </select>
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
-                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
+                <ModalFooter className="flex justify-end gap-3">
+                  <Button
+                    variant="light"
+                    onPress={() => {
+                      limpiarFormulario();
+                      onClose();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    color="primary"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
+                    {editId ? "Actualizar" : "Crear"}
+                  </Button>
                 </ModalFooter>
               </>
             )}
