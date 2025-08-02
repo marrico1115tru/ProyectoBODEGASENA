@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
 import Modal from "@/components/ui/Modal";
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductoVencido {
   id: number;
@@ -18,18 +19,66 @@ export default function ProductosVencidos() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Estado de permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar el componente
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/productosRep/ProductosVencidos&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // useQuery para obtener datos solo si puedeVer es true
   const { data, isLoading, error } = useQuery<ProductoVencido[]>({
     queryKey: ["productos-vencidos"],
     queryFn: async () => {
-      const config = {
-        withCredentials: true, // ✅ para incluir cookies en la petición
-      };
-
+      const config = { withCredentials: true };
       const res = await axios.get("http://localhost:3000/productos/vencidos", config);
       return res.data;
     },
+    enabled: permisos.puedeVer,
   });
 
+  // Función para exportar el contenido como PDF
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -63,6 +112,17 @@ export default function ProductosVencidos() {
 
     pdf.save("reporte_productos_vencidos.pdf");
   };
+
+  // Si no tiene permiso de ver, mostrar mensaje y no mostrar la página
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   if (isLoading) return <p className="p-6">Cargando...</p>;
   if (error) return <p className="p-6 text-red-500">Error al cargar productos vencidos.</p>;

@@ -34,7 +34,7 @@ const config = {
   withCredentials: true,
 };
 
-export const useDashboardData = () => {
+export const useDashboardData = (p0: { enabled: boolean; }) => {
   const [data, setData] = useState<DashboardData>({
     totalUsuarios: 0,
     totalProductos: 0,

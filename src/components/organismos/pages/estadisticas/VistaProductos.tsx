@@ -5,6 +5,7 @@ import axios from 'axios';
 import { BarChart } from './Graficasbases/GraficasBaseProductos'; 
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductoSolicitado {
   idUsuario: number | null;
@@ -23,8 +24,62 @@ const VistaEstadisticasProductos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Estado de permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // Cambia la ruta si tu backend usa otra para este reporte
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaProductos&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (err) {
+        console.error('Error al obtener permisos:', err);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+
+    fetchPermisos();
+  }, []);
+
   useEffect(() => {
     const fetchEstadisticas = async () => {
+      if (!permisos.puedeVer) return;
+
+      setLoading(true);
+      setError(null);
+
       try {
         const config = { withCredentials: true };
 
@@ -44,9 +99,18 @@ const VistaEstadisticasProductos: React.FC = () => {
     };
 
     fetchEstadisticas();
-  }, []);
+  }, [permisos.puedeVer]);
 
-  
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   const labelsSolicitados = solicitados
     .filter(
       (p) =>
@@ -69,7 +133,6 @@ const VistaEstadisticasProductos: React.FC = () => {
 
   const coloresSolicitados = labelsSolicitados.map(() => '#3B82F6');
 
-  
   const labelsMovimientos = movimientos
     .filter(
       (p) =>
@@ -91,7 +154,6 @@ const VistaEstadisticasProductos: React.FC = () => {
     .map((p) => Number(p.totalMovimiento));
 
   const coloresMovimientos = labelsMovimientos.map(() => '#F59E0B');
-
 
   const dataBarSolicitados = {
     labels: labelsSolicitados,
@@ -127,7 +189,6 @@ const VistaEstadisticasProductos: React.FC = () => {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
             <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
               <h2 className="text-xl font-bold mb-2 text-center">Productos más solicitados</h2>
               <p className="text-sm text-gray-600 text-center mb-4">
@@ -138,7 +199,6 @@ const VistaEstadisticasProductos: React.FC = () => {
               </div>
             </Card>
 
-          
             <Card className="bg-white text-gray-900 rounded-2xl shadow-md p-6">
               <h2 className="text-xl font-bold mb-2 text-center">Productos con mayor movimiento</h2>
               <p className="text-sm text-gray-600 text-center mb-4">

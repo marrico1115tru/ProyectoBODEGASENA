@@ -31,6 +31,7 @@ import {
 } from "@/Api/AreasService";
 
 import DefaultLayout from "@/layouts/default";
+
 import {
   PlusIcon,
   MoreVertical,
@@ -42,10 +43,12 @@ import {
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import axios from "axios";
+
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
+// Definición columnas tabla
 const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombreArea", sortable: false },
@@ -56,19 +59,25 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "nombreArea", "actions"] as const;
 type ColumnKey = (typeof columns)[number]["uid"];
 
 const AreasPage = () => {
+  // Estados principales
   const [areas, setAreas] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: "id", direction: "ascending" });
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: "id",
+    direction: "ascending",
+  });
 
+  // Estados para modal (crear/editar área)
   const [nombre, setNombre] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
+  // Modal control
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
+  // Permisos del usuario
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -76,13 +85,12 @@ const AreasPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para alternar columnas visibles
+  // Función para mostrar/ocultar columnas
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(uid)) {
-        // Impide ocultar la columna acciones para no perder siempre el acceso a esas funciones
-        if (uid === 'actions') return prev;
+        if (uid === "actions") return prev; // no permitir ocultar acciones
         newSet.delete(uid);
       } else {
         newSet.add(uid);
@@ -91,7 +99,7 @@ const AreasPage = () => {
     });
   };
 
-  // Cargar permisos al montar
+  // Cargar permisos desde backend según rol
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -128,10 +136,11 @@ const AreasPage = () => {
         });
       }
     };
+
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
+  // Función para cargar las áreas si tiene permiso
   const cargarAreas = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -143,16 +152,22 @@ const AreasPage = () => {
     }
   };
 
+  // Cargar datos al cambiar permisos
   useEffect(() => {
     cargarAreas();
   }, [permisos]);
 
-  // CRUD con validación de permisos
+  // Función para eliminar área con confirmación
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar áreas.", "warning");
+      await MySwal.fire(
+        "Acceso Denegado",
+        "No tienes permisos para eliminar áreas.",
+        "warning"
+      );
       return;
     }
+
     const result = await MySwal.fire({
       title: "¿Eliminar área?",
       text: "No se podrá recuperar.",
@@ -161,6 +176,7 @@ const AreasPage = () => {
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
+
     if (!result.isConfirmed) return;
 
     try {
@@ -173,17 +189,27 @@ const AreasPage = () => {
     }
   };
 
+  // Función para guardar área (crear o editar)
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
       return;
     }
+
     if (editId && !permisos.puedeEditar) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar áreas.", "warning");
+      await MySwal.fire(
+        "Acceso Denegado",
+        "No tienes permisos para editar áreas.",
+        "warning"
+      );
       return;
     }
     if (!editId && !permisos.puedeCrear) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear áreas.", "warning");
+      await MySwal.fire(
+        "Acceso Denegado",
+        "No tienes permisos para crear áreas.",
+        "warning"
+      );
       return;
     }
 
@@ -205,9 +231,14 @@ const AreasPage = () => {
     }
   };
 
+  // Abrir modal edición, pre-cargando datos
   const abrirModalEditar = (area: any) => {
     if (!permisos.puedeEditar) {
-      MySwal.fire("Acceso Denegado", "No tienes permisos para editar áreas.", "warning");
+      MySwal.fire(
+        "Acceso Denegado",
+        "No tienes permisos para editar áreas.",
+        "warning"
+      );
       return;
     }
     setEditId(area.id);
@@ -215,9 +246,14 @@ const AreasPage = () => {
     onOpen();
   };
 
+  // Abrir modal creación
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
-      MySwal.fire("Acceso Denegado", "No tienes permisos para crear áreas.", "warning");
+      MySwal.fire(
+        "Acceso Denegado",
+        "No tienes permisos para crear áreas.",
+        "warning"
+      );
       return;
     }
     setEditId(null);
@@ -225,36 +261,48 @@ const AreasPage = () => {
     onOpen();
   };
 
+  // Cerrar modal y limpiar estado
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
     onClose();
   };
 
+  // Filtrado por texto
   const filtered = useMemo(() => {
-    return filterValue
-      ? areas.filter((a) => (a.nombreArea || "").toLowerCase().includes(filterValue.toLowerCase()))
-      : areas;
+    if (!filterValue) return areas;
+    return areas.filter((a) =>
+      (a.nombreArea || "").toLowerCase().includes(filterValue.toLowerCase())
+    );
   }, [areas, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  // Cálculo de páginas
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
-  const sliced = useMemo(() => {
+  // Paginación del listado
+  const paged = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
+  // Ordenar datos según sortDescriptor (solo para columnas visibles)
   const sorted = useMemo(() => {
-    const items = [...sliced];
+    const items = [...paged];
     const { column, direction } = sortDescriptor;
+
+    if (!column) return items;
+
     items.sort((a, b) => {
       const x = a[column as keyof typeof a];
       const y = b[column as keyof typeof b];
-      return x === y ? 0 : (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
+      if (x === y) return 0;
+      return (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
     });
-    return items;
-  }, [sliced, sortDescriptor]);
 
+    return items;
+  }, [paged, sortDescriptor]);
+
+  // Renderizado celdas según tipo
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombreArea":
@@ -262,6 +310,7 @@ const AreasPage = () => {
 
       case "actions":
         const dropdownItems = [];
+
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem
@@ -285,6 +334,7 @@ const AreasPage = () => {
             </DropdownItem>
           );
         }
+
         if (!permisos.puedeEditar && !permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -292,10 +342,16 @@ const AreasPage = () => {
             </DropdownItem>
           );
         }
+
         return (
           <Dropdown>
             <DropdownTrigger>
-              <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="rounded-full text-[#0D1324]"
+              >
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
@@ -303,11 +359,15 @@ const AreasPage = () => {
           </Dropdown>
         );
 
+      case "id":
+        return <span>{item.id}</span>;
+
       default:
         return item[columnKey as keyof typeof item] || "—";
     }
   };
 
+  // Bloquear acceso si no tiene permiso de vista
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -318,23 +378,35 @@ const AreasPage = () => {
     );
   }
 
+  // Render final con toda la UI
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
+        {/* Header */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             <span>Gestión de Áreas</span>
           </h1>
-          <p className="text-sm text-gray-600">Consulta y administra las áreas disponibles.</p>
+          <p className="text-sm text-gray-600">
+            Consulta y administra las áreas disponibles.
+          </p>
         </header>
 
+        {/* Tabla */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de áreas"
             isHeaderSticky
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
+              td: "align-middle py-3 px-4",
+            }}
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  {/* Input búsqueda */}
                   <Input
                     isClearable
                     className="w-full md:max-w-[44%]"
@@ -345,7 +417,8 @@ const AreasPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  {/* Botón de columnas junto al botón nuevo */}
+
+                  {/* Columnas y botón crear */}
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -353,10 +426,12 @@ const AreasPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          // Puedes decidir si 'actions' debe poder ocultarse, aquí la excluimos para que siempre esté
                           .filter((c) => c.uid !== "actions")
                           .map((col) => (
-                            <DropdownItem key={col.uid} className="flex items-center gap-2">
+                            <DropdownItem
+                              key={col.uid}
+                              className="flex items-center gap-2"
+                            >
                               <Checkbox
                                 isSelected={visibleColumns.has(col.uid)}
                                 onValueChange={() => toggleColumn(col.uid)}
@@ -380,8 +455,12 @@ const AreasPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Controles de paginación y filas */}
                 <div className="flex items-center justify-between">
-                  <span className="text-default-400 text-sm">Total {areas.length} áreas</span>
+                  <span className="text-default-400 text-sm">
+                    Total {areas.length} áreas
+                  </span>
                   <label className="flex items-center text-default-400 text-sm">
                     Filas por página:&nbsp;
                     <select
@@ -404,21 +483,31 @@ const AreasPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === 1}
+                  onPress={() => setPage(page - 1)}
+                >
                   Anterior
                 </Button>
-                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+                <Pagination
+                  isCompact
+                  showControls
+                  page={page}
+                  total={pages}
+                  onChange={setPage}
+                />
+                <Button
+                  size="sm"
+                  variant="flat"
+                  isDisabled={page === pages}
+                  onPress={() => setPage(page + 1)}
+                >
                   Siguiente
                 </Button>
               </div>
             }
-            sortDescriptor={sortDescriptor}
-            onSortChange={setSortDescriptor}
-            classNames={{
-              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
-              td: "align-middle py-3 px-4",
-            }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
@@ -434,14 +523,22 @@ const AreasPage = () => {
 
             <TableBody items={sorted} emptyContent="No se encontraron áreas">
               {(item) => (
-                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Modal CRUD */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+        {/* Modal crear/editar área */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
               <>

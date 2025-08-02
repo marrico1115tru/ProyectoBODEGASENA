@@ -1,28 +1,77 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
 import Modal from "@/components/ui/Modal";
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 export default function ProductosProximosAVencer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar componente
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/productosRep/ProductosVencimiento&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Obtener datos solo si puedeVer
   const { data, isLoading, error } = useQuery({
     queryKey: ["productos-proximos-vencer"],
     queryFn: async () => {
-      const config = {
-        withCredentials: true, // ✅ El token se enviará automáticamente si está en las cookies
-      };
-
+      const config = { withCredentials: true };
       const res = await axios.get("http://localhost:3000/productos/proximos-vencer", config);
       return res.data;
     },
+    enabled: permisos.puedeVer,
   });
 
+  // Exportar contenido a PDF
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -57,6 +106,17 @@ export default function ProductosProximosAVencer() {
     pdf.save("reporte_productos_proximos_vencer.pdf");
   };
 
+  // Mostrar mensaje si no tiene permiso para ver
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   if (isLoading) return <p className="p-6">Cargando datos...</p>;
   if (error) return <p className="p-6 text-red-500">Error al cargar los datos.</p>;
   if (!Array.isArray(data)) return <p className="p-6">No se encontraron datos.</p>;
@@ -73,9 +133,7 @@ export default function ProductosProximosAVencer() {
             year: "numeric",
           })}
         </p>
-        <p className="mt-2 text-gray-700">
-          Productos cuya fecha de vencimiento está próxima.
-        </p>
+        <p className="mt-2 text-gray-700">Productos cuya fecha de vencimiento está próxima.</p>
       </div>
 
       <div className="overflow-x-auto">
@@ -104,9 +162,7 @@ export default function ProductosProximosAVencer() {
                       ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
                       : "Sin fecha"}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">
-                    {totalStock ?? 0}
-                  </td>
+                  <td className="border border-gray-300 px-4 py-2 text-right">{totalStock ?? 0}</td>
                 </tr>
               );
             })}

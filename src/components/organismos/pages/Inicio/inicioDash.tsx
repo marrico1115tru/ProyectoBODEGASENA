@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import DefaultLayout from "@/layouts/default";
 import { Card } from "@/components/ui/card";
 import { UserGroupIcon, CubeIcon, Squares2X2Icon, ChartBarSquareIcon } from "@heroicons/react/24/outline";
@@ -5,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useKeenSlider } from "keen-slider/react";
 import { useDashboardData } from "@/Api/Dashboard/DashboardData";
 import "keen-slider/keen-slider.min.css";
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const images = [
   { id: 1, title: "Agropecuario", src: "src/img/agropecuarioimg.jpeg", link: "/agropecuario" },
@@ -45,6 +49,76 @@ function AutoplayPlugin(slider: any) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+
+
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+       
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/InicioDash&idRol=${rolId}`;
+        const response = await fetch(url, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+          return;
+        }
+
+        const json = await response.json();
+        const permisosData = json.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+ 
+  const { data, loading } = useDashboardData({
+    enabled: permisos.puedeVer,
+  });
+
+ 
   const [sliderRef] = useKeenSlider(
     {
       loop: true,
@@ -57,8 +131,6 @@ export default function Dashboard() {
     [AutoplayPlugin]
   );
 
-  const { data, loading } = useDashboardData();
-
   const recentActivity =
     data?.productos
       ?.sort((a, b) => new Date(b.fecha_creacion).getTime() - new Date(a.fecha_creacion).getTime())
@@ -68,11 +140,19 @@ export default function Dashboard() {
         actividad: `Producto creado: ${p.nombre}`,
       })) || [];
 
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-50 px-4 py-10">
-
-      
         <div className="mb-10">
           <h1 className="text-4xl font-extrabold text-slate-800 mb-2 tracking-tight drop-shadow">¡Bienvenido!</h1>
           <p className="text-slate-500 text-lg">Visualiza el resumen del sistema de inventario.</p>
@@ -82,7 +162,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Total de Usuarios</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data.totalUsuarios}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalUsuarios}</h2>
               </div>
               <div className="icon-glass">
                 <UserGroupIcon className="h-8 w-8 text-blue-600" />
@@ -93,7 +173,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Productos</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data.totalProductos}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalProductos}</h2>
               </div>
               <div className="icon-glass">
                 <CubeIcon className="h-8 w-8 text-emerald-600" />
@@ -104,7 +184,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500">Áreas</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data.totalAreas}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalAreas}</h2>
               </div>
               <div className="icon-glass">
                 <Squares2X2Icon className="h-8 w-8 text-orange-500" />
@@ -119,7 +199,9 @@ export default function Dashboard() {
                   {loading
                     ? "..."
                     : Math.floor(
-                        ((data.totalUsuarios + data.totalProductos + data.totalAreas) / 500) * 100
+                        ((Number(data?.totalUsuarios ?? 0) + Number(data?.totalProductos ?? 0) + Number(data?.totalAreas ?? 0)) /
+                          500) *
+                          100
                       ) + "%"}
                 </h2>
               </div>
@@ -130,7 +212,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-      
         <div className="mb-14">
           <h2 className="text-2xl font-bold mb-5 text-slate-700 border-b pb-2 border-gray-200">
             Galería Destacada
@@ -159,7 +240,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Últimas Actividades */}
+        
         <Card className="glass-card p-8 mt-10">
           <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 border-gray-200">
             Últimas Actividades
@@ -173,29 +254,27 @@ export default function Dashboard() {
             ))}
           </ul>
         </Card>
+
       </div>
 
-      {/* Estilos glassmorphism e iconos */}
-      <style>
-        {`
-          .glass-card {
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: blur(10px);
-            border-radius: 1.2rem;
-            box-shadow: 0 4px 24px 0 rgba(16, 185, 129, 0.07);
-            border: 1px solid rgba(200,200,200,0.13);
-          }
-          .icon-glass {
-            background: rgba(236, 239, 241, 0.9);
-            border-radius: 9999px;
-            padding: 0.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px 0 rgba(59,130,246,0.09);
-          }
-        `}
-      </style>
+      <style>{`
+        .glass-card {
+          background: rgba(255,255,255,0.82);
+          backdrop-filter: blur(10px);
+          border-radius: 1.2rem;
+          box-shadow: 0 4px 24px 0 rgba(16, 185, 129, 0.07);
+          border: 1px solid rgba(200,200,200,0.13);
+        }
+        .icon-glass {
+          background: rgba(236, 239, 241, 0.9);
+          border-radius: 9999px;
+          padding: 0.8rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px 0 rgba(59,130,246,0.09);
+        }
+      `}</style>
     </DefaultLayout>
   );
 }

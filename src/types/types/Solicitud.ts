@@ -11,6 +11,8 @@ export interface Usuario extends UsuarioRef {
 
 /* Objeto que devuelve el backend para una solicitud */
 export interface Solicitud {
+  fecha: string;
+  solicitante: string;
   detalleSolicituds: any;
   entregaMaterials: any;
   id: number;

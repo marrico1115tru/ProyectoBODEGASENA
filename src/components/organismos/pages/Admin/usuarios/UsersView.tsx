@@ -38,6 +38,8 @@ import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import axios from 'axios';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
 
@@ -107,11 +109,58 @@ const UsuariosPage = () => {
   const [newFichaName, setNewFichaName] = useState('');
   const [newRolName, setNewRolName] = useState('');
 
+  // Estado permisos - agregado
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  
   useEffect(() => {
-    cargarDatos();
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/usuarios&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
   }, []);
 
+  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const [u, a, f, r] = await Promise.all([
         getUsuarios(),
@@ -129,7 +178,18 @@ const UsuariosPage = () => {
     }
   };
 
+  // Carga datos cuando cambia permiso puedeVer
+  useEffect(() => {
+    cargarDatos();
+  }, [permisos]);
+
+  // Función eliminar con permiso
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar usuarios.', 'warning');
+      return;
+    }
+
     const result = await MySwal.fire({
       title: '¿Eliminar usuario?',
       text: 'No se podrá recuperar.',
@@ -139,6 +199,7 @@ const UsuariosPage = () => {
       cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
+
     try {
       await deleteUsuario(id);
       await MySwal.fire('Eliminado', `Usuario ID ${id} eliminado`, 'success');
@@ -148,6 +209,7 @@ const UsuariosPage = () => {
     }
   };
 
+  // Función guardar (crear o editar) con validación permisos
   const guardar = async () => {
     if (!form.nombre.trim()) {
       await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
@@ -159,6 +221,14 @@ const UsuariosPage = () => {
     }
     if (!editId && !form.password.trim()) {
       await MySwal.fire('Atención', 'La contraseña es obligatoria para crear usuario', 'warning');
+      return;
+    }
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar usuarios.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear usuarios.', 'warning');
       return;
     }
 
@@ -219,6 +289,10 @@ const UsuariosPage = () => {
   };
 
   const abrirModalEditar = (u: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar usuarios.', 'warning');
+      return;
+    }
     setEditId(u.id);
     setForm({
       nombre: u.nombre || '',
@@ -230,6 +304,27 @@ const UsuariosPage = () => {
       idArea: u.idArea?.id?.toString() || '',
       idFicha: u.idFichaFormacion?.id?.toString() || '',
       idRol: u.rol?.id?.toString() || '',
+    });
+    openUser();
+  };
+
+  // Solo abrir modal nuevo si puedeCrear
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear usuarios.', 'warning');
+      return;
+    }
+    setEditId(null);
+    setForm({
+      nombre: '',
+      apellido: '',
+      cedula: '',
+      email: '',
+      telefono: '',
+      password: '',
+      idArea: '',
+      idFicha: '',
+      idRol: '',
     });
     openUser();
   };
@@ -261,6 +356,33 @@ const UsuariosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
+  // Renderizado condicional de las opciones del Dropdown según permisos
+  const renderDropdownItems = (item: any) => {
+    const items = [];
+    if (permisos.puedeEditar) {
+      items.push(
+        <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+          Editar
+        </DropdownItem>,
+      );
+    }
+    if (permisos.puedeEliminar) {
+      items.push(
+        <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
+          Eliminar
+        </DropdownItem>,
+      );
+    }
+    if (items.length === 0) {
+      items.push(
+        <DropdownItem key={`sin-acciones-${item.id}`} isDisabled>
+          Sin acciones disponibles
+        </DropdownItem>,
+      );
+    }
+    return items;
+  };
+
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombreCompleto':
@@ -288,18 +410,12 @@ const UsuariosPage = () => {
                 size="sm"
                 variant="light"
                 className="rounded-full text-[#0D1324]"
+                aria-label="Acciones"
               >
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                Editar
-              </DropdownItem>
-              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{renderDropdownItems(item)}</DropdownMenu>
           </Dropdown>
         );
       default:
@@ -310,11 +426,18 @@ const UsuariosPage = () => {
   const toggleColumn = (key: string) => {
     setVisibleColumns(prev => {
       const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
+      if (copy.has(key)) {
+        // Prevenir ocultar columna 'actions' para mantener acceso a acciones
+        if (key === 'actions') return copy;
+        copy.delete(key);
+      } else {
+        copy.add(key);
+      }
       return copy;
     });
   };
+
+  // Controles para crear nueva área, ficha o rol permanecen iguales
 
   const guardarArea = async () => {
     if (!newAreaName.trim()) {
@@ -367,13 +490,22 @@ const UsuariosPage = () => {
     }
   };
 
+  // Si no tiene permiso puedeVer, mostrar mensaje y no renderizar tabla ni modales
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            👥 Gestión de Usuarios
-          </h1>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">👥 Gestión de Usuarios</h1>
           <p className="text-sm text-gray-600">Consulta y administra los usuarios registrados.</p>
         </header>
 
@@ -415,29 +547,19 @@ const UsuariosPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-                    <Button
-                      className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-                      endContent={<PlusIcon />}
-                      onPress={() => {
-                        setEditId(null);
-                        setForm({
-                          nombre: '',
-                          apellido: '',
-                          cedula: '',
-                          email: '',
-                          telefono: '',
-                          password: '',
-                          idArea: '',
-                          idFicha: '',
-                          idRol: '',
-                        });
-                        openUser();
-                      }}
-                    >
-                      Nuevo Usuario
-                    </Button>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nuevo Usuario
+                      </Button>
+                    )}
                   </div>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {usuarios.length} usuarios</span>
                   <label className="flex items-center text-default-400 text-sm">
@@ -527,18 +649,21 @@ const UsuariosPage = () => {
                       onValueChange={v => setForm(p => ({ ...p, nombre: v }))}
                       radius="sm"
                       required
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     />
                     <Input
                       label="Apellido"
                       value={form.apellido}
                       onValueChange={v => setForm(p => ({ ...p, apellido: v }))}
                       radius="sm"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     />
                     <Input
                       label="Cédula"
                       value={form.cedula}
                       onValueChange={v => setForm(p => ({ ...p, cedula: v }))}
                       radius="sm"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     />
                     <Input
                       label="Email"
@@ -546,12 +671,14 @@ const UsuariosPage = () => {
                       value={form.email}
                       onValueChange={v => setForm(p => ({ ...p, email: v }))}
                       radius="sm"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     />
                     <Input
                       label="Teléfono"
                       value={form.telefono}
                       onValueChange={v => setForm(p => ({ ...p, telefono: v }))}
                       radius="sm"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     />
                     {!editId && (
                       <Input
@@ -561,6 +688,7 @@ const UsuariosPage = () => {
                         onValueChange={v => setForm(p => ({ ...p, password: v }))}
                         radius="sm"
                         required
+                        disabled={!permisos.puedeCrear}
                       />
                     )}
 
@@ -571,6 +699,7 @@ const UsuariosPage = () => {
                         onSelectionChange={k => setForm(p => ({ ...p, idArea: String(Array.from(k)[0]) }))}
                         radius="sm"
                         className="flex-grow"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         {areas.map(a => (
                           <SelectItem key={String(a.id)}>{a.nombreArea}</SelectItem>
@@ -583,6 +712,7 @@ const UsuariosPage = () => {
                         onPress={areaModal.onOpen}
                         aria-label="Agregar Área"
                         title="Agregar Área"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         <PlusIcon size={18} />
                       </Button>
@@ -595,6 +725,7 @@ const UsuariosPage = () => {
                         onSelectionChange={k => setForm(p => ({ ...p, idFicha: String(Array.from(k)[0]) }))}
                         radius="sm"
                         className="flex-grow"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         {fichas.map(f => (
                           <SelectItem key={String(f.id)}>{f.nombre}</SelectItem>
@@ -607,6 +738,7 @@ const UsuariosPage = () => {
                         onPress={fichaModal.onOpen}
                         aria-label="Agregar Ficha de Formación"
                         title="Agregar Ficha de Formación"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         <PlusIcon size={18} />
                       </Button>
@@ -619,6 +751,7 @@ const UsuariosPage = () => {
                         onSelectionChange={k => setForm(p => ({ ...p, idRol: String(Array.from(k)[0]) }))}
                         radius="sm"
                         className="flex-grow"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         {roles.map(r => (
                           <SelectItem key={String(r.id)}>{r.nombreRol}</SelectItem>
@@ -631,6 +764,7 @@ const UsuariosPage = () => {
                         onPress={rolModal.onOpen}
                         aria-label="Agregar Rol"
                         title="Agregar Rol"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       >
                         <PlusIcon size={18} />
                       </Button>
@@ -640,7 +774,11 @@ const UsuariosPage = () => {
                       <Button variant="light" onClick={onCloseLocal} type="button">
                         Cancelar
                       </Button>
-                      <Button variant="flat" type="submit">
+                      <Button
+                        variant="flat"
+                        type="submit"
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                      >
                         {editId ? 'Actualizar' : 'Crear'}
                       </Button>
                     </div>
@@ -651,7 +789,7 @@ const UsuariosPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal Nueva Área */}
+        {/* Modales para Área, Ficha y Rol sin cambios, solo agregar disabled si quieres */}
         <Modal
           isOpen={areaModal.isOpen}
           onOpenChange={areaModal.onOpenChange}
@@ -683,7 +821,6 @@ const UsuariosPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal Nueva Ficha */}
         <Modal
           isOpen={fichaModal.isOpen}
           onOpenChange={fichaModal.onOpenChange}
@@ -715,7 +852,6 @@ const UsuariosPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal Nuevo Rol */}
         <Modal
           isOpen={rolModal.isOpen}
           onOpenChange={rolModal.onOpenChange}

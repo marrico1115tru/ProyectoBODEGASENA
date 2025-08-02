@@ -1,29 +1,79 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import DefaultLayout from "@/layouts/default";
 import Modal from "@/components/ui/Modal";
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 export default function UsuariosMayorUso() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar componente
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/UsuariosRep/UsuariosHistoria&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
+  }, []);
+
+  // Obtener datos solo si puedeVer
   const { data, isLoading, error } = useQuery({
     queryKey: ["usuarios-mayor-uso-productos"],
     queryFn: async () => {
       const res = await axios.get(
         "http://localhost:3000/usuarios/usuarios-top-solicitudes",
-        {
-          withCredentials: true, // ✅ Esto permite enviar cookies HTTP-only
-        }
+        { withCredentials: true }
       );
       return res.data;
     },
+    enabled: permisos.puedeVer,
   });
 
+  // Función para exportar PDF
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -58,8 +108,21 @@ export default function UsuariosMayorUso() {
     pdf.save("usuarios_mayor_uso_productos.pdf");
   };
 
+  // Si no tiene permiso para ver, mostrar mensaje y no mostrar la página
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   if (isLoading) return <p className="p-6 text-lg text-center">Cargando...</p>;
   if (error) return <p className="p-6 text-lg text-red-600 text-center">Error al cargar datos.</p>;
+
+  if (!Array.isArray(data)) return <p className="p-6 text-lg text-center">No se encontraron datos.</p>;
 
   const ReportContent = () => (
     <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl mx-auto border border-gray-200">

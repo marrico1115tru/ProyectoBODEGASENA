@@ -1,4 +1,3 @@
-// src/pages/CategoriasProductosPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -38,10 +37,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import axios from "axios";
+
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
+// Columnas definidas para la tabla
 const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombre", sortable: false },
@@ -54,12 +55,10 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "nombre", "unpsc", "productos", "actions"
 type ColumnKey = (typeof columns)[number]["uid"];
 
 const CategoriasProductosPage = () => {
+  // Estados principales
   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
-
-  // Cambio: visibleColumns con setter para alternar columnas
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
-
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -67,13 +66,15 @@ const CategoriasProductosPage = () => {
     direction: "ascending",
   });
 
+  // Estados para modal (crear/editar categoría)
   const [nombre, setNombre] = useState("");
   const [unpsc, setUnpsc] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
+  // Control modal
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
+  // Permisos del usuario
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -81,12 +82,11 @@ const CategoriasProductosPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para alternar columnas visibles
+  // Alternar columnas visibles (no se puede ocultar columna acciones)
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(uid)) {
-        // Prevent hiding actions column to maintain accessibility
         if (uid === "actions") return prev;
         newSet.delete(uid);
       } else {
@@ -96,7 +96,7 @@ const CategoriasProductosPage = () => {
     });
   };
 
-  // Cargar permisos al montar
+  // Obtener permisos desde backend según rol del usuario
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -136,7 +136,7 @@ const CategoriasProductosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar categorías solo si tiene permiso de ver
+  // Cargar categorías si tiene permiso para ver
   const cargarCategorias = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -148,11 +148,12 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  // Recargar categorías si cambian permisos
   useEffect(() => {
     cargarCategorias();
   }, [permisos]);
 
-  // Funciones CRUD con validación de permisos
+  // Eliminar categoría con confirmación y validación de permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar categorías.", "warning");
@@ -180,11 +181,13 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  // Crear o actualizar categoría según editId, con validación de permisos
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
       return;
     }
+
     if (editId && !permisos.puedeEditar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para editar categorías.", "warning");
       return;
@@ -212,6 +215,7 @@ const CategoriasProductosPage = () => {
     }
   };
 
+  // Abrir modal para editar categoría con datos precargados
   const abrirModalEditar = (cat: any) => {
     if (!permisos.puedeEditar) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para editar categorías.", "warning");
@@ -223,6 +227,7 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
+  // Abrir modal para crear nueva categoría
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para crear categorías.", "warning");
@@ -234,6 +239,7 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
+  // Cerrar modal y limpiar estados
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
@@ -241,7 +247,7 @@ const CategoriasProductosPage = () => {
     onClose();
   };
 
-  // Filtrado
+  // Filtrado de categorías por nombre o UNPSC
   const filtered = useMemo(() => {
     if (!filterValue) return categorias;
     const lowerFilter = filterValue.toLowerCase();
@@ -252,33 +258,44 @@ const CategoriasProductosPage = () => {
     );
   }, [categorias, filterValue]);
 
-  const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
+  // Páginas totales (mínimo 1)
+  const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
+  // Paginación
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
+  // Ordenación según descriptor de orden
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
+
+    if (!column) return items;
+
     items.sort((a, b) => {
       const x = a[column as keyof typeof a];
       const y = b[column as keyof typeof b];
-      return x === y ? 0 : (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
+      if (x === y) return 0;
+      return (x > y ? 1 : -1) * (direction === "ascending" ? 1 : -1);
     });
+
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado de celdas con control de permisos en acciones
+  // Renderizado de celdas con control según clave de columna
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombre":
         return <span className="font-medium text-gray-800">{item.nombre}</span>;
+
       case "unpsc":
         return <span className="text-sm text-gray-600">{item.unpsc || "—"}</span>;
+
       case "productos":
         return <span className="text-sm text-gray-600">{item.productos?.length || 0}</span>;
+
       case "actions":
         const dropdownItems = [];
         if (permisos.puedeEditar) {
@@ -312,12 +329,16 @@ const CategoriasProductosPage = () => {
             <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+
+      case "id":
+        return <span>{item.id}</span>;
+
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || "—";
     }
   };
 
-  // Bloquear vista completa si no puede ver
+  // Bloquear acceso si no tiene permiso de visualización
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -328,9 +349,11 @@ const CategoriasProductosPage = () => {
     );
   }
 
+  // Render principal del componente
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
+        {/* Header */}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📦 Gestión de Categorías de Productos
@@ -338,14 +361,21 @@ const CategoriasProductosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Tabla Desktop */}
+        {/* Tabla para escritorio */}
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
             isHeaderSticky
+            sortDescriptor={sortDescriptor}
+            onSortChange={setSortDescriptor}
+            classNames={{
+              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
+              td: "align-middle py-3 px-4",
+            }}
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  {/* Buscador */}
                   <Input
                     isClearable
                     className="w-full md:max-w-[44%]"
@@ -357,7 +387,7 @@ const CategoriasProductosPage = () => {
                     onClear={() => setFilterValue("")}
                   />
 
-                  {/* Botón columnas junto con botón nuevo */}
+                  {/* Dropdown columnas y botón nuevo */}
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -365,7 +395,7 @@ const CategoriasProductosPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          .filter((c) => c.uid !== "actions") /* acciones siempre visibles */
+                          .filter((c) => c.uid !== "actions") /* la columna acciones no se puede ocultar */
                           .map((col) => (
                             <DropdownItem key={col.uid} className="flex items-center gap-2">
                               <Checkbox
@@ -391,6 +421,8 @@ const CategoriasProductosPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Controles de paginación */}
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>
                   <label className="flex items-center text-default-400 text-sm">
@@ -424,12 +456,6 @@ const CategoriasProductosPage = () => {
                 </Button>
               </div>
             }
-            sortDescriptor={sortDescriptor}
-            onSortChange={setSortDescriptor}
-            classNames={{
-              th: "py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm",
-              td: "align-middle py-3 px-4",
-            }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
@@ -442,15 +468,18 @@ const CategoriasProductosPage = () => {
                 </TableColumn>
               )}
             </TableHeader>
+
             <TableBody items={sorted} emptyContent="No se encontraron categorías">
               {(item) => (
-                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
+                </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Cards Mobile */}
+        {/* Cards para mobile */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
           {sorted.map((cat) => {
@@ -505,8 +534,14 @@ const CategoriasProductosPage = () => {
           })}
         </div>
 
-        {/* Modal CRUD */}
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+        {/* Modal para crear/editar categoría */}
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-md w-full p-6">
             {() => (
               <>

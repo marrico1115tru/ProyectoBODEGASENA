@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BarChart } from './Graficasbases/GraficasBaseProductos';
 import axios from 'axios';
 import DefaultLayout from '@/layouts/default';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductosPorUsuario {
   nombreCompleto: string;
@@ -21,13 +22,65 @@ export default function VistaEstadisticasUsuarios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Estado de permisos para controlar acceso
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  useEffect(() => {
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaEstadisticasUsuarios&idRol=${rolId}`;
+        // Cambia la ruta si tu backend usa otra para este reporte
+
+        const response = await axios.get(url, { withCredentials: true });
+        const permisosData = response.data.data;
+
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (err) {
+        console.error('Error al obtener permisos:', err);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+
+    fetchPermisos();
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const config = {
-          withCredentials: true, // ✅ Enviar cookies automáticamente
-        };
+      if (!permisos.puedeVer) return;
 
+      setLoading(true);
+      setError(null);
+
+      try {
+        const config = { withCredentials: true };
         const urlProductos = 'http://localhost:3000/productos/solicitados-por-usuario';
         const urlRoles = 'http://localhost:3000/usuarios/estadisticas/por-rol';
 
@@ -64,7 +117,17 @@ export default function VistaEstadisticasUsuarios() {
     };
 
     fetchData();
-  }, []);
+  }, [permisos.puedeVer]);
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   return (
     <DefaultLayout>

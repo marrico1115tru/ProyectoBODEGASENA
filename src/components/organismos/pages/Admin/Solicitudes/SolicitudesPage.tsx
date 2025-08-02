@@ -35,6 +35,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import axios from 'axios';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
 
@@ -55,13 +57,15 @@ const INITIAL_VISIBLE_COLUMNS = [
   'detalles',
   'entregas',
   'actions',
-];
+] as const;
+
+type ColumnKey = (typeof columns)[number]['uid'];
 
 const SolicitudesPage = () => {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -76,11 +80,57 @@ const SolicitudesPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
+  // Estado permisos
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Cargar permisos al montar
   useEffect(() => {
-    cargarDatos();
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/SolicitudesPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
   }, []);
 
+  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const [sols, users] = await Promise.all([getSolicitudes(), getUsuarios()]);
       setSolicitudes(sols);
@@ -91,7 +141,16 @@ const SolicitudesPage = () => {
     }
   };
 
+  useEffect(() => {
+    cargarDatos();
+  }, [permisos]);
+
+  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar solicitudes.', 'warning');
+      return;
+    }
     const result = await MySwal.fire({
       title: '¿Eliminar solicitud?',
       text: 'No se podrá recuperar.',
@@ -123,6 +182,15 @@ const SolicitudesPage = () => {
     }
     if (!idSolicitante) {
       await MySwal.fire('Error', 'Debe seleccionar un solicitante', 'error');
+      return;
+    }
+
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar solicitudes.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear solicitudes.', 'warning');
       return;
     }
 
@@ -160,10 +228,23 @@ const SolicitudesPage = () => {
   };
 
   const abrirModalEditar = (sol: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar solicitudes.', 'warning');
+      return;
+    }
     setEditId(sol.id);
     setFechaSolicitud(sol.fechaSolicitud);
     setEstado(sol.estadoSolicitud);
     setIdSolicitante(sol.idUsuarioSolicitante?.id || '');
+    onOpen();
+  };
+
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear solicitudes.', 'warning');
+      return;
+    }
+    limpiarForm();
     onOpen();
   };
 
@@ -177,7 +258,9 @@ const SolicitudesPage = () => {
   const filtered = useMemo(() => {
     if (!filterValue) return solicitudes;
     return solicitudes.filter(s =>
-      `${s.id} ${s.fechaSolicitud} ${s.estadoSolicitud} ${s.idUsuarioSolicitante?.nombre || ''} ${s.idUsuarioSolicitante?.apellido || ''}`.toLowerCase().includes(filterValue.toLowerCase())
+      `${s.id} ${s.fechaSolicitud} ${s.estadoSolicitud} ${s.idUsuarioSolicitante?.nombre || ''} ${s.idUsuarioSolicitante?.apellido || ''}`
+        .toLowerCase()
+        .includes(filterValue.toLowerCase())
     );
   }, [solicitudes, filterValue]);
 
@@ -192,14 +275,15 @@ const SolicitudesPage = () => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
     items.sort((a, b) => {
-      const x = a[column === 'fecha' ? 'fechaSolicitud' : column];
-      const y = b[column === 'fecha' ? 'fechaSolicitud' : column];
+      const colKey = column === 'fecha' ? 'fechaSolicitud' : column;
+      const x = a[colKey];
+      const y = b[colKey];
       return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
     });
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'fecha':
         return <span className="text-sm text-gray-600">{item.fechaSolicitud}</span>;
@@ -220,14 +304,46 @@ const SolicitudesPage = () => {
       case 'solicitante':
         return (
           <span className="text-sm text-gray-800">
-            {item.idUsuarioSolicitante ? `${item.idUsuarioSolicitante.nombre} ${item.idUsuarioSolicitante.apellido || ''}` : '—'}
+            {item.idUsuarioSolicitante
+              ? `${item.idUsuarioSolicitante.nombre} ${item.idUsuarioSolicitante.apellido || ''}`
+              : '—'}
           </span>
         );
       case 'detalles':
         return <span className="text-sm text-gray-600">{item.detalleSolicituds?.length || 0}</span>;
       case 'entregas':
         return <span className="text-sm text-gray-600">{item.entregaMaterials?.length || 0}</span>;
-      case 'actions':
+      case 'actions': {
+        const dropdownItems = [];
+        
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
+              Editar
+            </DropdownItem>
+          );
+        }
+        
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`eliminar-${item.id}`}
+              onPress={() => eliminar(item.id)}
+              className="text-danger"
+            >
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        
+        if (dropdownItems.length === 0) {
+          dropdownItems.push(
+            <DropdownItem key="sinAcciones" isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
+
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -235,31 +351,80 @@ const SolicitudesPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                Editar
-              </DropdownItem>
-              <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                Eliminar
-              </DropdownItem>
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+      }
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || '—';
     }
   };
 
   const toggleColumn = (key: string) => {
     setVisibleColumns(prev => {
       const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
+      if (copy.has(key)) {
+        if (key === 'actions') return prev; // No permitir ocultar columna acciones
+        copy.delete(key);
+      } else {
+        copy.add(key);
+      }
       return copy;
     });
   };
 
-  // Aquí modifico el orden solicitado: Primero Columnas, luego Botón Nueva Solicitud
+  // Función auxiliar para renderizar dropdown en móvil
+  const renderMobileDropdown = (s: any) => {
+    const dropdownItems = [];
+    
+    if (permisos.puedeEditar) {
+      dropdownItems.push(
+        <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
+          Editar
+        </DropdownItem>
+      );
+    }
+    
+    if (permisos.puedeEliminar) {
+      dropdownItems.push(
+        <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
+          Eliminar
+        </DropdownItem>
+      );
+    }
+    
+    if (dropdownItems.length === 0) {
+      dropdownItems.push(
+        <DropdownItem key="sinAcciones" isDisabled>
+          Sin acciones disponibles
+        </DropdownItem>
+      );
+    }
+
+    return (
+      <Dropdown>
+        <DropdownTrigger>
+          <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+            <MoreVertical />
+          </Button>
+        </DropdownTrigger>
+        <DropdownMenu>
+          {dropdownItems}
+        </DropdownMenu>
+      </Dropdown>
+    );
+  };
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   const topContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -273,41 +438,41 @@ const SolicitudesPage = () => {
           onValueChange={setFilterValue}
           onClear={() => setFilterValue('')}
         />
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           <Dropdown>
             <DropdownTrigger>
               <Button variant="flat">Columnas</Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Seleccionar columnas">
-              {columns.filter(c => c.uid !== 'actions').map(col => (
-                <DropdownItem key={col.uid} className="py-1 px-2">
-                  <Checkbox
-                    isSelected={visibleColumns.has(col.uid)}
-                    onValueChange={() => toggleColumn(col.uid)}
-                    size="sm"
-                  >
-                    {col.name}
-                  </Checkbox>
-                </DropdownItem>
-              ))}
+              {columns
+                .filter(c => c.uid !== 'actions')
+                .map(col => (
+                  <DropdownItem key={col.uid} className="py-1 px-2 flex items-center gap-2">
+                    <Checkbox
+                      isSelected={visibleColumns.has(col.uid)}
+                      onValueChange={() => toggleColumn(col.uid)}
+                      size="sm"
+                    >
+                      {col.name}
+                    </Checkbox>
+                  </DropdownItem>
+                ))}
             </DropdownMenu>
           </Dropdown>
-          <Button
-            className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-            endContent={<PlusIcon />}
-            onPress={() => {
-              limpiarForm();
-              onOpen();
-            }}
-          >
-            Nueva Solicitud
-          </Button>
+
+          {permisos.puedeCrear ? (
+            <Button
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+              endContent={<PlusIcon />}
+              onPress={abrirModalNuevo}
+            >
+              Nueva Solicitud
+            </Button>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">
-          Total {solicitudes.length} solicitudes
-        </span>
+        <span className="text-default-400 text-sm">Total {solicitudes.length} solicitudes</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -319,7 +484,9 @@ const SolicitudesPage = () => {
             }}
           >
             {[5, 10, 15].map(n => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </label>
@@ -329,9 +496,13 @@ const SolicitudesPage = () => {
 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+        Anterior
+      </Button>
       <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+        Siguiente
+      </Button>
     </div>
   );
 
@@ -340,9 +511,7 @@ const SolicitudesPage = () => {
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">📝 Gestión de Solicitudes</h1>
-          <p className="text-sm text-gray-600">
-            Consulta y administra las solicitudes de materiales.
-          </p>
+          <p className="text-sm text-gray-600">Consulta y administra las solicitudes de materiales.</p>
         </header>
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
@@ -372,13 +541,14 @@ const SolicitudesPage = () => {
             <TableBody items={sorted} emptyContent="No se encontraron solicitudes">
               {item => (
                 <TableRow key={item.id}>
-                  {col => <TableCell>{renderCell(item, String(col))}</TableCell>}
+                  {col => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
+        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron solicitudes</p>
@@ -388,31 +558,35 @@ const SolicitudesPage = () => {
                 <CardContent className="space-y-2 p-4">
                   <div className="flex justify-between items-start">
                     <h3 className="font-semibold text-lg">ID {s.id}</h3>
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu>
-                        <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>Editar</DropdownItem>
-                        <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>Eliminar</DropdownItem>
-                      </DropdownMenu>
-                    </Dropdown>
+                    {renderMobileDropdown(s)}
                   </div>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Fecha:</span> {s.fechaSolicitud}</p>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Estado:</span>{' '}
-                    <span className={
-                      s.estadoSolicitud === 'RECHAZADA' ? 'text-red-600' :
-                      s.estadoSolicitud === 'APROBADA' ? 'text-green-600' :
-                      'text-yellow-600'}>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Fecha:</span> {s.fechaSolicitud}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Estado:</span>{' '}
+                    <span
+                      className={
+                        s.estadoSolicitud === 'RECHAZADA'
+                          ? 'text-red-600'
+                          : s.estadoSolicitud === 'APROBADA'
+                          ? 'text-green-600'
+                          : 'text-yellow-600'
+                      }
+                    >
                       {s.estadoSolicitud}
                     </span>
                   </p>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Solicitante:</span>{' '}
-                    {s.idUsuarioSolicitante ? `${s.idUsuarioSolicitante.nombre} ${s.idUsuarioSolicitante.apellido || ''}` : '—'}</p>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Detalles:</span> {s.detalleSolicituds?.length || 0}</p>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Entregas:</span> {s.entregaMaterials?.length || 0}</p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Solicitante:</span>{' '}
+                    {s.idUsuarioSolicitante ? `${s.idUsuarioSolicitante.nombre} ${s.idUsuarioSolicitante.apellido || ''}` : '—'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Detalles:</span> {s.detalleSolicituds?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Entregas:</span> {s.entregaMaterials?.length || 0}
+                  </p>
                   <p className="text-xs text-gray-400">ID: {s.id}</p>
                 </CardContent>
               </Card>
@@ -420,9 +594,15 @@ const SolicitudesPage = () => {
           )}
         </div>
 
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30">
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {onCloseLocal => (
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
+            {() => (
               <>
                 <ModalHeader>{editId ? 'Editar Solicitud' : 'Nueva Solicitud'}</ModalHeader>
                 <ModalBody className="space-y-4">
@@ -432,6 +612,8 @@ const SolicitudesPage = () => {
                     value={fechaSolicitud}
                     onValueChange={setFechaSolicitud}
                     radius="sm"
+                    autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">Estado</label>
@@ -439,6 +621,7 @@ const SolicitudesPage = () => {
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={estado}
                       onChange={e => setEstado(e.target.value as 'PENDIENTE' | 'APROBADA' | 'RECHAZADA')}
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="PENDIENTE">PENDIENTE</option>
                       <option value="APROBADA">APROBADA</option>
@@ -451,17 +634,34 @@ const SolicitudesPage = () => {
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={idSolicitante}
                       onChange={e => setIdSolicitante(Number(e.target.value) || '')}
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     >
                       <option value="">Seleccione un usuario</option>
                       {usuarios.map(u => (
-                        <option key={u.id} value={u.id}>{u.nombre} {u.apellido || ''}</option>
+                        <option key={u.id} value={u.id}>
+                          {u.nombre} {u.apellido || ''}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
-                  <Button variant="flat" onPress={guardar}>{editId ? 'Actualizar' : 'Crear'}</Button>
+                <ModalFooter className="flex justify-end gap-3">
+                  <Button
+                    variant="light"
+                    onPress={() => {
+                      limpiarForm();
+                      onClose();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
+                    {editId ? 'Actualizar' : 'Crear'}
+                  </Button>
                 </ModalFooter>
               </>
             )}

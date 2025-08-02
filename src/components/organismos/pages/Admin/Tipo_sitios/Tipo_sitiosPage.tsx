@@ -28,38 +28,37 @@ import {
   updateTipoSitio,
   deleteTipoSitio,
 } from '@/Api/Tipo_sitios';
-import { getPermisosPorRuta } from '@/Api/getPermisosPorRuta/PermisosService';
 import DefaultLayout from '@/layouts/default';
-import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import {
+  PlusIcon,
+  MoreVertical,
+  Search,
+  Pencil,
+  Trash,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const ID_ROL_ACTUAL = 1; // Cambia por el rol actual del usuario autenticado
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+import axios from 'axios';
+import { getDecodedTokenFromCookies } from '@/lib/utils';
 
-const Toast = ({ message }: { message: string }) => (
-  <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow z-50">
-    {message}
-  </div>
-);
+const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
   { name: 'Nombre', uid: 'nombre', sortable: false },
   { name: '# Sitios', uid: 'sitios', sortable: false },
   { name: 'Acciones', uid: 'actions' },
-];
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'sitios', 'actions'];
+] as const;
+
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'sitios', 'actions'] as const;
+type ColumnKey = (typeof columns)[number]['uid'];
 
 const TipoSitiosPage = () => {
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
-  });
-
   const [tipos, setTipos] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -71,86 +70,175 @@ const TipoSitiosPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
-  const [toastMsg, setToastMsg] = useState('');
-  const notify = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
+
+  // Estado permisos - Sistema completo igual que AreasPage
+  const [permisos, setPermisos] = useState({
+    puedeVer: false,
+    puedeCrear: false,
+    puedeEditar: false,
+    puedeEliminar: false,
+  });
+
+  // Función para alternar columnas visibles
+  const toggleColumn = (uid: string) => {
+    setVisibleColumns((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        // Impide ocultar la columna acciones para no perder siempre el acceso a esas funciones
+        if (uid === 'actions') return prev;
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
   };
 
+  // Cargar permisos al montar - Sistema completo igual que AreasPage
   useEffect(() => {
-    cargarPermisos();
-    // eslint-disable-next-line
+    const fetchPermisos = async () => {
+      try {
+        const userData = getDecodedTokenFromCookies('token');
+        const rolId = userData?.rol?.id;
+        if (!rolId) return;
+
+        // IMPORTANTE: Cambiar la ruta a la correspondiente para TipoSitios - debe coincidir con el backend
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/Tipo_sitiosPage&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
+
+        const permisosData = response.data.data;
+        if (permisosData) {
+          setPermisos({
+            puedeVer: Boolean(permisosData.puedeVer),
+            puedeCrear: Boolean(permisosData.puedeCrear),
+            puedeEditar: Boolean(permisosData.puedeEditar),
+            puedeEliminar: Boolean(permisosData.puedeEliminar),
+          });
+        } else {
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
+      }
+    };
+    fetchPermisos();
   }, []);
 
-  const cargarPermisos = async () => {
-    try {
-      // ¡La ruta debe coincidir exactamente con la del backend!
-      const permisosObtenidos = await getPermisosPorRuta('/Tipo_sitiosPage', ID_ROL_ACTUAL);
-      setPermisos(permisosObtenidos);
-      if (permisosObtenidos.puedeVer) {
-        cargarDatos();
-      }
-    } catch (error) {
-      console.error('Error cargando permisos:', error);
-      setPermisos({
-        puedeVer: false,
-        puedeCrear: false,
-        puedeEditar: false,
-        puedeEliminar: false,
-      });
-    }
-  };
-
-  const cargarDatos = async () => {
+  // Cargar datos solo si puedeVer
+  const cargarTiposSitio = async () => {
+    if (!permisos.puedeVer) return;
     try {
       const data = await getTiposSitio();
       setTipos(data);
-    } catch (err) {
-      console.error('Error cargando tipos de sitio', err);
+    } catch (error) {
+      console.error('Error al cargar tipos de sitio:', error);
+      await MySwal.fire('Error', 'Error al cargar tipos de sitio', 'error');
     }
   };
 
+  useEffect(() => {
+    cargarTiposSitio();
+  }, [permisos]);
+
+  // CRUD con validación de permisos - Sistema completo igual que AreasPage
   const eliminar = async (id: number) => {
-    if (!permisos.puedeEliminar) return;
-    if (!window.confirm('¿Eliminar tipo de sitio? No se podrá recuperar.')) return;
-    await deleteTipoSitio(id);
-    notify(`🗑️ Tipo eliminado: ID ${id}`);
-    cargarDatos();
+    if (!permisos.puedeEliminar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar tipos de sitio.', 'warning');
+      return;
+    }
+    const result = await MySwal.fire({
+      title: '¿Eliminar tipo de sitio?',
+      text: 'No se podrá recuperar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await deleteTipoSitio(id);
+      await MySwal.fire('Eliminado', `Tipo de sitio eliminado: ID ${id}`, 'success');
+      await cargarTiposSitio();
+    } catch (error) {
+      console.error('Error al eliminar tipo de sitio:', error);
+      await MySwal.fire('Error', 'Error al eliminar tipo de sitio', 'error');
+    }
   };
 
   const guardar = async () => {
-    if (editId && !permisos.puedeEditar) return;
-    if (!editId && !permisos.puedeCrear) return;
-    const payload = { nombre };
-    if (editId) {
-      await updateTipoSitio(editId, payload);
-      notify('✏️ Tipo actualizado');
-    } else {
-      await createTipoSitio(payload);
-      notify('✅ Tipo creado');
+    if (!nombre.trim()) {
+      await MySwal.fire('Aviso', 'El nombre es obligatorio', 'info');
+      return;
     }
-    limpiarForm();
-    onClose();
-    cargarDatos();
+    if (editId && !permisos.puedeEditar) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar tipos de sitio.', 'warning');
+      return;
+    }
+    if (!editId && !permisos.puedeCrear) {
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear tipos de sitio.', 'warning');
+      return;
+    }
+
+    const payload = { nombre: nombre.trim() };
+
+    try {
+      if (editId) {
+        await updateTipoSitio(editId, payload);
+        await MySwal.fire('Éxito', 'Tipo de sitio actualizado', 'success');
+      } else {
+        await createTipoSitio(payload);
+        await MySwal.fire('Éxito', 'Tipo de sitio creado', 'success');
+      }
+      cerrarModal();
+      await cargarTiposSitio();
+    } catch (error) {
+      console.error('Error al guardar tipo de sitio:', error);
+      await MySwal.fire('Error', 'Error al guardar tipo de sitio', 'error');
+    }
   };
 
-  const abrirModalEditar = (t: any) => {
-    if (!permisos.puedeEditar) return;
-    setEditId(t.id);
-    setNombre(t.nombre || '');
+  const abrirModalEditar = (tipo: any) => {
+    if (!permisos.puedeEditar) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar tipos de sitio.', 'warning');
+      return;
+    }
+    setEditId(tipo.id);
+    setNombre(tipo.nombre);
     onOpen();
   };
 
-  const limpiarForm = () => {
+  const abrirModalNuevo = () => {
+    if (!permisos.puedeCrear) {
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear tipos de sitio.', 'warning');
+      return;
+    }
     setEditId(null);
     setNombre('');
+    onOpen();
+  };
+
+  const cerrarModal = () => {
+    setEditId(null);
+    setNombre('');
+    onClose();
   };
 
   const filtered = useMemo(() => {
-    if (!filterValue) return tipos;
-    return tipos.filter((t) =>
-      `${t.id} ${t.nombre}`.toLowerCase().includes(filterValue.toLowerCase())
-    );
+    return filterValue
+      ? tipos.filter((t) => (t.nombre || '').toLowerCase().includes(filterValue.toLowerCase()))
+      : tipos;
   }, [tipos, filterValue]);
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
@@ -164,25 +252,98 @@ const TipoSitiosPage = () => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
     items.sort((a, b) => {
-      const x = a[column];
-      const y = b[column];
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
       return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
     });
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  // Función para generar elementos del dropdown móvil
+  const renderMobileDropdownItems = (item: any) => {
+    const items = [];
+    
+    if (permisos.puedeEditar) {
+      items.push(
+        <DropdownItem
+          key={`editar-mobile-${item.id}`}
+          onPress={() => abrirModalEditar(item)}
+          startContent={<Pencil size={16} />}
+        >
+          Editar
+        </DropdownItem>
+      );
+    }
+    
+    if (permisos.puedeEliminar) {
+      items.push(
+        <DropdownItem
+          key={`eliminar-mobile-${item.id}`}
+          onPress={() => eliminar(item.id)}
+          startContent={<Trash size={16} />}
+          className="text-danger"
+        >
+          Eliminar
+        </DropdownItem>
+      );
+    }
+    
+    if (items.length === 0) {
+      items.push(
+        <DropdownItem key={`sin-acciones-mobile-${item.id}`} isDisabled>
+          Sin acciones disponibles
+        </DropdownItem>
+      );
+    }
+    
+    return items;
+  };
+
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'nombre':
-        return (
-          <span className="font-medium text-gray-800 break-words max-w-[16rem]">
-            {item.nombre}
-          </span>
-        );
+        return <span className="font-medium text-gray-800">{item.nombre || '—'}</span>;
+
       case 'sitios':
         return <span className="text-sm text-gray-600">{item.sitios?.length || 0}</span>;
+
       case 'actions':
-        if (!permisos.puedeEditar && !permisos.puedeEliminar) return null;
+        // Crear el array de items del dropdown de forma condicional
+        const dropdownItems = [];
+        
+        if (permisos.puedeEditar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`editar-${item.id}`}
+              onPress={() => abrirModalEditar(item)}
+              startContent={<Pencil size={16} />}
+            >
+              Editar
+            </DropdownItem>
+          );
+        }
+        
+        if (permisos.puedeEliminar) {
+          dropdownItems.push(
+            <DropdownItem
+              key={`eliminar-${item.id}`}
+              onPress={() => eliminar(item.id)}
+              startContent={<Trash size={16} />}
+              className="text-danger"
+            >
+              Eliminar
+            </DropdownItem>
+          );
+        }
+        
+        if (dropdownItems.length === 0) {
+          dropdownItems.push(
+            <DropdownItem key={`sin-acciones-${item.id}`} isDisabled>
+              Sin acciones disponibles
+            </DropdownItem>
+          );
+        }
+
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -191,139 +352,36 @@ const TipoSitiosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              {[
-                permisos.puedeEditar ? (
-                  <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
-                    Editar
-                  </DropdownItem>
-                ) : null,
-                permisos.puedeEliminar ? (
-                  <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
-                    Eliminar
-                  </DropdownItem>
-                ) : null,
-              ].filter(Boolean)}
+              {dropdownItems}
             </DropdownMenu>
           </Dropdown>
         );
+
       default:
-        return item[columnKey];
+        return item[columnKey as keyof typeof item] || '—';
     }
   };
 
-  const toggleColumn = (key: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      copy.has(key) ? copy.delete(key) : copy.add(key);
-      return copy;
-    });
-  };
-
+  // Verificación de permisos para mostrar la página
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
-        <div className="p-6">
-          <div className="bg-red-100 text-red-700 p-4 rounded shadow text-center">
-            No tienes permiso para ver esta página.
-          </div>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
         </div>
       </DefaultLayout>
     );
   }
 
-  const topContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <Input
-          isClearable
-          className="w-full md:max-w-[44%]"
-          radius="lg"
-          placeholder="Buscar por nombre o ID"
-          startContent={<SearchIcon className="text-[#0D1324]" />}
-          value={filterValue}
-          onValueChange={setFilterValue}
-          onClear={() => setFilterValue('')}
-        />
-        <div className="flex gap-3">
-          {permisos.puedeCrear && (
-            <Button
-              className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
-              endContent={<PlusIcon />}
-              onPress={() => {
-                limpiarForm();
-                onOpen();
-              }}
-            >
-              Nuevo Tipo
-            </Button>
-          )}
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="flat">Columnas</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Seleccionar columnas">
-              {columns
-                .filter((c) => c.uid !== 'actions')
-                .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
-                    <Checkbox
-                      isSelected={visibleColumns.has(col.uid)}
-                      onValueChange={() => toggleColumn(col.uid)}
-                      size="sm"
-                    >
-                      {col.name}
-                    </Checkbox>
-                  </DropdownItem>
-                ))}
-            </DropdownMenu>
-          </Dropdown>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {tipos.length} tipos</span>
-        <label className="flex items-center text-default-400 text-sm">
-          Filas por página:&nbsp;
-          <select
-            className="bg-transparent outline-none text-default-600 ml-1"
-            value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(1);
-            }}
-          >
-            {[5, 10, 15].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-
-  const bottomContent = (
-    <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
-        Anterior
-      </Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
-        Siguiente
-      </Button>
-    </div>
-  );
-
   return (
     <DefaultLayout>
-      {toastMsg && <Toast message={toastMsg} />}
       <div className="p-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🏷️ Gestión de Tipos de Sitio
+            <span>Gestión de Tipos de Sitio</span>
           </h1>
           <p className="text-sm text-gray-600">
-            Consulta y administra los tipos de sitio registrados.
+            Consulta y administra los tipos de sitio disponibles.
           </p>
         </header>
 
@@ -331,8 +389,87 @@ const TipoSitiosPage = () => {
           <Table
             aria-label="Tabla de tipos de sitio"
             isHeaderSticky
-            topContent={topContent}
-            bottomContent={bottomContent}
+            topContent={
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  <Input
+                    isClearable
+                    className="w-full md:max-w-[44%]"
+                    radius="lg"
+                    placeholder="Buscar por nombre"
+                    startContent={<Search className="text-[#0D1324]" />}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    onClear={() => setFilterValue('')}
+                  />
+                  {/* Botón de columnas junto al botón nuevo */}
+                  <div className="flex gap-3 items-center">
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button variant="flat">Columnas</Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Seleccionar columnas">
+                        {columns
+                          // Puedes decidir si 'actions' debe poder ocultarse, aquí la excluimos para que siempre esté
+                          .filter((c) => c.uid !== 'actions')
+                          .map((col) => (
+                            <DropdownItem key={col.uid} className="flex items-center gap-2">
+                              <Checkbox
+                                isSelected={visibleColumns.has(col.uid)}
+                                onValueChange={() => toggleColumn(col.uid)}
+                                size="sm"
+                              >
+                                {col.name}
+                              </Checkbox>
+                            </DropdownItem>
+                          ))}
+                      </DropdownMenu>
+                    </Dropdown>
+
+                    {permisos.puedeCrear && (
+                      <Button
+                        className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
+                        endContent={<PlusIcon size={18} />}
+                        onPress={abrirModalNuevo}
+                      >
+                        Nuevo Tipo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-default-400 text-sm">Total {tipos.length} tipos</span>
+                  <label className="flex items-center text-default-400 text-sm">
+                    Filas por página:&nbsp;
+                    <select
+                      className="bg-transparent outline-none text-default-600 ml-1"
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value));
+                        setPage(1);
+                      }}
+                    >
+                      {[5, 10, 15].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            }
+            bottomContent={
+              <div className="py-2 px-2 flex justify-center items-center gap-2">
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+                  Anterior
+                </Button>
+                <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+                  Siguiente
+                </Button>
+              </div>
+            }
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
             classNames={{
@@ -345,22 +482,22 @@ const TipoSitiosPage = () => {
                 <TableColumn
                   key={col.uid}
                   align={col.uid === 'actions' ? 'center' : 'start'}
-                  width={col.uid === 'nombre' ? 260 : undefined}
+                  width={col.uid === 'nombre' ? 300 : undefined}
                 >
                   {col.name}
                 </TableColumn>
               )}
             </TableHeader>
+
             <TableBody items={sorted} emptyContent="No se encontraron tipos de sitio">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, col as string)}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
+        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron tipos de sitio</p>
@@ -370,6 +507,7 @@ const TipoSitiosPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">{t.nombre}</h3>
+                  {/* Solo mostrar dropdown si hay permisos */}
                   {(permisos.puedeEditar || permisos.puedeEliminar) && (
                     <Dropdown>
                       <DropdownTrigger>
@@ -383,18 +521,7 @@ const TipoSitiosPage = () => {
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu>
-                        {[
-                          permisos.puedeEditar ? (
-                            <DropdownItem key={`editar-${t.id}`} onPress={() => abrirModalEditar(t)}>
-                              Editar
-                            </DropdownItem>
-                          ) : null,
-                          permisos.puedeEliminar ? (
-                            <DropdownItem key={`eliminar-${t.id}`} onPress={() => eliminar(t.id)}>
-                              Eliminar
-                            </DropdownItem>
-                          ) : null,
-                        ].filter(Boolean)}
+                        {renderMobileDropdownItems(t)}
                       </DropdownMenu>
                     </Dropdown>
                   )}
@@ -408,34 +535,50 @@ const TipoSitiosPage = () => {
           ))}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
+        {/* Botón flotante para móvil si puede crear */}
+        {permisos.puedeCrear && (
+          <div className="md:hidden fixed bottom-6 right-6">
+            <Button
+              isIconOnly
+              className="bg-[#0D1324] hover:bg-[#1a2133] text-white rounded-full w-14 h-14 shadow-lg"
+              onPress={abrirModalNuevo}
+            >
+              <PlusIcon size={24} />
+            </Button>
+          </div>
+        )}
+
+        {/* Modal CRUD */}
+        <Modal 
+          isOpen={isOpen} 
+          onOpenChange={onOpenChange} 
+          placement="center" 
+          className="backdrop-blur-sm bg-black/30" 
+          isDismissable
         >
-          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl">
-            {(onCloseLocal) => (
+          <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
+            {() => (
               <>
-                <ModalHeader>{editId ? 'Editar Tipo' : 'Nuevo Tipo'}</ModalHeader>
+                <ModalHeader>{editId ? 'Editar Tipo de Sitio' : 'Nuevo Tipo de Sitio'}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
                     label="Nombre"
-                    placeholder="Ej: Bodega Central"
+                    placeholder="Nombre del tipo de sitio"
                     value={nombre}
                     onValueChange={setNombre}
                     radius="sm"
-                    disabled={!permisos.puedeCrear && !editId}
+                    autoFocus
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                 </ModalBody>
-                <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
+                <ModalFooter className="flex justify-end gap-3">
+                  <Button variant="light" onPress={cerrarModal}>
                     Cancelar
                   </Button>
                   <Button
-                    variant="flat"
+                    color="primary"
                     onPress={guardar}
-                    isDisabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
