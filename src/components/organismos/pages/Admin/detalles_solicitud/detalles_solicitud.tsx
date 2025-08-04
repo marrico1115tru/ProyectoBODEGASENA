@@ -291,7 +291,7 @@ const DetalleSolicitudesPage = () => {
     setSolicitudSeleccionada(null);
   };
 
-  // Crear producto rápido - CORREGIDO CON AUTO-SELECCIÓN
+  // Crear producto rápido - CORREGIDO
   const crearProductoRapido = async () => {
     if (!nuevoProductoNombre.trim()) {
       await MySwal.fire('Error', 'El nombre del producto es obligatorio', 'warning');
@@ -303,11 +303,12 @@ const DetalleSolicitudesPage = () => {
     }
     
     try {
+      // Payload corregido - usando 'categoria' en lugar de anidado
       const productPayload = {
         nombre: nuevoProductoNombre.trim(),
         descripcion: nuevoProductoDescripcion.trim() || null,
         fechaVencimiento: nuevoProductoFechaVencimiento || null,
-        categoriaId: parseInt(nuevoProductoCategoriaId)
+        categoriaId: parseInt(nuevoProductoCategoriaId) // Cambio aquí
       };
 
       console.log('Enviando payload de producto:', productPayload);
@@ -321,25 +322,14 @@ const DetalleSolicitudesPage = () => {
 
       console.log('Respuesta del servidor:', response.data);
       
-      // Actualizar la lista de productos
-      await cargarDatos();
-      
-      // Auto-seleccionar el producto recién creado
-      const nuevoProducto = response.data.data || response.data;
-      if (nuevoProducto && nuevoProducto.id) {
-        setProductoSeleccionado(nuevoProducto);
-      }
-      
-      // Reset campos del formulario de producto
+      // Reset campos
       setNuevoProductoNombre('');
       setNuevoProductoDescripcion('');
       setNuevoProductoFechaVencimiento('');
       setNuevoProductoCategoriaId('');
-      
-      // Cerrar modal de producto
       onCloseNuevoProducto();
-      
-      await MySwal.fire('Éxito', 'Producto creado y seleccionado', 'success');
+      await cargarDatos();
+      await MySwal.fire('Éxito', 'Producto creado exitosamente', 'success');
     } catch (e: any) {
       console.error('Error completo creando producto:', e);
       console.error('Respuesta del error:', e.response?.data);
@@ -357,7 +347,7 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  // Crear solicitud rápida - CORREGIDO CON AUTO-SELECCIÓN
+  // Crear solicitud rápida - CORREGIDO COMPLETAMENTE
   const crearSolicitudRapida = async () => {
     if (!nuevaFechaSolicitud) {
       await MySwal.fire('Error', 'La fecha es obligatoria', 'warning');
@@ -373,10 +363,11 @@ const DetalleSolicitudesPage = () => {
     }
     
     try {
+      // Payload corregido - usando los nombres exactos que espera el backend
       const solicitudPayload = {
-        fechaSolicitud: nuevaFechaSolicitud,
+        fechaSolicitud: nuevaFechaSolicitud, // Cambiado de 'fecha' a 'fechaSolicitud'
         estadoSolicitud: nuevoEstadoSolicitud,
-        idUsuarioSolicitante: parseInt(nuevoSolicitanteId)
+        idUsuarioSolicitante: parseInt(nuevoSolicitanteId) // Cambiado de 'solicitanteId' a 'idUsuarioSolicitante'
       };
 
       console.log('Enviando payload de solicitud:', solicitudPayload);
@@ -390,24 +381,13 @@ const DetalleSolicitudesPage = () => {
 
       console.log('Respuesta del servidor:', response.data);
       
-      // Actualizar la lista de solicitudes
-      await cargarDatos();
-      
-      // Auto-seleccionar la solicitud recién creada
-      const nuevaSolicitud = response.data.data || response.data;
-      if (nuevaSolicitud && nuevaSolicitud.id) {
-        setSolicitudSeleccionada(nuevaSolicitud);
-      }
-      
-      // Reset campos del formulario de solicitud
+      // Reset campos
       setNuevaFechaSolicitud('');
       setNuevoEstadoSolicitud(ESTADOS_SOLICITUD[0]);
       setNuevoSolicitanteId('');
-      
-      // Cerrar modal de solicitud
       onCloseNuevaSolicitud();
-      
-      await MySwal.fire('Éxito', 'Solicitud creada y seleccionada', 'success');
+      await cargarDatos();
+      await MySwal.fire('Éxito', 'Solicitud creada exitosamente', 'success');
     } catch (e: any) {
       console.error('Error completo creando solicitud:', e);
       console.error('Respuesta del error:', e.response?.data);
@@ -461,22 +441,6 @@ const DetalleSolicitudesPage = () => {
     const fechaFormateada = hoy.toISOString().split('T')[0];
     setNuevaFechaSolicitud(fechaFormateada);
     onOpenNuevaSolicitud();
-  };
-
-  // Manejar cierre de modales de producto y solicitud sin afectar el modal principal
-  const manejarCierreModalProducto = () => {
-    setNuevoProductoNombre('');
-    setNuevoProductoDescripcion('');
-    setNuevoProductoFechaVencimiento('');
-    setNuevoProductoCategoriaId('');
-    onCloseNuevoProducto();
-  };
-
-  const manejarCierreModalSolicitud = () => {
-    setNuevaFechaSolicitud('');
-    setNuevoEstadoSolicitud(ESTADOS_SOLICITUD[0]);
-    setNuevoSolicitanteId('');
-    onCloseNuevaSolicitud();
   };
 
   // Render celda
@@ -616,22 +580,8 @@ const DetalleSolicitudesPage = () => {
           </Table>
         </div>
 
-        {/* Modal Detalle - MANTENIENDO EL ESTADO */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange} 
-          placement="center" 
-          className="backdrop-blur-sm bg-black/30" 
-          isDismissable
-          hideCloseButton={false}
-          onClose={() => {
-            // Solo cerrar si no hay modales secundarios abiertos
-            if (!isOpenNuevoProducto && !isOpenNuevaSolicitud) {
-              onClose();
-              limpiarFormulario();
-            }
-          }}
-        >
+        {/* Modal Detalle */}
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
               <>
@@ -671,14 +621,7 @@ const DetalleSolicitudesPage = () => {
                       </select>
                     </div>
                     {permisos.puedeCrear && (
-                      <Button 
-                        isIconOnly 
-                        onPress={onOpenNuevoProducto} 
-                        className="bg-[#1a2133] text-white"
-                        size="lg"
-                      >
-                        <PlusIcon />
-                      </Button>
+                      <Button isIconOnly onPress={onOpenNuevoProducto} className="bg-[#1a2133] text-white"><PlusIcon /></Button>
                     )}
                   </div>
 
@@ -697,24 +640,12 @@ const DetalleSolicitudesPage = () => {
                       </select>
                     </div>
                     {permisos.puedeCrear && (
-                      <Button 
-                        isIconOnly 
-                        onPress={inicializarModalNuevaSolicitud} 
-                        className="bg-[#1a2133] text-white"
-                        size="lg"
-                      >
-                        <PlusIcon />
-                      </Button>
+                      <Button isIconOnly onPress={inicializarModalNuevaSolicitud} className="bg-[#1a2133] text-white"><PlusIcon /></Button>
                     )}
                   </div>
                 </ModalBody>
                 <ModalFooter className="flex justify-end gap-3">
-                  <Button variant="light" onPress={() => {
-                    onClose();
-                    limpiarFormulario();
-                  }}>
-                    Cancelar
-                  </Button>
+                  <Button variant="light" onPress={onClose}>Cancelar</Button>
                   <Button
                     color="primary"
                     onPress={guardar}
@@ -729,13 +660,7 @@ const DetalleSolicitudesPage = () => {
         </Modal>
 
         {/* Modal Nuevo Producto */}
-        <Modal 
-          isOpen={isOpenNuevoProducto} 
-          onOpenChange={onOpenChangeNuevoProducto} 
-          isDismissable
-          placement="center"
-          size="md"
-        >
+        <Modal isOpen={isOpenNuevoProducto} onOpenChange={onOpenChangeNuevoProducto} isDismissable>
           <ModalContent>
             {() => (
               <>
@@ -747,7 +672,6 @@ const DetalleSolicitudesPage = () => {
                     placeholder="Nombre del producto"
                     value={nuevoProductoNombre}
                     onValueChange={setNuevoProductoNombre}
-                    isRequired
                   />
                   <Input
                     label="Descripción"
@@ -762,12 +686,11 @@ const DetalleSolicitudesPage = () => {
                     onValueChange={setNuevoProductoFechaVencimiento}
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
                     <select
                       value={nuevoProductoCategoriaId}
                       onChange={e => setNuevoProductoCategoriaId(e.target.value)}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
                     >
                       <option value="">Seleccione una categoría</option>
                       {categorias.map((c) => (<option key={c.id} value={c.id}>{c.nombre}</option>))}
@@ -775,16 +698,8 @@ const DetalleSolicitudesPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={manejarCierreModalProducto}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    color="primary" 
-                    onPress={crearProductoRapido}
-                    isDisabled={!nuevoProductoNombre.trim() || !nuevoProductoCategoriaId}
-                  >
-                    Crear Producto
-                  </Button>
+                  <Button variant="light" onPress={onCloseNuevoProducto}>Cancelar</Button>
+                  <Button color="primary" onPress={crearProductoRapido}>Crear Producto</Button>
                 </ModalFooter>
               </>
             )}
@@ -792,13 +707,7 @@ const DetalleSolicitudesPage = () => {
         </Modal>
 
         {/* Modal Nueva Solicitud */}
-        <Modal 
-          isOpen={isOpenNuevaSolicitud} 
-          onOpenChange={onOpenChangeNuevaSolicitud} 
-          isDismissable
-          placement="center"
-          size="md"
-        >
+        <Modal isOpen={isOpenNuevaSolicitud} onOpenChange={onOpenChangeNuevaSolicitud} isDismissable>
           <ModalContent>
             {() => (
               <>
@@ -813,7 +722,7 @@ const DetalleSolicitudesPage = () => {
                     isRequired
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
                     <select
                       value={nuevoEstadoSolicitud}
                       onChange={e => setNuevoEstadoSolicitud(e.target.value)}
@@ -824,7 +733,7 @@ const DetalleSolicitudesPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Solicitante</label>
                     <select
                       value={nuevoSolicitanteId}
                       onChange={e => setNuevoSolicitanteId(e.target.value)}
@@ -839,16 +748,8 @@ const DetalleSolicitudesPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={manejarCierreModalSolicitud}>
-                    Cancelar
-                  </Button>
-                  <Button 
-                    color="primary" 
-                    onPress={crearSolicitudRapida}
-                    isDisabled={!nuevaFechaSolicitud || !nuevoEstadoSolicitud || !nuevoSolicitanteId}
-                  >
-                    Crear Solicitud
-                  </Button>
+                  <Button variant="light" onPress={onCloseNuevaSolicitud}>Cancelar</Button>
+                  <Button color="primary" onPress={crearSolicitudRapida}>Crear Solicitud</Button>
                 </ModalFooter>
               </>
             )}

@@ -29,12 +29,11 @@ interface DashboardData {
   areas: Area[];
 }
 
-// Configuración global para permitir envío de cookies/sesión
 const config = {
   withCredentials: true,
 };
 
-export const useDashboardData = (p0: { enabled: boolean; }) => {
+export const useDashboardData = (_p0: { enabled: boolean; }) => {
   const [data, setData] = useState<DashboardData>({
     totalUsuarios: 0,
     totalProductos: 0,

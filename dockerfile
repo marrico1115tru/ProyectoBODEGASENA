@@ -1,18 +1,15 @@
-# Etapa base
-FROM node:22.17.0-alpine3.21
+FROM node:22.14-alpine3.20
 
-# Crear directorio de trabajo
-WORKDIR /app
+WORKDIR /app/
 
-# Copiar archivos
 COPY package*.json ./
+
 RUN npm install
 
-# Copiar el resto del código fuente
 COPY . .
 
-# Exponer el puerto que usa React en desarrollo
-ENV API=https:apivi.miweb.com
+EXPOSE 5173
 
-# Ejecutar la app en modo desarrollo
-CMD ["npm", "run","dev"]
+ENV VITE_API_CLIENT='http://localhost:3000/'
+
+CMD ["npm", "run", "dev"]
