@@ -71,7 +71,6 @@ const TipoSitiosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos - Sistema completo igual que AreasPage
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -79,12 +78,10 @@ const TipoSitiosPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para alternar columnas visibles
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(uid)) {
-        // Impide ocultar la columna acciones para no perder siempre el acceso a esas funciones
         if (uid === 'actions') return prev;
         newSet.delete(uid);
       } else {
@@ -94,7 +91,6 @@ const TipoSitiosPage = () => {
     });
   };
 
-  // Cargar permisos al montar - Sistema completo igual que AreasPage
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -102,7 +98,6 @@ const TipoSitiosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        // IMPORTANTE: Cambiar la ruta a la correspondiente para TipoSitios - debe coincidir con el backend
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/Tipo_sitiosPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
@@ -135,7 +130,6 @@ const TipoSitiosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarTiposSitio = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -151,7 +145,6 @@ const TipoSitiosPage = () => {
     cargarTiposSitio();
   }, [permisos]);
 
-  // CRUD con validación de permisos - Sistema completo igual que AreasPage
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar tipos de sitio.', 'warning');
@@ -259,10 +252,8 @@ const TipoSitiosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Función para generar elementos del dropdown móvil
   const renderMobileDropdownItems = (item: any) => {
     const items = [];
-    
     if (permisos.puedeEditar) {
       items.push(
         <DropdownItem
@@ -274,7 +265,6 @@ const TipoSitiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       items.push(
         <DropdownItem
@@ -287,7 +277,6 @@ const TipoSitiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (items.length === 0) {
       items.push(
         <DropdownItem key={`sin-acciones-mobile-${item.id}`} isDisabled>
@@ -295,7 +284,6 @@ const TipoSitiosPage = () => {
         </DropdownItem>
       );
     }
-    
     return items;
   };
 
@@ -308,9 +296,7 @@ const TipoSitiosPage = () => {
         return <span className="text-sm text-gray-600">{item.sitios?.length || 0}</span>;
 
       case 'actions':
-        // Crear el array de items del dropdown de forma condicional
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem
@@ -322,7 +308,6 @@ const TipoSitiosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem
@@ -335,7 +320,6 @@ const TipoSitiosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (dropdownItems.length === 0) {
           dropdownItems.push(
             <DropdownItem key={`sin-acciones-${item.id}`} isDisabled>
@@ -362,7 +346,6 @@ const TipoSitiosPage = () => {
     }
   };
 
-  // Verificación de permisos para mostrar la página
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -402,7 +385,6 @@ const TipoSitiosPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue('')}
                   />
-                  {/* Botón de columnas junto al botón nuevo */}
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -410,7 +392,6 @@ const TipoSitiosPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          // Puedes decidir si 'actions' debe poder ocultarse, aquí la excluimos para que siempre esté
                           .filter((c) => c.uid !== 'actions')
                           .map((col) => (
                             <DropdownItem key={col.uid} className="flex items-center gap-2">
@@ -497,7 +478,6 @@ const TipoSitiosPage = () => {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && (
             <p className="text-center text-gray-500">No se encontraron tipos de sitio</p>
@@ -507,7 +487,6 @@ const TipoSitiosPage = () => {
               <CardContent className="space-y-2 p-4">
                 <div className="flex justify-between items-start">
                   <h3 className="font-semibold text-lg">{t.nombre}</h3>
-                  {/* Solo mostrar dropdown si hay permisos */}
                   {(permisos.puedeEditar || permisos.puedeEliminar) && (
                     <Dropdown>
                       <DropdownTrigger>
@@ -535,7 +514,6 @@ const TipoSitiosPage = () => {
           ))}
         </div>
 
-        {/* Botón flotante para móvil si puede crear */}
         {permisos.puedeCrear && (
           <div className="md:hidden fixed bottom-6 right-6">
             <Button
@@ -548,12 +526,11 @@ const TipoSitiosPage = () => {
           </div>
         )}
 
-        {/* Modal CRUD */}
-        <Modal 
-          isOpen={isOpen} 
-          onOpenChange={onOpenChange} 
-          placement="center" 
-          className="backdrop-blur-sm bg-black/30" 
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
           isDismissable
         >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">

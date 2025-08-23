@@ -6,7 +6,7 @@ import {
 
 const API_URL = "http://localhost:3000/inventario";
 
-// Configuración global para incluir cookies (sesión)
+
 const config = {
   withCredentials: true,
 };

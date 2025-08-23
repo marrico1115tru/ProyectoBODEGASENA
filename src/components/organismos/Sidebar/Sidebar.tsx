@@ -176,7 +176,7 @@ const Sidebar = () => {
                     {openMenus.userReports && (
                       <Submenu indent>
                         <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" icon={<Cog6ToothIcon className="w-5 h-5" />} label="Usuarios por rol" isOpen={isOpen} />
-                        <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<ArrowPathIcon className="w-5 h-5" />} label="Historial materiales utilizados" isOpen={isOpen} />
+                        <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<ArrowPathIcon className="w-5 h-5" />} label="Historial materiales" isOpen={isOpen} />
                       </Submenu>
                     )}
                   </Submenu>

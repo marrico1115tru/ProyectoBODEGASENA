@@ -58,7 +58,6 @@ export default function InventarioPage() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -74,7 +73,6 @@ export default function InventarioPage() {
           return;
         }
 
-        // Ajustar la ruta según el sistema de permisos (ejemplo /inventario)
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/InventarioPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
@@ -107,7 +105,6 @@ export default function InventarioPage() {
     fetchPermisos();
   }, []);
 
-  // Cargar datos sólo si puede ver
   const loadData = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -132,7 +129,6 @@ export default function InventarioPage() {
     loadData();
   }, [permisos]);
 
-  // Manejar submit con validaciones de permisos
   const handleSubmit = async () => {
     if (!permisos.puedeCrear && !editId) {
       await Swal.fire("Acceso Denegado", "No tienes permiso para crear inventarios.", "warning");
@@ -168,7 +164,6 @@ export default function InventarioPage() {
     }
   };
 
-  // Manejar eliminación con validación de permisos
   const handleDelete = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await Swal.fire("Acceso Denegado", "No tienes permiso para eliminar inventarios.", "warning");
@@ -195,7 +190,6 @@ export default function InventarioPage() {
     }
   };
 
-  // Manejar edición con validación de permisos
   const handleEdit = (inv: Inventario) => {
     if (!permisos.puedeEditar) {
       Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
@@ -210,7 +204,6 @@ export default function InventarioPage() {
     document.getElementById("openDialog")?.click();
   };
 
-  // Agrupación por sitio
   const agrupado = inventarios.reduce<Record<string, Inventario[]>>((acc, inv) => {
     const sitio = inv.fkSitio?.nombre || "Sin sitio";
     if (!acc[sitio]) acc[sitio] = [];
@@ -218,7 +211,6 @@ export default function InventarioPage() {
     return acc;
   }, {});
 
-  // Bloquear vista completa si no puede ver
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -232,7 +224,6 @@ export default function InventarioPage() {
   return (
     <DefaultLayout>
       <div className="p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
             <CubeIcon className="w-6 h-6 text-blue-600" />
@@ -244,7 +235,6 @@ export default function InventarioPage() {
             </div>
           </div>
 
-          {/* Solo mostrar botón nuevo si tiene permiso */}
           {permisos.puedeCrear && (
             <Dialog>
               <DialogTrigger asChild>
@@ -325,7 +315,6 @@ export default function InventarioPage() {
           )}
         </div>
 
-        {/* Filtro */}
         <div className="mb-4">
           <input
             type="text"
@@ -336,7 +325,6 @@ export default function InventarioPage() {
           />
         </div>
 
-        {/* Inventario agrupado */}
         <Accordion variant="splitted">
           {Object.entries(agrupado)
             .filter(([sitio]) => sitio.toLowerCase().includes(filtro.toLowerCase()))

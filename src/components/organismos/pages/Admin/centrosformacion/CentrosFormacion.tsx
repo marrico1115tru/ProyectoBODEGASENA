@@ -43,7 +43,6 @@ import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
-// Columnas definidas para la tabla
 const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombre", sortable: false },
@@ -69,7 +68,7 @@ const INITIAL_VISIBLE_COLUMNS = [
 type ColumnKey = (typeof columns)[number]["uid"];
 
 const CentrosFormacionPage = () => {
-  // Estados principales
+  
   const [centros, setCentros] = useState<any[]>([]);
   const [municipios, setMunicipios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
@@ -81,7 +80,7 @@ const CentrosFormacionPage = () => {
     direction: "ascending",
   });
 
-  // Estados formulario centro formación (crear/editar)
+  
   const [nombre, setNombre] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -89,16 +88,16 @@ const CentrosFormacionPage = () => {
   const [idMunicipio, setIdMunicipio] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  // Control modales
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMunicipioModalOpen, setIsMunicipioModalOpen] = useState(false);
 
-  // Estados formulario nuevo municipio
+  
   const [municipioNombre, setMunicipioNombre] = useState("");
   const [municipioDepartamento, setMunicipioDepartamento] = useState("");
   const [savingMunicipio, setSavingMunicipio] = useState(false);
 
-  // Permisos usuario
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -106,7 +105,7 @@ const CentrosFormacionPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para alternar columnas visibles (acciones siempre visible)
+  
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
@@ -120,7 +119,7 @@ const CentrosFormacionPage = () => {
     });
   };
 
-  // Obtener permisos al montar componente
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -160,7 +159,7 @@ const CentrosFormacionPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar centros y municipios según permisos y montaje
+
   useEffect(() => {
     if (permisos.puedeVer) cargarCentros();
   }, [permisos]);
@@ -169,7 +168,7 @@ const CentrosFormacionPage = () => {
     cargarMunicipios();
   }, []);
 
-  // Función para cargar centros de formación
+  
   const cargarCentros = async () => {
     try {
       const data = await getCentrosFormacion();
@@ -180,7 +179,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Función para cargar municipios
+
   const cargarMunicipios = async () => {
     try {
       const data = await obtenerMunicipios();
@@ -191,7 +190,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Eliminar centro con confirmación y validación de permisos
+  
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar centros.", "warning");
@@ -215,7 +214,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Guardar centro (nuevo o editar) con validación
+  
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
@@ -256,7 +255,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Guardar nuevo municipio
+  
   const guardarMunicipio = async () => {
     if (!municipioNombre.trim()) {
       await MySwal.fire("Aviso", "El nombre del municipio es obligatorio", "info");
@@ -279,7 +278,7 @@ const CentrosFormacionPage = () => {
       const lista = await obtenerMunicipios();
       setMunicipios(lista);
 
-      // Seleccionar el municipio recién creado automáticamente
+      
       const creado = lista.find(
         (m) =>
           m.nombre?.toLowerCase() === municipioNombre.trim().toLowerCase() &&
@@ -293,7 +292,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Limpiar formulario centro
+  
   const limpiarFormulario = () => {
     setNombre("");
     setUbicacion("");
@@ -303,7 +302,7 @@ const CentrosFormacionPage = () => {
     setEditId(null);
   };
 
-  // Abrir modal editar centro precargando datos
+  
   const abrirModalEditar = (c: any) => {
     if (!permisos.puedeEditar) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para editar centros.", "warning");
@@ -318,7 +317,7 @@ const CentrosFormacionPage = () => {
     setIsModalOpen(true);
   };
 
-  // Abrir modal nuevo centro
+  
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para crear centros.", "warning");
@@ -328,7 +327,7 @@ const CentrosFormacionPage = () => {
     setIsModalOpen(true);
   };
 
-  // Filtrado de centros
+  
   const filtered = useMemo(() => {
     if (!filterValue) return centros;
     const lowerFilter = filterValue.toLowerCase();
@@ -339,7 +338,7 @@ const CentrosFormacionPage = () => {
     );
   }, [centros, filterValue]);
 
-  // Paginación calculada
+  
   const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const sliced = useMemo(() => {
@@ -347,7 +346,7 @@ const CentrosFormacionPage = () => {
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
-  // Ordenamiento
+  
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -360,7 +359,7 @@ const CentrosFormacionPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado celdas con acciones segun permisos
+  
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombre":
@@ -418,7 +417,7 @@ const CentrosFormacionPage = () => {
     }
   };
 
-  // Mensaje al usuario si no tiene permiso para ver el contenido
+  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -429,11 +428,11 @@ const CentrosFormacionPage = () => {
     );
   }
 
-  // Renderizado principal
+
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
+        
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🏫 Gestión de Centros de Formación
@@ -441,7 +440,7 @@ const CentrosFormacionPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra los centros disponibles.</p>
         </header>
 
-        {/* Tabla Desktop */}
+      
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de centros"
@@ -455,7 +454,7 @@ const CentrosFormacionPage = () => {
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-                  {/* Input búsqueda */}
+                  
                   <Input
                     isClearable
                     className="w-full md:max-w-[44%]"
@@ -467,7 +466,7 @@ const CentrosFormacionPage = () => {
                     onClear={() => setFilterValue("")}
                   />
 
-                  {/* Dropdown columna + botón nuevo */}
+                  
                   <div className="flex gap-3">
                     <Dropdown>
                       <DropdownTrigger>
@@ -502,7 +501,7 @@ const CentrosFormacionPage = () => {
                   </div>
                 </div>
 
-                {/* Pagina y filas por página */}
+              
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {centros.length} centros</span>
                   <label className="flex items-center text-default-400 text-sm">
@@ -559,7 +558,7 @@ const CentrosFormacionPage = () => {
           </Table>
         </div>
 
-        {/* Modal crear/editar centro formación */}
+        
         <Modal
           isOpen={isModalOpen}
           onOpenChange={(open) => {
@@ -607,7 +606,7 @@ const CentrosFormacionPage = () => {
                     radius="sm"
                     disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
-                  {/* Select municipio y botón para crear municipio */}
+                
                   <div className="flex items-center gap-2">
                     <div className="flex-grow">
                       <Select
@@ -654,7 +653,7 @@ const CentrosFormacionPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal crear nuevo municipio */}
+        
         <Modal
           isOpen={isMunicipioModalOpen}
           onOpenChange={(open) => {

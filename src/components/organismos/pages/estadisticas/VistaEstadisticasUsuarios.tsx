@@ -22,7 +22,7 @@ export default function VistaEstadisticasUsuarios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado de permisos para controlar acceso
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -38,7 +38,7 @@ export default function VistaEstadisticasUsuarios() {
         if (!rolId) return;
 
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaEstadisticasUsuarios&idRol=${rolId}`;
-        // Cambia la ruta si tu backend usa otra para este reporte
+        
 
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;
@@ -139,7 +139,7 @@ export default function VistaEstadisticasUsuarios() {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Productos solicitados por usuario */}
+            
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Solicitudes por usuario</h3>
               {productosPorUsuario.length > 0 ? (
@@ -161,7 +161,7 @@ export default function VistaEstadisticasUsuarios() {
               )}
             </div>
 
-            {/* Usuarios por rol */}
+          
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Distribución de usuarios por rol</h3>
               {usuariosPorRol.length > 0 ? (

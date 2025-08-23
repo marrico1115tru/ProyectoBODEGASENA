@@ -46,10 +46,8 @@ export default function GestionPermisosPage() {
     puedeEliminar: false,
   });
 
-  // Estado para modal lista módulos no asignados
   const [mostrarModuloNoAsignado, setMostrarModuloNoAsignado] = useState(false);
 
-  // Carga inicial roles y todos los módulos (para permitir activar)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -66,7 +64,6 @@ export default function GestionPermisosPage() {
     fetchData();
   }, []);
 
-  // Al cambiar rol, cargar permisos + módulos con permisos para ese rol
   useEffect(() => {
     if (rolSeleccionado) {
       cargarPermisos();
@@ -83,15 +80,10 @@ export default function GestionPermisosPage() {
     }
   };
 
-  // Obtener modulos que tienen permisos asignados, mediante permisos
   const cargarModulosConPermisos = async () => {
     try {
-      // Usamos endpoint que da módulos con permisos asignados para el rol
       const res = await axios.get(`/permisos/modulos/${rolSeleccionado}`);
-      // Este endpoint devuelve: [{id, nombremodulo}]
       const modulosRolIds = res.data.map((m: any) => m.id);
-
-      // Filtrar módulos totales solo los asignados
       setModulosConPermisos(modulosTotales.filter(m => modulosRolIds.includes(m.id)));
     } catch {
       alert("Error cargando módulos con permisos para el rol");
@@ -124,35 +116,10 @@ export default function GestionPermisosPage() {
     }
   };
 
-  // "Eliminar módulo" = eliminar todos permisos del módulo para rol
-  const eliminarModulo = async (moduloId: number, nombreModulo: string) => {
-    if (!rolSeleccionado) {
-      alert("Selecciona un rol primero");
-      return;
-    }
-    if (
-      !confirm(
-        `¿Seguro que deseas eliminar TODOS los permisos del módulo "${nombreModulo}" para el rol seleccionado?`
-      )
-    )
-      return;
-
-    try {
-      await axios.delete(`/permisos/modulo/${moduloId}/rol/${rolSeleccionado}`);
-      alert(`Permisos del módulo "${nombreModulo}" eliminados correctamente`);
-      cargarPermisos();
-      cargarModulosConPermisos();
-    } catch {
-      alert("Error eliminando permisos del módulo");
-    }
-  };
-
-  // Mostrar lista modulos NO asignados para el rol para crear permisos
   const modulosNoAsignados = modulosTotales.filter(
     (m) => !modulosConPermisos.some((mm) => mm.id === m.id)
   );
 
-  // Crear permiso nuevo desde formulario
   const crearPermiso = async () => {
     try {
       if (!rolSeleccionado || !nuevoPermiso.id_opcion) {
@@ -262,7 +229,6 @@ export default function GestionPermisosPage() {
           Gestión de Permisos por Rol y Módulo
         </h1>
 
-        {/* Selector de rol */}
         <div className="max-w-sm space-y-2">
           <label className="block text-sm font-medium text-gray-700">Selecciona un rol:</label>
           <select
@@ -301,8 +267,6 @@ export default function GestionPermisosPage() {
                       <button
                         className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                         onClick={() => {
-                          // Aquí puedes abrir modal para crear permisos para todas las opciones del módulo o ir a formulario
-                          // Por simplicidad, se abre el formulario para que el usuario seleccione las opciones
                           alert(`Para crear permisos en módulo '${modulo.nombreModulo}', usa el formulario de 'Crear nuevo permiso'.`);
                         }}
                         type="button"
@@ -329,13 +293,6 @@ export default function GestionPermisosPage() {
                 <div key={modulo.id} className="mb-6 border border-gray-300 rounded p-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-lg">{modulo.nombreModulo}</span>
-                    <button
-                      onClick={() => eliminarModulo(modulo.id, modulo.nombreModulo)}
-                      className="text-red-600 hover:underline text-sm"
-                      type="button"
-                    >
-                      Eliminar Módulo
-                    </button>
                   </div>
 
                   <table className="min-w-full divide-y divide-gray-200 text-sm">

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosInstance from "./../axios"; 
 
 interface LoginResponse {
   access_token: string;
@@ -10,20 +10,18 @@ interface LoginResponse {
   };
 }
 
-export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const response = await axios.post('http://localhost:3000/auth/login', {
+export const login = async (
+  email: string,
+  password: string
+): Promise<LoginResponse> => {
+  const response = await axiosInstance.post("/auth/login", {
     email,
     password,
-  }, {
-    withCredentials: true,
   });
 
   return response.data;
 };
+
 export const recuperarPassword = async (email: string): Promise<void> => {
-  await axios.post(
-    'http://localhost:3000/auth/recuperar',
-    { email },
-    { withCredentials: true }
-  );
+  await axiosInstance.post("/auth/recuperar", { email });
 };

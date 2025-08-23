@@ -2,8 +2,6 @@ import axios from "axios";
 import { Titulado } from "@/types/types/typesTitulados";
 
 const API_URL = "http://localhost:3000/titulados";
-
-// Configuración global para permitir envío de cookies/sesión
 const config = {
   withCredentials: true,
 };

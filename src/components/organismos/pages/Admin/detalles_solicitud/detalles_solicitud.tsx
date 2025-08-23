@@ -64,21 +64,21 @@ type ColumnKey = (typeof columns)[number]['uid'];
 const ESTADOS_SOLICITUD = ['PENDIENTE', 'APROBADA', 'RECHAZADA'];
 
 const DetalleSolicitudesPage = () => {
-  // Datos
+  
   const [detalles, setDetalles] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
 
-  // UI / filtros / paginación
+  
   const [filterValue, setFilterValue] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
-  // Permisos
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -86,7 +86,7 @@ const DetalleSolicitudesPage = () => {
     puedeEliminar: false,
   });
 
-  // Form detalle
+  
   const [cantidad, setCantidad] = useState<number | undefined>(undefined);
   const [observaciones, setObservaciones] = useState('');
   const [productoSeleccionado, setProductoSeleccionado] = useState<any | null>(null);
@@ -94,7 +94,7 @@ const DetalleSolicitudesPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Modal nuevo producto
+  
   const {
     isOpen: isOpenNuevoProducto,
     onOpen: onOpenNuevoProducto,
@@ -106,7 +106,7 @@ const DetalleSolicitudesPage = () => {
   const [nuevoProductoFechaVencimiento, setNuevoProductoFechaVencimiento] = useState('');
   const [nuevoProductoCategoriaId, setNuevoProductoCategoriaId] = useState<string>('');
 
-  // Modal nueva solicitud
+  
   const {
     isOpen: isOpenNuevaSolicitud,
     onOpen: onOpenNuevaSolicitud,
@@ -117,7 +117,7 @@ const DetalleSolicitudesPage = () => {
   const [nuevaFechaSolicitud, setNuevaFechaSolicitud] = useState('');
   const [nuevoSolicitanteId, setNuevoSolicitanteId] = useState<string>('');
 
-  // Alternar columnas visibles
+  
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
@@ -131,7 +131,7 @@ const DetalleSolicitudesPage = () => {
     });
   };
 
-  // Cargar permisos
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -168,7 +168,7 @@ const DetalleSolicitudesPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos
+  
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -191,8 +191,7 @@ const DetalleSolicitudesPage = () => {
   };
   useEffect(() => { cargarDatos(); }, [permisos]);
 
-  // Funciones CRUD
-
+  
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar', 'warning');
@@ -217,14 +216,14 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  // Guardar detalle (crear o actualizar)
+  
   const guardar = async () => {
-    if (editId === null) { // Crear
+    if (editId === null) { 
       if (!permisos.puedeCrear) {
         await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear.', 'warning');
         return;
       }
-    } else { // Actualizar
+    } else { 
       if (!permisos.puedeEditar) {
         await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar.', 'warning');
         return;
@@ -243,8 +242,6 @@ const DetalleSolicitudesPage = () => {
       await MySwal.fire('Error', 'Debes seleccionar una solicitud válida', 'error');
       return;
     }
-
-    // Construir payload sin incluir id para evitar que TypeORM piense que es una actualización
     const payload: any = {
       cantidadSolicitada: cantidad,
       observaciones: observaciones?.trim() || null,
@@ -291,7 +288,7 @@ const DetalleSolicitudesPage = () => {
     setSolicitudSeleccionada(null);
   };
 
-  // Crear producto rápido - CORREGIDO
+  
   const crearProductoRapido = async () => {
     if (!nuevoProductoNombre.trim()) {
       await MySwal.fire('Error', 'El nombre del producto es obligatorio', 'warning');
@@ -303,12 +300,12 @@ const DetalleSolicitudesPage = () => {
     }
     
     try {
-      // Payload corregido - usando 'categoria' en lugar de anidado
+    
       const productPayload = {
         nombre: nuevoProductoNombre.trim(),
         descripcion: nuevoProductoDescripcion.trim() || null,
         fechaVencimiento: nuevoProductoFechaVencimiento || null,
-        categoriaId: parseInt(nuevoProductoCategoriaId) // Cambio aquí
+        categoriaId: parseInt(nuevoProductoCategoriaId) 
       };
 
       console.log('Enviando payload de producto:', productPayload);
@@ -347,7 +344,7 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  // Crear solicitud rápida - CORREGIDO COMPLETAMENTE
+
   const crearSolicitudRapida = async () => {
     if (!nuevaFechaSolicitud) {
       await MySwal.fire('Error', 'La fecha es obligatoria', 'warning');
@@ -363,11 +360,11 @@ const DetalleSolicitudesPage = () => {
     }
     
     try {
-      // Payload corregido - usando los nombres exactos que espera el backend
+    
       const solicitudPayload = {
-        fechaSolicitud: nuevaFechaSolicitud, // Cambiado de 'fecha' a 'fechaSolicitud'
+        fechaSolicitud: nuevaFechaSolicitud, 
         estadoSolicitud: nuevoEstadoSolicitud,
-        idUsuarioSolicitante: parseInt(nuevoSolicitanteId) // Cambiado de 'solicitanteId' a 'idUsuarioSolicitante'
+        idUsuarioSolicitante: parseInt(nuevoSolicitanteId) 
       };
 
       console.log('Enviando payload de solicitud:', solicitudPayload);
@@ -381,7 +378,7 @@ const DetalleSolicitudesPage = () => {
 
       console.log('Respuesta del servidor:', response.data);
       
-      // Reset campos
+      
       setNuevaFechaSolicitud('');
       setNuevoEstadoSolicitud(ESTADOS_SOLICITUD[0]);
       setNuevoSolicitanteId('');
@@ -405,7 +402,7 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  // Filtrado y paginación
+  
   const filtered = useMemo(() => {
     return filterValue
       ? detalles.filter((d) =>
@@ -434,16 +431,15 @@ const DetalleSolicitudesPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Función para inicializar fecha actual en el modal
+  
   const inicializarModalNuevaSolicitud = () => {
-    // Obtener fecha actual en formato YYYY-MM-DD
     const hoy = new Date();
     const fechaFormateada = hoy.toISOString().split('T')[0];
     setNuevaFechaSolicitud(fechaFormateada);
     onOpenNuevaSolicitud();
   };
 
-  // Render celda
+  
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'cantidadSolicitada': return <span className="text-sm text-gray-800">{item.cantidadSolicitada}</span>;
@@ -484,7 +480,7 @@ const DetalleSolicitudesPage = () => {
           <p className="text-sm text-gray-600">Gestiona los ítems de cada solicitud.</p>
         </header>
 
-        {/* Tabla y controles */}
+        
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla detalle solicitud"
@@ -580,7 +576,7 @@ const DetalleSolicitudesPage = () => {
           </Table>
         </div>
 
-        {/* Modal Detalle */}
+        
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
@@ -606,7 +602,7 @@ const DetalleSolicitudesPage = () => {
                     disabled={editId !== null ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
 
-                  {/* Producto selector with plus button */}
+                  
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="text-sm font-medium text-gray-700 mb-1 block">Producto</label>
@@ -625,7 +621,7 @@ const DetalleSolicitudesPage = () => {
                     )}
                   </div>
 
-                  {/* Solicitud selector with plus button */}
+                
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="text-sm font-medium text-gray-700 mb-1 block">Solicitud</label>
@@ -659,7 +655,7 @@ const DetalleSolicitudesPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal Nuevo Producto */}
+        
         <Modal isOpen={isOpenNuevoProducto} onOpenChange={onOpenChangeNuevoProducto} isDismissable>
           <ModalContent>
             {() => (
@@ -706,7 +702,7 @@ const DetalleSolicitudesPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modal Nueva Solicitud */}
+    
         <Modal isOpen={isOpenNuevaSolicitud} onOpenChange={onOpenChangeNuevaSolicitud} isDismissable>
           <ModalContent>
             {() => (

@@ -3,7 +3,6 @@ import { Rol, RolFormValues } from '@/types/types/Rol';
 
 const API_URL = 'http://localhost:3000/roles';
 
-// Configuración global para incluir cookies/sesiones
 const config = {
   withCredentials: true,
 };

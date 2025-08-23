@@ -2,8 +2,6 @@ import axios from "axios";
 import { Solicitud } from "@/types/types/Solicitud";
 
 const API_URL = "http://localhost:3000/solicitudes";
-
-// Config global para incluir cookies/sesión en las peticiones
 const config = {
   withCredentials: true,
 };

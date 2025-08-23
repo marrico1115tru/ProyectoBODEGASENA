@@ -24,7 +24,7 @@ const VistaEstadisticasProductos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado de permisos
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -39,7 +39,7 @@ const VistaEstadisticasProductos: React.FC = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        // Cambia la ruta si tu backend usa otra para este reporte
+        
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaProductos&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;

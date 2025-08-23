@@ -42,7 +42,7 @@ import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
-// Columnas definidas para la tabla
+
 const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombre", sortable: false },
@@ -55,8 +55,7 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "nombre", "unpsc", "productos", "actions"
 type ColumnKey = (typeof columns)[number]["uid"];
 
 const CategoriasProductosPage = () => {
-  // Estados principales
-  const [categorias, setCategorias] = useState<any[]>([]);
+   const [categorias, setCategorias] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -71,10 +70,10 @@ const CategoriasProductosPage = () => {
   const [unpsc, setUnpsc] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  // Control modal
+  
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Permisos del usuario
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -82,7 +81,7 @@ const CategoriasProductosPage = () => {
     puedeEliminar: false,
   });
 
-  // Alternar columnas visibles (no se puede ocultar columna acciones)
+
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
@@ -96,7 +95,7 @@ const CategoriasProductosPage = () => {
     });
   };
 
-  // Obtener permisos desde backend según rol del usuario
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -136,7 +135,7 @@ const CategoriasProductosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar categorías si tiene permiso para ver
+  
   const cargarCategorias = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -148,12 +147,12 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Recargar categorías si cambian permisos
+  
   useEffect(() => {
     cargarCategorias();
   }, [permisos]);
 
-  // Eliminar categoría con confirmación y validación de permisos
+
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar categorías.", "warning");
@@ -181,7 +180,7 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Crear o actualizar categoría según editId, con validación de permisos
+
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
@@ -215,7 +214,7 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Abrir modal para editar categoría con datos precargados
+  
   const abrirModalEditar = (cat: any) => {
     if (!permisos.puedeEditar) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para editar categorías.", "warning");
@@ -227,7 +226,7 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
-  // Abrir modal para crear nueva categoría
+  
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para crear categorías.", "warning");
@@ -239,7 +238,7 @@ const CategoriasProductosPage = () => {
     onOpen();
   };
 
-  // Cerrar modal y limpiar estados
+  
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
@@ -247,7 +246,7 @@ const CategoriasProductosPage = () => {
     onClose();
   };
 
-  // Filtrado de categorías por nombre o UNPSC
+  
   const filtered = useMemo(() => {
     if (!filterValue) return categorias;
     const lowerFilter = filterValue.toLowerCase();
@@ -258,16 +257,16 @@ const CategoriasProductosPage = () => {
     );
   }, [categorias, filterValue]);
 
-  // Páginas totales (mínimo 1)
+  
   const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
-  // Paginación
+  
   const sliced = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
-  // Ordenación según descriptor de orden
+  
   const sorted = useMemo(() => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
@@ -284,7 +283,7 @@ const CategoriasProductosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado de celdas con control según clave de columna
+  
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombre":
@@ -338,7 +337,7 @@ const CategoriasProductosPage = () => {
     }
   };
 
-  // Bloquear acceso si no tiene permiso de visualización
+  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -349,11 +348,11 @@ const CategoriasProductosPage = () => {
     );
   }
 
-  // Render principal del componente
+  
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
+        
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             📦 Gestión de Categorías de Productos
@@ -361,7 +360,7 @@ const CategoriasProductosPage = () => {
           <p className="text-sm text-gray-600">Consulta y administra las categorías disponibles.</p>
         </header>
 
-        {/* Tabla para escritorio */}
+      
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de categorías"
@@ -375,7 +374,7 @@ const CategoriasProductosPage = () => {
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-                  {/* Buscador */}
+                  
                   <Input
                     isClearable
                     className="w-full md:max-w-[44%]"
@@ -387,7 +386,7 @@ const CategoriasProductosPage = () => {
                     onClear={() => setFilterValue("")}
                   />
 
-                  {/* Dropdown columnas y botón nuevo */}
+                  
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -395,7 +394,7 @@ const CategoriasProductosPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          .filter((c) => c.uid !== "actions") /* la columna acciones no se puede ocultar */
+                          .filter((c) => c.uid !== "actions") 
                           .map((col) => (
                             <DropdownItem key={col.uid} className="flex items-center gap-2">
                               <Checkbox
@@ -422,7 +421,7 @@ const CategoriasProductosPage = () => {
                   </div>
                 </div>
 
-                {/* Controles de paginación */}
+              
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">Total {categorias.length} categorías</span>
                   <label className="flex items-center text-default-400 text-sm">
@@ -479,11 +478,11 @@ const CategoriasProductosPage = () => {
           </Table>
         </div>
 
-        {/* Cards para mobile */}
+        
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron categorías</p>}
           {sorted.map((cat) => {
-            // Menu acciones mobiles con control de permisos
+          
             const mobileDropdownItems = [];
             if (permisos.puedeEditar) {
               mobileDropdownItems.push(
@@ -534,7 +533,7 @@ const CategoriasProductosPage = () => {
           })}
         </div>
 
-        {/* Modal para crear/editar categoría */}
+        
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}

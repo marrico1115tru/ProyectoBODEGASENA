@@ -3,7 +3,6 @@ import { EntregaMaterial } from "@/types/types/EntregaMaterial";
 
 const API_URL = "http://localhost:3000/entrega-material";
 
-// Configuración global para permitir el envío de cookies (sesión)
 const config = {
   withCredentials: true,
 };

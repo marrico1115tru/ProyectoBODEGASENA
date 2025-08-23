@@ -2,8 +2,6 @@ import axios from "axios";
 import { Movimiento } from "@/types/types/movimientos";
 
 const API_URL = "http://localhost:3000/movimientos";
-
-// Configuración global para permitir el envío de cookies/sesión
 const config = {
   withCredentials: true,
 };

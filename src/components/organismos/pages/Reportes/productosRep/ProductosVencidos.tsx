@@ -19,7 +19,7 @@ export default function ProductosVencidos() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Estado de permisos
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -27,7 +27,7 @@ export default function ProductosVencidos() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar el componente
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -67,7 +67,7 @@ export default function ProductosVencidos() {
     fetchPermisos();
   }, []);
 
-  // useQuery para obtener datos solo si puedeVer es true
+  
   const { data, isLoading, error } = useQuery<ProductoVencido[]>({
     queryKey: ["productos-vencidos"],
     queryFn: async () => {
@@ -78,7 +78,7 @@ export default function ProductosVencidos() {
     enabled: permisos.puedeVer,
   });
 
-  // Función para exportar el contenido como PDF
+  
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -113,7 +113,7 @@ export default function ProductosVencidos() {
     pdf.save("reporte_productos_vencidos.pdf");
   };
 
-  // Si no tiene permiso de ver, mostrar mensaje y no mostrar la página
+  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>

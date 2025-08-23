@@ -17,7 +17,7 @@ const RecuperarContraseña = () => {
     setError('');
   };
 
-  // Envía solicitud para recuperar contraseña
+  
   const handleRecuperar = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -47,7 +47,7 @@ const RecuperarContraseña = () => {
     }
   };
 
-  // Maneja actualización de contraseña con código
+  
   const handleActualizarPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -85,7 +85,7 @@ const RecuperarContraseña = () => {
         setError(data.message || data.error || 'Error al verificar el código');
         return;
       }
-      setMensaje('✅ Contraseña actualizada correctamente.');
+      setMensaje(' Contraseña actualizada correctamente.');
       setCodigo('');
       setNuevaPass('');
       setShowModal(false);

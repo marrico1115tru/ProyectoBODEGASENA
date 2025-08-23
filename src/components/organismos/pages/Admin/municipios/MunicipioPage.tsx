@@ -65,7 +65,6 @@ const MunicipiosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -73,7 +72,6 @@ const MunicipiosPage = () => {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -113,7 +111,6 @@ const MunicipiosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar municipios solo si tiene permiso de ver
   const cargarMunicipios = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -129,7 +126,6 @@ const MunicipiosPage = () => {
     cargarMunicipios();
   }, [permisos]);
 
-  // Eliminar con validación de permiso
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar municipios.", "warning");
@@ -155,7 +151,6 @@ const MunicipiosPage = () => {
     }
   };
 
-  // Guardar con validación de permisos
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
@@ -192,7 +187,6 @@ const MunicipiosPage = () => {
     }
   };
 
-  // Abrir modal edición con validación
   const abrirModalEditar = (m: any) => {
     if (!permisos.puedeEditar) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para editar municipios.", "warning");
@@ -204,7 +198,6 @@ const MunicipiosPage = () => {
     onOpen();
   };
 
-  // Abrir modal nuevo con validación
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire("Acceso Denegado", "No tienes permisos para crear municipios.", "warning");
@@ -259,7 +252,6 @@ const MunicipiosPage = () => {
         return <span className="text-sm text-gray-600">{item.centroFormacions?.length || 0}</span>;
       case 'actions':
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
@@ -267,7 +259,6 @@ const MunicipiosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
@@ -275,7 +266,6 @@ const MunicipiosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (!permisos.puedeEditar && !permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -283,7 +273,6 @@ const MunicipiosPage = () => {
             </DropdownItem>
           );
         }
-        
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -402,7 +391,6 @@ const MunicipiosPage = () => {
 
   const renderMobileDropdownItems = (m: any) => {
     const items = [];
-    
     if (permisos.puedeEditar) {
       items.push(
         <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
@@ -410,7 +398,6 @@ const MunicipiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       items.push(
         <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
@@ -418,7 +405,6 @@ const MunicipiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (!permisos.puedeEditar && !permisos.puedeEliminar) {
       items.push(
         <DropdownItem key="sinAcciones" isDisabled>
@@ -426,7 +412,6 @@ const MunicipiosPage = () => {
         </DropdownItem>
       );
     }
-    
     return items;
   };
 
@@ -468,7 +453,6 @@ const MunicipiosPage = () => {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron municipios</p>

@@ -10,6 +10,6 @@ COPY . .
 
 EXPOSE 5173
 
-ENV VITE_API_CLIENT='http://localhost:3000/'
+ENV VITE_API_CLIENT='http://localhost:3000'
 
 CMD ["npm", "run", "dev"]

@@ -3,7 +3,6 @@ import { DetalleSolicitud } from "@/types/types/detalles_solicitud";
 
 const API_URL = "http://localhost:3000/detalle-solicitud";
 
-// Config global para enviar cookies/sesiones al backend
 const config = {
   withCredentials: true,
 };

@@ -6,7 +6,7 @@ import {
 
 const API_URL = "http://localhost:3000/categorias-productos";
 
-// Config global para incluir cookies/sesión si es necesario
+
 const config = {
   withCredentials: true,
 };

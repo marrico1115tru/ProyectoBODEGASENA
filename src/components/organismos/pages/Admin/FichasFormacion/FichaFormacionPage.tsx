@@ -80,7 +80,6 @@ const FichasFormacionPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -88,7 +87,6 @@ const FichasFormacionPage = () => {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -128,7 +126,6 @@ const FichasFormacionPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   useEffect(() => {
     if (!permisos.puedeVer) return;
     const cargarDatos = async () => {
@@ -149,7 +146,6 @@ const FichasFormacionPage = () => {
     cargarDatos();
   }, [permisos]);
 
-  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar fichas.', 'warning');
@@ -168,7 +164,6 @@ const FichasFormacionPage = () => {
     try {
       await deleteFichaFormacion(id);
       await MySwal.fire('Eliminada', `Ficha eliminada: ID ${id}`, 'success');
-      // Recargar datos
       const fs = await getFichasFormacion();
       setFichas(fs);
     } catch (error) {
@@ -210,7 +205,6 @@ const FichasFormacionPage = () => {
         await MySwal.fire('Éxito', 'Ficha creada', 'success');
       }
       cerrarModal();
-      // Recargar datos
       const fs = await getFichasFormacion();
       setFichas(fs);
     } catch (error) {
@@ -464,13 +458,11 @@ const FichasFormacionPage = () => {
           </Table>
         </div>
 
-        {/* Mobile cards */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron fichas</p>}
           {sorted.map((ficha) => {
-            // Crear array de elementos válidos para el dropdown móvil
             const mobileDropdownItems = [];
-            
+
             if (permisos.puedeEditar) {
               mobileDropdownItems.push(
                 <DropdownItem key="editar" onPress={() => abrirModalEditar(ficha)}>
@@ -478,7 +470,7 @@ const FichasFormacionPage = () => {
                 </DropdownItem>
               );
             }
-            
+
             if (permisos.puedeEliminar) {
               mobileDropdownItems.push(
                 <DropdownItem key="eliminar" onPress={() => eliminar(ficha.id)}>
@@ -486,7 +478,7 @@ const FichasFormacionPage = () => {
                 </DropdownItem>
               );
             }
-            
+
             if (!permisos.puedeEditar && !permisos.puedeEliminar) {
               mobileDropdownItems.push(
                 <DropdownItem key="sinAcciones" isDisabled>
@@ -523,7 +515,6 @@ const FichasFormacionPage = () => {
           })}
         </div>
 
-        {/* Modal CRUD */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (

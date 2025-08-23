@@ -1,4 +1,3 @@
-// src/pages/UsuariosPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   Table,
@@ -109,7 +108,6 @@ const UsuariosPage = () => {
   const [newFichaName, setNewFichaName] = useState('');
   const [newRolName, setNewRolName] = useState('');
 
-  // Estado permisos - agregado
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -117,7 +115,6 @@ const UsuariosPage = () => {
     puedeEliminar: false,
   });
 
-  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -125,7 +122,6 @@ const UsuariosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/usuarios&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;
@@ -158,7 +154,6 @@ const UsuariosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -178,12 +173,10 @@ const UsuariosPage = () => {
     }
   };
 
-  // Carga datos cuando cambia permiso puedeVer
   useEffect(() => {
     cargarDatos();
   }, [permisos]);
 
-  // Función eliminar con permiso
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar usuarios.', 'warning');
@@ -209,7 +202,6 @@ const UsuariosPage = () => {
     }
   };
 
-  // Función guardar (crear o editar) con validación permisos
   const guardar = async () => {
     if (!form.nombre.trim()) {
       await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
@@ -308,7 +300,6 @@ const UsuariosPage = () => {
     openUser();
   };
 
-  // Solo abrir modal nuevo si puedeCrear
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire('Acceso Denegado', 'No tienes permisos para crear usuarios.', 'warning');
@@ -356,7 +347,6 @@ const UsuariosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Renderizado condicional de las opciones del Dropdown según permisos
   const renderDropdownItems = (item: any) => {
     const items = [];
     if (permisos.puedeEditar) {
@@ -427,7 +417,6 @@ const UsuariosPage = () => {
     setVisibleColumns(prev => {
       const copy = new Set(prev);
       if (copy.has(key)) {
-        // Prevenir ocultar columna 'actions' para mantener acceso a acciones
         if (key === 'actions') return copy;
         copy.delete(key);
       } else {
@@ -436,8 +425,6 @@ const UsuariosPage = () => {
       return copy;
     });
   };
-
-  // Controles para crear nueva área, ficha o rol permanecen iguales
 
   const guardarArea = async () => {
     if (!newAreaName.trim()) {
@@ -490,7 +477,6 @@ const UsuariosPage = () => {
     }
   };
 
-  // Si no tiene permiso puedeVer, mostrar mensaje y no renderizar tabla ni modales
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -621,7 +607,6 @@ const UsuariosPage = () => {
           </Table>
         </div>
 
-        {/* Modal Usuario */}
         <Modal
           isOpen={userOpen}
           onOpenChange={onUserOpenChange}
@@ -789,7 +774,6 @@ const UsuariosPage = () => {
           </ModalContent>
         </Modal>
 
-        {/* Modales para Área, Ficha y Rol sin cambios, solo agregar disabled si quieres */}
         <Modal
           isOpen={areaModal.isOpen}
           onOpenChange={areaModal.onOpenChange}

@@ -69,7 +69,7 @@ const RolesPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
+
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -77,7 +77,7 @@ const RolesPage = () => {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
+
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -117,7 +117,6 @@ const RolesPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarRoles = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -133,7 +132,6 @@ const RolesPage = () => {
     cargarRoles();
   }, [permisos]);
 
-  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar roles.', 'warning');
@@ -255,7 +253,6 @@ const RolesPage = () => {
         return <span className="text-sm text-gray-600">{item.permisos?.length || 0}</span>;
       case 'actions':
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
@@ -263,7 +260,6 @@ const RolesPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
@@ -271,7 +267,6 @@ const RolesPage = () => {
             </DropdownItem>
           );
         }
-        
         if (!permisos.puedeEditar && !permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -279,7 +274,6 @@ const RolesPage = () => {
             </DropdownItem>
           );
         }
-        
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -300,7 +294,7 @@ const RolesPage = () => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
       if (copy.has(key)) {
-        if (key === 'actions') return prev; // No permitir ocultar acciones
+        if (key === 'actions') return prev;
         copy.delete(key);
       } else {
         copy.add(key);
@@ -309,10 +303,8 @@ const RolesPage = () => {
     });
   };
 
-  // Función helper para construir dropdown items de vista móvil
   const renderMobileDropdownItems = (r: any) => {
     const items = [];
-    
     if (permisos.puedeEditar) {
       items.push(
         <DropdownItem key={`editar-${r.id}`} onPress={() => abrirModalEditar(r)}>
@@ -320,7 +312,6 @@ const RolesPage = () => {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       items.push(
         <DropdownItem key={`eliminar-${r.id}`} onPress={() => eliminar(r.id)}>
@@ -328,7 +319,6 @@ const RolesPage = () => {
         </DropdownItem>
       );
     }
-    
     if (!permisos.puedeEditar && !permisos.puedeEliminar) {
       items.push(
         <DropdownItem key="sinAcciones" isDisabled>
@@ -336,11 +326,9 @@ const RolesPage = () => {
         </DropdownItem>
       );
     }
-    
     return items;
   };
 
-  // Si no tiene permiso para ver, mostrar mensaje
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -474,7 +462,6 @@ const RolesPage = () => {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron roles</p>

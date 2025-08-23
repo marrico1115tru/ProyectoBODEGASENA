@@ -1,10 +1,8 @@
-// Api/sitioTable.ts
 import axios from 'axios';
 import { Sitio, SitioFormValues } from '@/types/types/Sitio';
 
 const API_URL = 'http://localhost:3000/sitio';
 
-// Configuración global para permitir el envío de cookies/sesión
 const config = {
   withCredentials: true,
 };

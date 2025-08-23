@@ -49,7 +49,6 @@ const columns = [
 const INITIAL_VISIBLE_COLUMNS = ['id', 'tipo', 'cantidad', 'fecha', 'inventario', 'actions'];
 
 const MovimientosPage = () => {
-  // Estados
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [inventarios, setInventarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
@@ -69,7 +68,6 @@ const MovimientosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Carga inicial
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -85,7 +83,6 @@ const MovimientosPage = () => {
     }
   };
 
-  // Confirmación y eliminación con alerta SweetAlert2
   const eliminar = async (id: number) => {
     const result = await MySwal.fire({
       title: '¿Eliminar movimiento?',
@@ -106,7 +103,6 @@ const MovimientosPage = () => {
     }
   };
 
-  // Guardar movimiento con validaciones y notificaciones
   const guardar = async () => {
     if (!cantidad || cantidad <= 0) {
       await MySwal.fire('Error', 'La cantidad debe ser mayor que cero', 'error');
@@ -174,7 +170,6 @@ const MovimientosPage = () => {
     setIdInventario('');
   };
 
-  // Filtrado y orden
   const filtered = useMemo(() => {
     if (!filterValue) return movimientos;
     return movimientos.filter((m) =>

@@ -65,7 +65,6 @@ const TituladosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -73,7 +72,6 @@ const TituladosPage = () => {
     puedeEliminar: false,
   });
 
- 
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -81,7 +79,6 @@ const TituladosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/TituladosPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
@@ -114,7 +111,6 @@ const TituladosPage = () => {
     fetchPermisos();
   }, []);
 
-  /* Cargar datos con permiso para ver */
   const cargarTitulados = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -126,12 +122,10 @@ const TituladosPage = () => {
     }
   };
 
- 
   useEffect(() => {
     cargarTitulados();
   }, [permisos]);
 
- 
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar titulados.', 'warning');
@@ -211,7 +205,6 @@ const TituladosPage = () => {
     onOpen();
   };
 
- 
   const filtered = useMemo(
     () =>
       filterValue
@@ -238,7 +231,6 @@ const TituladosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  /* Render Cell */
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'nombre':
@@ -288,7 +280,6 @@ const TituladosPage = () => {
     }
   };
 
- 
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
@@ -365,7 +356,6 @@ const TituladosPage = () => {
     </div>
   );
 
- 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
       <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
@@ -391,16 +381,12 @@ const TituladosPage = () => {
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
-     
-
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🎓 Gestión de Titulados
           </h1>
           <p className="text-sm text-gray-600">Consulta y administra los programas titulados.</p>
         </header>
-
-     
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
@@ -434,11 +420,9 @@ const TituladosPage = () => {
           </Table>
         </div>
 
-     
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron titulados</p>}
           {sorted.map((t) => {
-           
             const mobileDropdownItems = [];
             if (permisos.puedeEditar) {
               mobileDropdownItems.push(

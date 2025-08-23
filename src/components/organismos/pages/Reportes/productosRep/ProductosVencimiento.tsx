@@ -12,7 +12,7 @@ export default function ProductosProximosAVencer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Estado permisos
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -20,7 +20,7 @@ export default function ProductosProximosAVencer() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar componente
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -60,7 +60,7 @@ export default function ProductosProximosAVencer() {
     fetchPermisos();
   }, []);
 
-  // Obtener datos solo si puedeVer
+  
   const { data, isLoading, error } = useQuery({
     queryKey: ["productos-proximos-vencer"],
     queryFn: async () => {
@@ -71,7 +71,7 @@ export default function ProductosProximosAVencer() {
     enabled: permisos.puedeVer,
   });
 
-  // Exportar contenido a PDF
+  
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -106,7 +106,7 @@ export default function ProductosProximosAVencer() {
     pdf.save("reporte_productos_proximos_vencer.pdf");
   };
 
-  // Mostrar mensaje si no tiene permiso para ver
+  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>

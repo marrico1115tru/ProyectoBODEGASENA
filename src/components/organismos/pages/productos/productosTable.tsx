@@ -97,7 +97,6 @@ const ProductosPage = () => {
 
   const { isOpen: catOpen, onOpenChange: setCatOpen } = useDisclosure();
 
-  // Carga datos siempre (hooks no condicionales)
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -112,7 +111,6 @@ const ProductosPage = () => {
     cargarDatos();
   }, []);
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -152,7 +150,6 @@ const ProductosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Funciones que validan permisos antes de actuar
   const guardarProducto = async () => {
     if (!form.nombre.trim()) {
       await MySwal.fire('Atención', 'El nombre es obligatorio', 'warning');
@@ -183,7 +180,6 @@ const ProductosPage = () => {
       setProdOpen(false);
       setEditId(null);
       setForm({ nombre: '', descripcion: '', fechaVencimiento: '', idCategoriaId: '' });
-      // Reload data
       const [prod, cat] = await Promise.all([getProductos(), getCategoriasProductos()]);
       setProductos(prod);
       setCategorias(cat);
@@ -263,7 +259,6 @@ const ProductosPage = () => {
     }
   };
 
-  // Utilidades filtro, paginación y orden
   const filtered = useMemo(
     () =>
       filterValue
@@ -290,13 +285,11 @@ const ProductosPage = () => {
 
   const totalStock = (inv: any[]) => inv?.reduce((acc, i) => acc + (i.stock ?? 0), 0) ?? 0;
 
-  // Memoized selections para evitar errores de tipo
   const selectedCategoriaKeys: Selection = useMemo(() => {
     if (!form.idCategoriaId) return new Set();
     return new Set([form.idCategoriaId]);
   }, [form.idCategoriaId]);
 
-  // Handler para cambios de selección
   const handleCategoriaSelectionChange = (keys: Selection) => {
     const keysArray = Array.from(keys);
     const selectedKey = keysArray.length > 0 ? String(keysArray[0]) : '';
@@ -319,7 +312,6 @@ const ProductosPage = () => {
         );
       case 'actions':
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem key="editar" onPress={() => abrirEditar(item)}>
@@ -327,7 +319,6 @@ const ProductosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key="eliminar" onPress={() => eliminar(item.id)}>
@@ -335,7 +326,6 @@ const ProductosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (!permisos.puedeEditar && !permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -489,12 +479,10 @@ const ProductosPage = () => {
               </Table>
             </div>
 
-            {/* Vista móvil */}
             <div className="grid gap-4 md:hidden">
               {sorted.length ? (
                 sorted.map((p) => {
                   const mobileDropdownItems = [];
-                  
                   if (permisos.puedeEditar) {
                     mobileDropdownItems.push(
                       <DropdownItem key="editar-mobile" onPress={() => abrirEditar(p)}>
@@ -502,7 +490,6 @@ const ProductosPage = () => {
                       </DropdownItem>
                     );
                   }
-                  
                   if (permisos.puedeEliminar) {
                     mobileDropdownItems.push(
                       <DropdownItem key="eliminar-mobile" onPress={() => eliminar(p.id)}>
@@ -510,7 +497,6 @@ const ProductosPage = () => {
                       </DropdownItem>
                     );
                   }
-                  
                   if (!permisos.puedeEditar && !permisos.puedeEliminar) {
                     mobileDropdownItems.push(
                       <DropdownItem key="sinAcciones-mobile" isDisabled>
@@ -556,7 +542,6 @@ const ProductosPage = () => {
               )}
             </div>
 
-            {/* Modal Producto */}
             <Modal
               isOpen={prodOpen}
               onOpenChange={setProdOpen}
@@ -632,7 +617,6 @@ const ProductosPage = () => {
               </ModalContent>
             </Modal>
 
-            {/* Modal Categoría */}
             <Modal
               isOpen={catOpen}
               onOpenChange={setCatOpen}

@@ -1,4 +1,3 @@
-// src/pages/EntregaMaterialPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import {
   Table,
@@ -74,7 +73,6 @@ const EntregaMaterialPage = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
 
-  // Cambio importante: ahora visibleColumns tiene setter para poder actualizarlo
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
 
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -93,7 +91,6 @@ const EntregaMaterialPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -101,12 +98,10 @@ const EntregaMaterialPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para alternar columnas visibles
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(uid)) {
-        // Nunca ocultar la columna de acciones para mantener acceso a ellas
         if (uid === "actions") return prev;
         newSet.delete(uid);
       } else {
@@ -116,7 +111,6 @@ const EntregaMaterialPage = () => {
     });
   };
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -124,7 +118,6 @@ const EntregaMaterialPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        // Ruta para permisos EntregaMaterialPage
         const url = `http://localhost:3000/permisos/por-ruta?ruta=/EntregaMaterialPage&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;
@@ -157,7 +150,6 @@ const EntregaMaterialPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos si puede ver
   useEffect(() => {
     if (!permisos.puedeVer) return;
     cargarDatos();
@@ -180,8 +172,6 @@ const EntregaMaterialPage = () => {
       await MySwal.fire("Error", "Error cargando datos", "error");
     }
   };
-
-  // CRUD con validación de permisos
 
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
@@ -403,7 +393,6 @@ const EntregaMaterialPage = () => {
                     onValueChange={setFilterValue}
                     onClear={() => setFilterValue("")}
                   />
-                  {/* Botón columnas junto al botón nuevo */}
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -411,7 +400,7 @@ const EntregaMaterialPage = () => {
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Seleccionar columnas">
                         {columns
-                          .filter((c) => c.uid !== "actions") /* acciones siempre visibles */
+                          .filter((c) => c.uid !== "actions")
                           .map((col) => (
                             <DropdownItem key={col.uid} className="flex items-center gap-2">
                               <Checkbox
@@ -496,7 +485,6 @@ const EntregaMaterialPage = () => {
           </Table>
         </div>
 
-        {/* Modal CRUD */}
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (

@@ -3,7 +3,7 @@ import { Municipio } from '@/types/types/typesMunicipio';
 
 const API_URL = 'http://localhost:3000/municipios';
 
-// Configuración global para incluir cookies/sesiones
+
 const config = {
   withCredentials: true,
 };

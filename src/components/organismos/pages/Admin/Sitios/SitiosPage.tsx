@@ -76,7 +76,6 @@ const SitiosPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -84,7 +83,6 @@ const SitiosPage = () => {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -124,7 +122,6 @@ const SitiosPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -146,7 +143,6 @@ const SitiosPage = () => {
     cargarDatos();
   }, [permisos]);
 
-  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar sitios.', 'warning');
@@ -311,9 +307,7 @@ const SitiosPage = () => {
       case 'inventarios':
         return <span className="text-sm text-gray-600">{item.inventarios?.length || 0}</span>;
       case 'actions':
-        // Crear array de elementos JSX válidos
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
@@ -321,7 +315,6 @@ const SitiosPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem
@@ -333,8 +326,6 @@ const SitiosPage = () => {
             </DropdownItem>
           );
         }
-        
-        // Si no hay permisos, mostrar mensaje
         if (dropdownItems.length === 0) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -364,7 +355,7 @@ const SitiosPage = () => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
       if (copy.has(key)) {
-        if (key === 'actions') return prev; // No permitir ocultar la columna acciones
+        if (key === 'actions') return prev;
         copy.delete(key);
       } else {
         copy.add(key);
@@ -464,10 +455,8 @@ const SitiosPage = () => {
     </div>
   );
 
-  // Función auxiliar para renderizar dropdown en móvil
   const renderMobileDropdown = (s: any) => {
     const dropdownItems = [];
-    
     if (permisos.puedeEditar) {
       dropdownItems.push(
         <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
@@ -475,7 +464,6 @@ const SitiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       dropdownItems.push(
         <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
@@ -483,7 +471,6 @@ const SitiosPage = () => {
         </DropdownItem>
       );
     }
-    
     if (dropdownItems.length === 0) {
       dropdownItems.push(
         <DropdownItem key="sinAcciones" isDisabled>
@@ -548,7 +535,6 @@ const SitiosPage = () => {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron sitios</p>

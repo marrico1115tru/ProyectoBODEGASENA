@@ -48,7 +48,7 @@ import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
 
-// Definición columnas tabla
+
 const columns = [
   { name: "ID", uid: "id", sortable: true },
   { name: "Nombre", uid: "nombreArea", sortable: false },
@@ -59,7 +59,7 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "nombreArea", "actions"] as const;
 type ColumnKey = (typeof columns)[number]["uid"];
 
 const AreasPage = () => {
-  // Estados principales
+
   const [areas, setAreas] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState("");
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
@@ -70,14 +70,14 @@ const AreasPage = () => {
     direction: "ascending",
   });
 
-  // Estados para modal (crear/editar área)
+  
   const [nombre, setNombre] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  // Modal control
+  
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Permisos del usuario
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -85,12 +85,12 @@ const AreasPage = () => {
     puedeEliminar: false,
   });
 
-  // Función para mostrar/ocultar columnas
+  
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(uid)) {
-        if (uid === "actions") return prev; // no permitir ocultar acciones
+        if (uid === "actions") return prev; 
         newSet.delete(uid);
       } else {
         newSet.add(uid);
@@ -99,7 +99,7 @@ const AreasPage = () => {
     });
   };
 
-  // Cargar permisos desde backend según rol
+  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -140,7 +140,7 @@ const AreasPage = () => {
     fetchPermisos();
   }, []);
 
-  // Función para cargar las áreas si tiene permiso
+  
   const cargarAreas = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -152,12 +152,12 @@ const AreasPage = () => {
     }
   };
 
-  // Cargar datos al cambiar permisos
+  
   useEffect(() => {
     cargarAreas();
   }, [permisos]);
 
-  // Función para eliminar área con confirmación
+  
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire(
@@ -189,7 +189,7 @@ const AreasPage = () => {
     }
   };
 
-  // Función para guardar área (crear o editar)
+  
   const guardar = async () => {
     if (!nombre.trim()) {
       await MySwal.fire("Aviso", "El nombre es obligatorio", "info");
@@ -231,7 +231,7 @@ const AreasPage = () => {
     }
   };
 
-  // Abrir modal edición, pre-cargando datos
+  
   const abrirModalEditar = (area: any) => {
     if (!permisos.puedeEditar) {
       MySwal.fire(
@@ -246,7 +246,7 @@ const AreasPage = () => {
     onOpen();
   };
 
-  // Abrir modal creación
+  
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
       MySwal.fire(
@@ -261,14 +261,14 @@ const AreasPage = () => {
     onOpen();
   };
 
-  // Cerrar modal y limpiar estado
+  
   const cerrarModal = () => {
     setEditId(null);
     setNombre("");
     onClose();
   };
 
-  // Filtrado por texto
+  
   const filtered = useMemo(() => {
     if (!filterValue) return areas;
     return areas.filter((a) =>
@@ -276,16 +276,15 @@ const AreasPage = () => {
     );
   }, [areas, filterValue]);
 
-  // Cálculo de páginas
+  
   const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
-  // Paginación del listado
+
   const paged = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, rowsPerPage]);
 
-  // Ordenar datos según sortDescriptor (solo para columnas visibles)
   const sorted = useMemo(() => {
     const items = [...paged];
     const { column, direction } = sortDescriptor;
@@ -302,7 +301,7 @@ const AreasPage = () => {
     return items;
   }, [paged, sortDescriptor]);
 
-  // Renderizado celdas según tipo
+  
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case "nombreArea":
@@ -367,7 +366,7 @@ const AreasPage = () => {
     }
   };
 
-  // Bloquear acceso si no tiene permiso de vista
+
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -378,11 +377,11 @@ const AreasPage = () => {
     );
   }
 
-  // Render final con toda la UI
+  
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
+        
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             <span>Gestión de Áreas</span>
@@ -392,7 +391,7 @@ const AreasPage = () => {
           </p>
         </header>
 
-        {/* Tabla */}
+        
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla de áreas"
@@ -406,7 +405,8 @@ const AreasPage = () => {
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-                  {/* Input búsqueda */}
+
+                  
                   <Input
                     isClearable
                     className="w-full md:max-w-[44%]"
@@ -418,7 +418,7 @@ const AreasPage = () => {
                     onClear={() => setFilterValue("")}
                   />
 
-                  {/* Columnas y botón crear */}
+                  
                   <div className="flex gap-3 items-center">
                     <Dropdown>
                       <DropdownTrigger>
@@ -456,7 +456,7 @@ const AreasPage = () => {
                   </div>
                 </div>
 
-                {/* Controles de paginación y filas */}
+                
                 <div className="flex items-center justify-between">
                   <span className="text-default-400 text-sm">
                     Total {areas.length} áreas
@@ -531,7 +531,7 @@ const AreasPage = () => {
           </Table>
         </div>
 
-        {/* Modal crear/editar área */}
+        
         <Modal
           isOpen={isOpen}
           onOpenChange={onOpenChange}

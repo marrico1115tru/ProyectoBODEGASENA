@@ -80,7 +80,6 @@ const SolicitudesPage = () => {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -88,7 +87,6 @@ const SolicitudesPage = () => {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -128,7 +126,6 @@ const SolicitudesPage = () => {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -145,7 +142,6 @@ const SolicitudesPage = () => {
     cargarDatos();
   }, [permisos]);
 
-  // CRUD con validación de permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar solicitudes.', 'warning');
@@ -315,7 +311,6 @@ const SolicitudesPage = () => {
         return <span className="text-sm text-gray-600">{item.entregaMaterials?.length || 0}</span>;
       case 'actions': {
         const dropdownItems = [];
-        
         if (permisos.puedeEditar) {
           dropdownItems.push(
             <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
@@ -323,7 +318,6 @@ const SolicitudesPage = () => {
             </DropdownItem>
           );
         }
-        
         if (permisos.puedeEliminar) {
           dropdownItems.push(
             <DropdownItem
@@ -335,7 +329,6 @@ const SolicitudesPage = () => {
             </DropdownItem>
           );
         }
-        
         if (dropdownItems.length === 0) {
           dropdownItems.push(
             <DropdownItem key="sinAcciones" isDisabled>
@@ -364,7 +357,7 @@ const SolicitudesPage = () => {
     setVisibleColumns(prev => {
       const copy = new Set(prev);
       if (copy.has(key)) {
-        if (key === 'actions') return prev; // No permitir ocultar columna acciones
+        if (key === 'actions') return prev;
         copy.delete(key);
       } else {
         copy.add(key);
@@ -373,10 +366,8 @@ const SolicitudesPage = () => {
     });
   };
 
-  // Función auxiliar para renderizar dropdown en móvil
   const renderMobileDropdown = (s: any) => {
     const dropdownItems = [];
-    
     if (permisos.puedeEditar) {
       dropdownItems.push(
         <DropdownItem key={`editar-${s.id}`} onPress={() => abrirModalEditar(s)}>
@@ -384,7 +375,6 @@ const SolicitudesPage = () => {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       dropdownItems.push(
         <DropdownItem key={`eliminar-${s.id}`} onPress={() => eliminar(s.id)}>
@@ -392,7 +382,6 @@ const SolicitudesPage = () => {
         </DropdownItem>
       );
     }
-    
     if (dropdownItems.length === 0) {
       dropdownItems.push(
         <DropdownItem key="sinAcciones" isDisabled>
@@ -548,7 +537,6 @@ const SolicitudesPage = () => {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron solicitudes</p>

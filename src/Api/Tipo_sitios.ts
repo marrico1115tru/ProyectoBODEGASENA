@@ -1,4 +1,3 @@
-// Api/tipoSitioTable.ts
 import axios from 'axios';
 import {
   TipoSitio,
@@ -6,8 +5,6 @@ import {
 } from '@/types/types/tipo_sitios';
 
 const API_URL = 'http://localhost:3000/tipo-sitio';
-
-// Configuración global para permitir envío de cookies/sesiones
 const config = {
   withCredentials: true,
 };

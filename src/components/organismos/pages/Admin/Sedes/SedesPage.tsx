@@ -70,7 +70,6 @@ export default function SedesPage() {
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -78,7 +77,6 @@ export default function SedesPage() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -118,7 +116,6 @@ export default function SedesPage() {
     fetchPermisos();
   }, []);
 
-  // Cargar datos solo si puedeVer
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -135,7 +132,6 @@ export default function SedesPage() {
     cargarDatos();
   }, [permisos]);
 
-  // Funciones CRUD con validación permisos
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar sedes.', 'warning');
@@ -262,10 +258,8 @@ export default function SedesPage() {
     return items;
   }, [sliced, sortDescriptor]);
 
-  // Función para renderizar items del dropdown de acciones
   const renderDropdownItems = (item: any) => {
     const items = [];
-    
     if (permisos.puedeEditar) {
       items.push(
         <DropdownItem key={`editar-${item.id}`} onPress={() => abrirModalEditar(item)}>
@@ -273,7 +267,6 @@ export default function SedesPage() {
         </DropdownItem>
       );
     }
-    
     if (permisos.puedeEliminar) {
       items.push(
         <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
@@ -281,7 +274,6 @@ export default function SedesPage() {
         </DropdownItem>
       );
     }
-    
     if (!permisos.puedeEditar && !permisos.puedeEliminar) {
       items.push(
         <DropdownItem key="sinAcciones" isDisabled>
@@ -289,7 +281,6 @@ export default function SedesPage() {
         </DropdownItem>
       );
     }
-    
     return items;
   };
 
@@ -329,7 +320,7 @@ export default function SedesPage() {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
       if (copy.has(key)) {
-        if (key === 'actions') return prev; // No permitir ocultar columna acciones
+        if (key === 'actions') return prev;
         copy.delete(key);
       } else {
         copy.add(key);
@@ -467,7 +458,6 @@ export default function SedesPage() {
           </Table>
         </div>
 
-        {/* Vista móvil */}
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron sedes</p>

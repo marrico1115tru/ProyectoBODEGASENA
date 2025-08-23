@@ -6,7 +6,7 @@ import {
 
 const API_URL = 'http://localhost:3000/centro-formacion';
 
-// Config global para permitir envío de cookies (autenticación)
+
 const config = {
   withCredentials: true,
 };

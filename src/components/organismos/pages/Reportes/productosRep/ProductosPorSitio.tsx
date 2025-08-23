@@ -18,7 +18,7 @@ export default function ProductosPorSitio() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Estado de permisos
+  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -26,7 +26,7 @@ export default function ProductosPorSitio() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar
+
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -66,7 +66,7 @@ export default function ProductosPorSitio() {
     fetchPermisos();
   }, []);
 
-  // Obtener datos solo si puedeVer es true
+  
   const { data, isLoading, error } = useQuery<ProductoPorSitio[]>({
     queryKey: ["productos-por-sitio"],
     queryFn: async () => {
@@ -74,10 +74,10 @@ export default function ProductosPorSitio() {
       const res = await axios.get("http://localhost:3000/productos/por-sitio", config);
       return res.data;
     },
-    enabled: permisos.puedeVer, // habilitado solo si tiene permiso para ver
+    enabled: permisos.puedeVer, 
   });
 
-  // Función para exportar PDF
+  
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -104,7 +104,7 @@ export default function ProductosPorSitio() {
     pdf.save('reporte_productos_por_sitio.pdf');
   };
 
-  // Si no tiene permiso para ver
+  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>

@@ -41,7 +41,7 @@ export default function IndexPage() {
         </div>
       </section>
 
-      {/* Beneficios */}
+    
       <section className="py-16 bg-white">
         <div className="max-w-6xl mx-auto px-6">
           <h2 className="text-2xl font-bold text-slate-800 text-center mb-10">
@@ -73,23 +73,23 @@ export default function IndexPage() {
         </div>
       </section>
 
-      {/* Misión, Visión, Valores */}
+  
       <section className="py-16 bg-gradient-to-tr from-blue-50 to-slate-100">
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 gap-10">
           <div className="bg-white rounded-2xl shadow p-6">
-            <h3 className="text-lg font-bold text-blue-700 mb-2">🎯 Misión</h3>
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Misión</h3>
             <p className="text-sm text-slate-600">
               Proporcionar herramientas digitales de alta calidad para optimizar la gestión de inventarios en organizaciones de todos los tamaños.
             </p>
           </div>
           <div className="bg-white rounded-2xl shadow p-6">
-            <h3 className="text-lg font-bold text-blue-700 mb-2">👁️ Visión</h3>
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Visión</h3>
             <p className="text-sm text-slate-600">
               Ser el sistema de gestión de inventarios más confiable y completo a nivel regional.
             </p>
           </div>
           <div className="bg-white rounded-2xl shadow p-6">
-            <h3 className="text-lg font-bold text-blue-700 mb-2">💼 Valores</h3>
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Valores</h3>
             <p className="text-sm text-slate-600">
               Compromiso, integridad, innovación y enfoque centrado en el usuario.
             </p>
