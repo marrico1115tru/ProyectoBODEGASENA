@@ -73,7 +73,7 @@ export default function InventarioPage() {
           return;
         }
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/InventarioPage&idRol=${rolId}`;
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/inventario&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;

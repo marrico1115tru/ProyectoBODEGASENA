@@ -1,18 +1,17 @@
 import { ProductoFormValues } from '@/types/types/typesProductos';
-import axios from 'axios';
+import axiosInstance from './../Api/axios'; // Importamos la instancia compartida
 
-const api = axios.create({
-  baseURL: 'http://localhost:3000',
-  withCredentials: true,
-});
+
 
 export const getProductos = async () => {
-  const res = await api.get('/productos');
+  // Reemplazamos 'api' por 'axiosInstance'
+  const res = await axiosInstance.get('/productos');
   return res.data;
 };
 
 export const createProducto = async (data: ProductoFormValues) => {
-  const res = await api.post('/productos', {
+  // La lógica para transformar los datos se mantiene intacta
+  const res = await axiosInstance.post('/productos', {
     ...data,
     idCategoria: { id: data.idCategoriaId },
   });
@@ -20,7 +19,8 @@ export const createProducto = async (data: ProductoFormValues) => {
 };
 
 export const updateProducto = async (id: number, data: ProductoFormValues) => {
-  const res = await api.put(`/productos/${id}`, {
+  // La lógica de transformación de datos para la actualización también se mantiene
+  const res = await axiosInstance.put(`/productos/${id}`, {
     ...data,
     idCategoria: { id: data.idCategoriaId },
   });
@@ -28,5 +28,5 @@ export const updateProducto = async (id: number, data: ProductoFormValues) => {
 };
 
 export const deleteProducto = async (id: number) => {
-  await api.delete(`/productos/${id}`);
+  await axiosInstance.delete(`/productos/${id}`);
 };

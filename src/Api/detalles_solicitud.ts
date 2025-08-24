@@ -1,21 +1,14 @@
-import axios from "axios";
-import { DetalleSolicitud } from "@/types/types/detalles_solicitud";
-
-const API_URL = "http://localhost:3000/detalle-solicitud";
-
-const config = {
-  withCredentials: true,
-};
-
+import axiosInstance from "./../Api/axios"; 
+import { DetalleSolicitud } from "@/types/types/detalles_solicitud"; 
 export const getDetalleSolicitudes = async (): Promise<DetalleSolicitud[]> => {
-  const res = await axios.get(API_URL, config);
+  const res = await axiosInstance.get("/detalle-solicitud");
   return res.data;
 };
 
 export const createDetalleSolicitud = async (
   data: Partial<DetalleSolicitud>
 ): Promise<DetalleSolicitud> => {
-  const res = await axios.post(API_URL, data, config);
+  const res = await axiosInstance.post("/detalle-solicitud", data);
   return res.data;
 };
 
@@ -23,10 +16,10 @@ export const updateDetalleSolicitud = async (
   id: number,
   data: Partial<DetalleSolicitud>
 ): Promise<DetalleSolicitud> => {
-  const res = await axios.put(`${API_URL}/${id}`, data, config);
+  const res = await axiosInstance.put(`/detalle-solicitud/${id}`, data);
   return res.data;
 };
 
 export const deleteDetalleSolicitud = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/${id}`, config);
+  await axiosInstance.delete(`/detalle-solicitud/${id}`);
 };

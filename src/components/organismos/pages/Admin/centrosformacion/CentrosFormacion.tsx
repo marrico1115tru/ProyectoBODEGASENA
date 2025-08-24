@@ -127,7 +127,7 @@ const CentrosFormacionPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/CentrosFormaciones&idRol=${rolId}`;
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/centro-formacion&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 

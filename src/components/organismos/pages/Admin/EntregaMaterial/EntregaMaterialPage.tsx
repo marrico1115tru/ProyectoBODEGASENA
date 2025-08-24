@@ -118,7 +118,7 @@ const EntregaMaterialPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/EntregaMaterialPage&idRol=${rolId}`;
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/entrega-material&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 

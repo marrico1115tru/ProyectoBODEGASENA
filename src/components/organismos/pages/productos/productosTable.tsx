@@ -41,7 +41,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
-import axios from 'axios';
+// PASO 1: Importar la instancia de Axios en lugar de la librería.
+import axiosInstance from '@/Api/axios'; // Asegúrate que la ruta a tu instancia sea correcta.
 
 const MySwal = withReactContent(Swal);
 
@@ -100,6 +101,7 @@ const ProductosPage = () => {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
+        // Estas funciones ya usan la instancia de Axios internamente.
         const [prod, cat] = await Promise.all([getProductos(), getCategoriasProductos()]);
         setProductos(prod);
         setCategorias(cat);
@@ -118,8 +120,10 @@ const ProductosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/productos/listar&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        // PASO 2: Usar la instancia de Axios. La URL es ahora relativa a la baseURL
+        // y `withCredentials` ya está configurado.
+        const url = `/permisos/por-ruta?ruta=/productos&idRol=${rolId}`;
+        const response = await axiosInstance.get(url);
 
         const permisosData = response.data.data;
         if (permisosData) {

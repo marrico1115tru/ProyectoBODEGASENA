@@ -29,7 +29,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
       secure: true,
       sameSite: "strict",
     });
-    localStorage.clear(); // También limpiamos el usuario
+    localStorage.clear(); 
     navigate("/login");
   };
 
@@ -38,9 +38,9 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
       <Sidebar />
 
       <div className="flex flex-col flex-1 overflow-auto">
-        {/* Header */}
+    
         <header className="bg-[#0f172a] px-6 py-4 shadow-md border-b border-slate-700 flex items-center justify-between">
-          {/* Logo y nombre */}
+        
           <div className="flex items-center space-x-3">
             <img
               src="src/img/log.png"
@@ -50,7 +50,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
             <span className="text-2xl font-bold tracking-wide text-cyan-400">INNOVASOFT</span>
           </div>
 
-          {/* Perfil y logout */}
+          
           <div className="flex items-center space-x-4">
             <Link to="/Perfil">
               <div
@@ -75,10 +75,9 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
           </div>
         </header>
 
-        {/* Contenido */}
+     
         <main className="flex-1 overflow-auto px-6 py-8 bg-slate-100">{children}</main>
 
-        {/* Footer */}
         <footer className="w-full bg-[#0f172a] border-t border-slate-700 py-4 text-center text-sm text-white">
           <a
             href="https://heroui.com"
@@ -88,7 +87,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
             title="Página de inicio de INNOVASOFT"
           >
             <span>Desarrollado por</span>
-            <p className="font-semibold text-cyan-300">MARIA RICO</p>
+            <p className="font-semibold text-cyan-300">MARIA DEL MAR RICO Y ANDRES FELIPE PEÑA</p>
           </a>
         </footer>
       </div>

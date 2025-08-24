@@ -98,7 +98,7 @@ const TipoSitiosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/Tipo_sitiosPage&idRol=${rolId}`;
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/tipo-sitio&idRol=${rolId}`;
         const response = await axios.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;

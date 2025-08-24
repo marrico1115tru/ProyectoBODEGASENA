@@ -1,23 +1,21 @@
-import axios from 'axios';
+import axiosInstance from './../Api/axios'; 
 import {
   TipoSitio,
   TipoSitioFormValues,
 } from '@/types/types/tipo_sitios';
 
-const API_URL = 'http://localhost:3000/tipo-sitio';
-const config = {
-  withCredentials: true,
-};
 
 export const getTiposSitio = async (): Promise<TipoSitio[]> => {
-  const res = await axios.get(API_URL, config);
+
+  const res = await axiosInstance.get('/tipo-sitio');
   return res.data;
 };
+
 
 export const createTipoSitio = async (
   data: TipoSitioFormValues
 ): Promise<TipoSitio> => {
-  const res = await axios.post(API_URL, data, config);
+  const res = await axiosInstance.post('/tipo-sitio', data);
   return res.data;
 };
 
@@ -25,10 +23,11 @@ export const updateTipoSitio = async (
   id: number,
   data: TipoSitioFormValues
 ): Promise<TipoSitio> => {
-  const res = await axios.put(`${API_URL}/${id}`, data, config);
+  const res = await axiosInstance.put(`/tipo-sitio/${id}`, data);
   return res.data;
 };
 
+
 export const deleteTipoSitio = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/${id}`, config);
+  await axiosInstance.delete(`/tipo-sitio/${id}`);
 };

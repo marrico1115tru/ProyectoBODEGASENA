@@ -1,27 +1,23 @@
-import axios from 'axios';
+import axiosInstance from './../Api/axios'; 
 import { Sede, SedeFormValues } from '@/types/types/Sede';
 
-const API_URL = 'http://localhost:3000/sedes';
 
-const config = {
-  withCredentials: true,
-};
 
 export const getSedes = async (): Promise<Sede[]> => {
-  const res = await axios.get(API_URL, config);
+  const res = await axiosInstance.get('/sedes');
   return res.data;
 };
 
 export const createSede = async (data: SedeFormValues): Promise<Sede> => {
-  const res = await axios.post(API_URL, data, config);
+  const res = await axiosInstance.post('/sedes', data);
   return res.data;
 };
 
 export const updateSede = async (id: number, data: SedeFormValues): Promise<Sede> => {
-  const res = await axios.put(`${API_URL}/${id}`, data, config);
+  const res = await axiosInstance.put(`/sedes/${id}`, data);
   return res.data;
 };
 
 export const deleteSede = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/${id}`, config);
+  await axiosInstance.delete(`/sedes/${id}`);
 };

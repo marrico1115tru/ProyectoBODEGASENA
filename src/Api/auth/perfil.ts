@@ -1,20 +1,11 @@
-import axios from 'axios';
-const API_URL = 'http://localhost:3000/usuarios/perfil';
-
-
-const config = {
-  withCredentials: true, 
-};
-
+import axiosInstance from './../axios'; 
 
 export const getPerfil = async () => {
   try {
-    const response = await axios.get(API_URL, config);
+    const response = await axiosInstance.get('/usuarios/perfil');
     return response.data;
   } catch (error) {
-    
     console.error("Error al obtener el perfil del usuario:", error);
-
     throw error;
   }
 };

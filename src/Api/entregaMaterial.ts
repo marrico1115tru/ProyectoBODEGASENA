@@ -1,30 +1,22 @@
-import axios from "axios";
-import { EntregaMaterial } from "@/types/types/EntregaMaterial";
-
-const API_URL = "http://localhost:3000/entrega-material";
-
-const config = {
-  withCredentials: true,
-};
-
+import axiosInstance from "./../Api/axios";
+import { EntregaMaterial } from "@/types/types/EntregaMaterial"; 
 export const getEntregasMaterial = async (): Promise<EntregaMaterial[]> => {
-  const res = await axios.get(API_URL, config);
+  const res = await axiosInstance.get("/entrega-material");
   return res.data;
 };
 
 export const createEntregaMaterial = async (
   data: EntregaMaterial
 ): Promise<EntregaMaterial> => {
-  const res = await axios.post(
-    API_URL,
+  const res = await axiosInstance.post(
+    "/entrega-material",
     {
       fechaEntrega: data.fechaEntrega,
       observaciones: data.observaciones,
       idFichaFormacion: { id: data.idFichaFormacion.id },
       idSolicitud: { id: data.idSolicitud.id },
       idUsuarioResponsable: { id: data.idUsuarioResponsable.id },
-    },
-    config
+    }
   );
   return res.data;
 };
@@ -33,20 +25,19 @@ export const updateEntregaMaterial = async (
   id: number,
   data: EntregaMaterial
 ): Promise<EntregaMaterial> => {
-  const res = await axios.put(
-    `${API_URL}/${id}`,
+  const res = await axiosInstance.put(
+    `/entrega-material/${id}`,
     {
       fechaEntrega: data.fechaEntrega,
       observaciones: data.observaciones,
       idFichaFormacion: { id: data.idFichaFormacion.id },
       idSolicitud: { id: data.idSolicitud.id },
       idUsuarioResponsable: { id: data.idUsuarioResponsable.id },
-    },
-    config
+    }
   );
   return res.data;
 };
 
 export const deleteEntregaMaterial = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/${id}`, config);
+  await axiosInstance.delete(`/entrega-material/${id}`);
 };

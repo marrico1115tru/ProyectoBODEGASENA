@@ -1,28 +1,26 @@
-import axios from 'axios';
+import axiosInstance from "./../Api/axios"; 
+interface Area {
+  id: number;
+  nombre: string; 
 
-const API_URL = 'http://localhost:3000/areas';
+}
 
-
-const config = {
-  withCredentials: true, 
-};
-
-export const getAreas = async () => {
-  const res = await axios.get(API_URL, config);
+export const getAreas = async (): Promise<Area[]> => {
+  const res = await axiosInstance.get("/areas");
   return res.data;
 };
 
-export const createArea = async (data: any) => {
-  const res = await axios.post(API_URL, data, config);
+export const createArea = async (data: any): Promise<Area> => {
+  const res = await axiosInstance.post("/areas", data);
   return res.data;
 };
 
-export const updateArea = async (id: number, data: any) => {
-  const res = await axios.put(`${API_URL}/${id}`, data, config);
+export const updateArea = async (id: number, data: any): Promise<Area> => {
+  const res = await axiosInstance.put(`/areas/${id}`, data);
   return res.data;
 };
 
-export const deleteArea = async (id: number) => {
-  const res = await axios.delete(`${API_URL}/${id}`, config);
+export const deleteArea = async (id: number): Promise<void> => {
+  const res = await axiosInstance.delete(`/areas/${id}`);
   return res.data;
 };
