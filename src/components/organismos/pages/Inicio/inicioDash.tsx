@@ -11,11 +11,11 @@ import "keen-slider/keen-slider.min.css";
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const images = [
-  { id: 1, title: "Agropecuario", src: "src/img/agropecuarioimg.jpeg", link: "/agropecuario" },
-  { id: 2, title: "Ambiental", src: "src/img/ambientalimg.jpeg", link: "/ambiental" },
-  { id: 3, title: "Tecnología", src: "src/img/ticsimg.jpeg", link: "/tic" },
-  { id: 4, title: "Escuela de Café", src: "src/img/cafeimg.jpeg", link: "/EscuelaCafe" },
-  { id: 5, title: "Vias", src: "src/img/viasimg.jpeg", link: "/vias" },
+  { id: 1, title: "Agropecuario", src: "/img/agropecuarioimg.jpeg", link: "/agropecuario" },
+  { id: 2, title: "Ambiental", src: "/img/ambientalimg.jpeg", link: "/ambiental" },
+  { id: 3, title: "Tecnología", src: "/img/ticsimg.jpeg", link: "/tic" },
+  { id: 4, title: "Escuela de Café", src: "/img/cafeimg.jpeg", link: "/EscuelaCafe" },
+  { id: 5, title: "Vias", src: "/img/viasimg.jpeg", link: "/vias" },
 ];
 
 function AutoplayPlugin(slider: any) {

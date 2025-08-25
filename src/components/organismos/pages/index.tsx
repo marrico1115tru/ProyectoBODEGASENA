@@ -16,7 +16,7 @@ export default function IndexPage() {
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
           <div className="space-y-6">
             <img
-              src="src/img/log.png"
+              src="/img/log.png"
               alt="Logo"
               className="w-20 h-20 object-contain"
             />
@@ -33,7 +33,7 @@ export default function IndexPage() {
           </div>
           <div className="hidden md:block">
             <img
-              src="src/img/bodegas.jpeg"
+              src="/img/bodegas.jpeg"
               alt="Gestión de inventario"
               className="w-full max-h-[400px] object-contain"
             />
