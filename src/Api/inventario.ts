@@ -1,8 +1,9 @@
-import axiosInstance from "./../Api/axios"; 
+import axiosInstance from "./../Api/axios";
 import {
   Inventario,
-  InventarioFormValues,
-} from "@/types/types/inventario"; 
+  InventarioCreatePayload,
+  InventarioUpdatePayload
+} from "@/types/types/inventario";
 
 export const getInventarios = async (): Promise<Inventario[]> => {
   const res = await axiosInstance.get("/inventario");
@@ -10,14 +11,15 @@ export const getInventarios = async (): Promise<Inventario[]> => {
 };
 
 export const createInventario = async (
-  data: InventarioFormValues
+  data: InventarioCreatePayload // ¡Ya corregido!
 ): Promise<Inventario> => {
   const res = await axiosInstance.post(
     "/inventario",
     {
       stock: data.stock,
-      fkSitio: { id: data.fkSitioId },
-      idProducto: { id: data.idProductoId },
+      fkSitioId: data.fkSitioId,
+      idProductoId: data.idProductoId,
+      placaSena: data.placaSena ? data.placaSena : undefined,
     }
   );
   return res.data;
@@ -25,14 +27,15 @@ export const createInventario = async (
 
 export const updateInventario = async (
   id: number,
-  data: InventarioFormValues
+  data: InventarioUpdatePayload // ¡Ya corregido!
 ): Promise<Inventario> => {
   const res = await axiosInstance.put(
     `/inventario/${id}`,
     {
       stock: data.stock,
-      fkSitio: { id: data.fkSitioId },
-      idProducto: { id: data.idProductoId },
+      fkSitioId: data.fkSitioId,
+      idProductoId: data.idProductoId,
+      placaSena: data.placaSena ? data.placaSena : undefined,
     }
   );
   return res.data;
