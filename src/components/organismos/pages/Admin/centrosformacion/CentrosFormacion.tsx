@@ -38,7 +38,7 @@ import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import axios from "axios";
+import axiosInstance from "@/Api/axios"; 
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
@@ -127,8 +127,8 @@ const CentrosFormacionPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/centro-formacion&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        // Usar axiosInstance en lugar de axios directamente y sin localhost
+        const response = await axiosInstance.get(`/permisos/por-ruta?ruta=/centro-formacion&idRol=${rolId}`);
         const permisosData = response.data.data;
 
         if (permisosData) {

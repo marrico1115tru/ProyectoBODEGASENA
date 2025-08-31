@@ -40,7 +40,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -98,8 +99,8 @@ const TipoSitiosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/tipo-sitio&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/tipo-sitio&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;
         if (permisosData) {
@@ -291,10 +292,8 @@ const TipoSitiosPage = () => {
     switch (columnKey) {
       case 'nombre':
         return <span className="font-medium text-gray-800">{item.nombre || '—'}</span>;
-
       case 'sitios':
         return <span className="text-sm text-gray-600">{item.sitios?.length || 0}</span>;
-
       case 'actions':
         const dropdownItems = [];
         if (permisos.puedeEditar) {
@@ -327,7 +326,6 @@ const TipoSitiosPage = () => {
             </DropdownItem>
           );
         }
-
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -335,12 +333,9 @@ const TipoSitiosPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              {dropdownItems}
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
-
       default:
         return item[columnKey as keyof typeof item] || '—';
     }
@@ -406,7 +401,6 @@ const TipoSitiosPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-
                     {permisos.puedeCrear && (
                       <Button
                         className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"

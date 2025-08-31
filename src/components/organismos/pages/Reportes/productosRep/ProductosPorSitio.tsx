@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default";
-import Modal from "@/components/ui/Modal";
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Button } from '@/components/ui/button';
+import DefaultLayout from '@/layouts/default';
+import Modal from '@/components/ui/Modal';
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductoPorSitio {
@@ -18,14 +20,12 @@ export default function ProductosPorSitio() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
     puedeEditar: false,
     puedeEliminar: false,
   });
-
 
   useEffect(() => {
     const fetchPermisos = async () => {
@@ -34,10 +34,10 @@ export default function ProductosPorSitio() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/productosRep/ProductosPorSitio&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
-
+        const url = `/permisos/por-ruta?ruta=/report/productosRep/ProductosPorSitio&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
+
         if (permisosData) {
           setPermisos({
             puedeVer: Boolean(permisosData.puedeVer),
@@ -66,18 +66,15 @@ export default function ProductosPorSitio() {
     fetchPermisos();
   }, []);
 
-  
   const { data, isLoading, error } = useQuery<ProductoPorSitio[]>({
-    queryKey: ["productos-por-sitio"],
+    queryKey: ['productos-por-sitio'],
     queryFn: async () => {
-      const config = { withCredentials: true };
-      const res = await axios.get("http://localhost:3000/productos/por-sitio", config);
+      const res = await axiosInstance.get('/productos/por-sitio', { withCredentials: true });
       return res.data;
     },
-    enabled: permisos.puedeVer, 
+    enabled: permisos.puedeVer,
   });
 
-  
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -104,7 +101,6 @@ export default function ProductosPorSitio() {
     pdf.save('reporte_productos_por_sitio.pdf');
   };
 
-  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -195,3 +191,4 @@ export default function ProductosPorSitio() {
     </DefaultLayout>
   );
 }
+

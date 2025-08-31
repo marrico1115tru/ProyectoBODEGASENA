@@ -36,7 +36,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -90,10 +91,10 @@ const SitiosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/sitio&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
-        const permisosData = response.data.data;
+        const url = `/permisos/por-ruta?ruta=/sitio&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
 
+        const permisosData = response.data.data;
         if (permisosData) {
           setPermisos({
             puedeVer: Boolean(permisosData.puedeVer),
@@ -341,9 +342,7 @@ const SitiosPage = () => {
                 <MoreVertical />
               </Button>
             </DropdownTrigger>
-            <DropdownMenu>
-              {dropdownItems}
-            </DropdownMenu>
+            <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
       default:
@@ -546,24 +545,16 @@ const SitiosPage = () => {
                     <h3 className="font-semibold text-lg">{s.nombre}</h3>
                     {renderMobileDropdown(s)}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Ubicación:</span> {s.ubicacion}
-                  </p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Ubicación:</span> {s.ubicacion}</p>
                   <p className="text-sm text-gray-600">
                     <span className="font-medium">Estado:</span>{' '}
                     <span className={s.estado === 'INACTIVO' ? 'text-red-600' : 'text-green-600'}>
                       {s.estado}
                     </span>
                   </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Área:</span> {s.idArea?.nombreArea || '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Inventarios:</span> {s.inventarios?.length || 0}
-                  </p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Área:</span> {s.idArea?.nombreArea || '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Tipo:</span> {s.idTipoSitio?.nombre || '—'}</p>
+                  <p className="text-sm text-gray-600"><span className="font-medium">Inventarios:</span> {s.inventarios?.length || 0}</p>
                   <p className="text-xs text-gray-400">ID: {s.id}</p>
                 </CardContent>
               </Card>

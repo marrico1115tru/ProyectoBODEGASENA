@@ -35,7 +35,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+
+import axiosInstance from '@/Api/axios';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -84,8 +85,8 @@ export default function SedesPage() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/sedes&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/sedes&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;
         if (permisosData) {
@@ -146,7 +147,6 @@ export default function SedesPage() {
       cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
-
     try {
       await deleteSede(id);
       await MySwal.fire('Eliminada', `Sede eliminada: ID ${id}`, 'success');
@@ -473,9 +473,7 @@ export default function SedesPage() {
                           <MoreVertical />
                         </Button>
                       </DropdownTrigger>
-                      <DropdownMenu>
-                        {renderDropdownItems(s)}
-                      </DropdownMenu>
+                      <DropdownMenu>{renderDropdownItems(s)}</DropdownMenu>
                     </Dropdown>
                   </div>
                   <p className="text-sm text-gray-600"><span className="font-medium">Ubicación:</span> {s.ubicacion}</p>
@@ -488,13 +486,7 @@ export default function SedesPage() {
           )}
         </div>
 
-        <Modal
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          placement="center"
-          className="backdrop-blur-sm bg-black/30"
-          isDismissable
-        >
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
               <>

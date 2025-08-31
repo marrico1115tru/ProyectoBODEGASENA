@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BarChart } from './Graficasbases/GraficasBaseProductos';
-import axios from 'axios';
+import axiosInstance from '@/Api/axios'; // Usa tu instancia axios configurada con baseURL y withCredentials
 import DefaultLayout from '@/layouts/default';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
@@ -22,7 +22,6 @@ export default function VistaEstadisticasUsuarios() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -37,10 +36,9 @@ export default function VistaEstadisticasUsuarios() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaEstadisticasUsuarios&idRol=${rolId}`;
-        
+        const url = `/permisos/por-ruta?ruta=/VistaEstadisticasUsuarios&idRol=${rolId}`;
 
-        const response = await axios.get(url, { withCredentials: true });
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -80,13 +78,12 @@ export default function VistaEstadisticasUsuarios() {
       setError(null);
 
       try {
-        const config = { withCredentials: true };
-        const urlProductos = 'http://localhost:3000/productos/solicitados-por-usuario';
-        const urlRoles = 'http://localhost:3000/usuarios/estadisticas/por-rol';
+        const urlProductos = '/productos/solicitados-por-usuario';
+        const urlRoles = '/usuarios/estadisticas/por-rol';
 
         const [productosRes, rolesRes] = await Promise.all([
-          axios.get(urlProductos, config),
-          axios.get(urlRoles, config),
+          axiosInstance.get(urlProductos, { withCredentials: true }),
+          axiosInstance.get(urlRoles, { withCredentials: true }),
         ]);
 
         const productosValidos = productosRes.data
@@ -139,7 +136,6 @@ export default function VistaEstadisticasUsuarios() {
 
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Solicitudes por usuario</h3>
               {productosPorUsuario.length > 0 ? (
@@ -161,7 +157,6 @@ export default function VistaEstadisticasUsuarios() {
               )}
             </div>
 
-          
             <div className="bg-white text-black rounded-2xl shadow p-6 h-[28rem]">
               <h3 className="text-xl font-semibold mb-4">Distribución de usuarios por rol</h3>
               {usuariosPorRol.length > 0 ? (

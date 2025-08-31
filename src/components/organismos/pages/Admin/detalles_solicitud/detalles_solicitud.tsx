@@ -32,7 +32,7 @@ import { getProductos } from '@/Api/Productosform';
 import { getSolicitudes } from '@/Api/Solicitudes';
 import { getCategoriasProductos } from '@/Api/Categorias';
 import { getUsuarios } from '@/Api/Usuariosform';
-import axios from 'axios';
+import axiosInstance from '@/Api/axios'; 
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -64,21 +64,21 @@ type ColumnKey = (typeof columns)[number]['uid'];
 const ESTADOS_SOLICITUD = ['PENDIENTE', 'APROBADA', 'RECHAZADA'];
 
 const DetalleSolicitudesPage = () => {
-  
+
   const [detalles, setDetalles] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
 
-  
+
   const [filterValue, setFilterValue] = useState('');
   const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
 
-  
+
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -86,7 +86,7 @@ const DetalleSolicitudesPage = () => {
     puedeEliminar: false,
   });
 
-  
+
   const [cantidad, setCantidad] = useState<number | undefined>(undefined);
   const [observaciones, setObservaciones] = useState('');
   const [productoSeleccionado, setProductoSeleccionado] = useState<any | null>(null);
@@ -94,7 +94,7 @@ const DetalleSolicitudesPage = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
-  
+
   const {
     isOpen: isOpenNuevoProducto,
     onOpen: onOpenNuevoProducto,
@@ -106,7 +106,7 @@ const DetalleSolicitudesPage = () => {
   const [nuevoProductoFechaVencimiento, setNuevoProductoFechaVencimiento] = useState('');
   const [nuevoProductoCategoriaId, setNuevoProductoCategoriaId] = useState<string>('');
 
-  
+
   const {
     isOpen: isOpenNuevaSolicitud,
     onOpen: onOpenNuevaSolicitud,
@@ -117,7 +117,7 @@ const DetalleSolicitudesPage = () => {
   const [nuevaFechaSolicitud, setNuevaFechaSolicitud] = useState('');
   const [nuevoSolicitanteId, setNuevoSolicitanteId] = useState<string>('');
 
-  
+
   const toggleColumn = (uid: string) => {
     setVisibleColumns((prev) => {
       const newSet = new Set(prev);
@@ -131,15 +131,15 @@ const DetalleSolicitudesPage = () => {
     });
   };
 
-  
+
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
         const userData = getDecodedTokenFromCookies('token');
         const rolId = userData?.rol?.id;
         if (!rolId) return;
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/detalle-solicitud&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/detalle-solicitud&idRol=${rolId}`; 
+        const response = await axiosInstance.get(url);
         const permisosData = response.data.data;
         if (permisosData) {
           setPermisos({
@@ -168,7 +168,7 @@ const DetalleSolicitudesPage = () => {
     fetchPermisos();
   }, []);
 
-  
+
   const cargarDatos = async () => {
     if (!permisos.puedeVer) return;
     try {
@@ -191,7 +191,7 @@ const DetalleSolicitudesPage = () => {
   };
   useEffect(() => { cargarDatos(); }, [permisos]);
 
-  
+
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
       await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar', 'warning');
@@ -216,14 +216,14 @@ const DetalleSolicitudesPage = () => {
     }
   };
 
-  
+
   const guardar = async () => {
-    if (editId === null) { 
+    if (editId === null) {
       if (!permisos.puedeCrear) {
         await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear.', 'warning');
         return;
       }
-    } else { 
+    } else {
       if (!permisos.puedeEditar) {
         await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar.', 'warning');
         return;
@@ -288,7 +288,7 @@ const DetalleSolicitudesPage = () => {
     setSolicitudSeleccionada(null);
   };
 
-  
+
   const crearProductoRapido = async () => {
     if (!nuevoProductoNombre.trim()) {
       await MySwal.fire('Error', 'El nombre del producto es obligatorio', 'warning');
@@ -298,27 +298,23 @@ const DetalleSolicitudesPage = () => {
       await MySwal.fire('Error', 'Debe seleccionar una categoría', 'warning');
       return;
     }
-    
+
     try {
-    
+
       const productPayload = {
         nombre: nuevoProductoNombre.trim(),
         descripcion: nuevoProductoDescripcion.trim() || null,
         fechaVencimiento: nuevoProductoFechaVencimiento || null,
-        categoriaId: parseInt(nuevoProductoCategoriaId) 
+        categoriaId: parseInt(nuevoProductoCategoriaId)
       };
 
       console.log('Enviando payload de producto:', productPayload);
 
-      const response = await axios.post('http://localhost:3000/productos', productPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        withCredentials: true
-      });
+      // Usamos axiosInstance.post en lugar de axios.post directamente
+      const response = await axiosInstance.post('/productos', productPayload);
 
       console.log('Respuesta del servidor:', response.data);
-      
+
       // Reset campos
       setNuevoProductoNombre('');
       setNuevoProductoDescripcion('');
@@ -330,7 +326,7 @@ const DetalleSolicitudesPage = () => {
     } catch (e: any) {
       console.error('Error completo creando producto:', e);
       console.error('Respuesta del error:', e.response?.data);
-      
+
       let errorMessage = 'Error creando producto.';
       if (e.response?.data?.message) {
         errorMessage = e.response.data.message;
@@ -339,7 +335,7 @@ const DetalleSolicitudesPage = () => {
       } else if (e.message) {
         errorMessage = e.message;
       }
-      
+
       await MySwal.fire('Error', errorMessage, 'error');
     }
   };
@@ -358,27 +354,23 @@ const DetalleSolicitudesPage = () => {
       await MySwal.fire('Error', 'Debe seleccionar un solicitante', 'warning');
       return;
     }
-    
+
     try {
-    
+
       const solicitudPayload = {
-        fechaSolicitud: nuevaFechaSolicitud, 
+        fechaSolicitud: nuevaFechaSolicitud,
         estadoSolicitud: nuevoEstadoSolicitud,
-        idUsuarioSolicitante: parseInt(nuevoSolicitanteId) 
+        idUsuarioSolicitante: parseInt(nuevoSolicitanteId)
       };
 
       console.log('Enviando payload de solicitud:', solicitudPayload);
 
-      const response = await axios.post('http://localhost:3000/solicitudes', solicitudPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        withCredentials: true
-      });
+      // Usamos axiosInstance.post en lugar de axios.post directamente
+      const response = await axiosInstance.post('/solicitudes', solicitudPayload);
 
       console.log('Respuesta del servidor:', response.data);
-      
-      
+
+
       setNuevaFechaSolicitud('');
       setNuevoEstadoSolicitud(ESTADOS_SOLICITUD[0]);
       setNuevoSolicitanteId('');
@@ -388,7 +380,7 @@ const DetalleSolicitudesPage = () => {
     } catch (e: any) {
       console.error('Error completo creando solicitud:', e);
       console.error('Respuesta del error:', e.response?.data);
-      
+
       let errorMessage = 'Error creando solicitud.';
       if (e.response?.data?.message) {
         errorMessage = e.response.data.message;
@@ -397,12 +389,12 @@ const DetalleSolicitudesPage = () => {
       } else if (e.message) {
         errorMessage = e.message;
       }
-      
+
       await MySwal.fire('Error', errorMessage, 'error');
     }
   };
 
-  
+
   const filtered = useMemo(() => {
     return filterValue
       ? detalles.filter((d) =>
@@ -431,7 +423,7 @@ const DetalleSolicitudesPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  
+
   const inicializarModalNuevaSolicitud = () => {
     const hoy = new Date();
     const fechaFormateada = hoy.toISOString().split('T')[0];
@@ -439,7 +431,7 @@ const DetalleSolicitudesPage = () => {
     onOpenNuevaSolicitud();
   };
 
-  
+
   const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
       case 'cantidadSolicitada': return <span className="text-sm text-gray-800">{item.cantidadSolicitada}</span>;
@@ -480,7 +472,7 @@ const DetalleSolicitudesPage = () => {
           <p className="text-sm text-gray-600">Gestiona los ítems de cada solicitud.</p>
         </header>
 
-        
+
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
             aria-label="Tabla detalle solicitud"
@@ -576,7 +568,7 @@ const DetalleSolicitudesPage = () => {
           </Table>
         </div>
 
-        
+
         <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
@@ -602,7 +594,7 @@ const DetalleSolicitudesPage = () => {
                     disabled={editId !== null ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
 
-                  
+
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="text-sm font-medium text-gray-700 mb-1 block">Producto</label>
@@ -621,7 +613,7 @@ const DetalleSolicitudesPage = () => {
                     )}
                   </div>
 
-                
+
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="text-sm font-medium text-gray-700 mb-1 block">Solicitud</label>
@@ -655,7 +647,7 @@ const DetalleSolicitudesPage = () => {
           </ModalContent>
         </Modal>
 
-        
+
         <Modal isOpen={isOpenNuevoProducto} onOpenChange={onOpenChangeNuevoProducto} isDismissable>
           <ModalContent>
             {() => (
@@ -702,7 +694,7 @@ const DetalleSolicitudesPage = () => {
           </ModalContent>
         </Modal>
 
-    
+
         <Modal isOpen={isOpenNuevaSolicitud} onOpenChange={onOpenChangeNuevaSolicitud} isDismissable>
           <ModalContent>
             {() => (

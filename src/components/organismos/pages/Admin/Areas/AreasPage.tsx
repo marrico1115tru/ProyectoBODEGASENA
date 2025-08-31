@@ -42,7 +42,7 @@ import {
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import axios from "axios";
+import axiosInstance from "@/Api/axios"; 
 
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
@@ -107,8 +107,8 @@ const AreasPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/areas&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        // Usar axiosInstance en lugar de axios directamente
+        const response = await axiosInstance.get(`/permisos/por-ruta?ruta=/areas&idRol=${rolId}`);
 
         const permisosData = response.data.data;
         if (permisosData) {

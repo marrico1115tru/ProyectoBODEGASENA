@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '@/Api/axios'; 
 import { BarChart, PieChart } from './Graficasbases/GraficasBaseSitios';
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
@@ -15,7 +15,6 @@ const VistaEstadisticasSitios: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -30,8 +29,8 @@ const VistaEstadisticasSitios: React.FC = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaEstadisticasSitios&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/VistaEstadisticasSitios&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -71,9 +70,8 @@ const VistaEstadisticasSitios: React.FC = () => {
       setError(null);
 
       try {
-        const config = { withCredentials: true };
-        const url = 'http://localhost:3000/sitio/estadisticas/por-estado';
-        const response = await axios.get<SitioEstadistica[]>(url, config);
+        const url = '/sitio/estadisticas/por-estado';
+        const response = await axiosInstance.get<SitioEstadistica[]>(url, { withCredentials: true });
         setEstadisticas(response.data);
       } catch (err) {
         setError('Error al obtener estadísticas de sitios');

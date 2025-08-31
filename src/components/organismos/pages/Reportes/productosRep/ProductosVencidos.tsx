@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default";
-import Modal from "@/components/ui/Modal";
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Button } from '@/components/ui/button';
+import DefaultLayout from '@/layouts/default';
+import Modal from '@/components/ui/Modal';
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductoVencido {
@@ -18,8 +20,6 @@ interface ProductoVencido {
 export default function ProductosVencidos() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
-
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -27,7 +27,6 @@ export default function ProductosVencidos() {
     puedeEliminar: false,
   });
 
-  
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -35,8 +34,8 @@ export default function ProductosVencidos() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/productosRep/ProductosVencidos&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/report/productosRep/ProductosVencidos&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -67,18 +66,15 @@ export default function ProductosVencidos() {
     fetchPermisos();
   }, []);
 
-  
   const { data, isLoading, error } = useQuery<ProductoVencido[]>({
-    queryKey: ["productos-vencidos"],
+    queryKey: ['productos-vencidos'],
     queryFn: async () => {
-      const config = { withCredentials: true };
-      const res = await axios.get("http://localhost:3000/productos/vencidos", config);
+      const res = await axiosInstance.get('/productos/vencidos', { withCredentials: true });
       return res.data;
     },
     enabled: permisos.puedeVer,
   });
 
-  
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -87,11 +83,11 @@ export default function ProductosVencidos() {
       useCORS: true,
     });
 
-    const imgData = canvas.toDataURL("image/png", 1.0);
+    const imgData = canvas.toDataURL('image/png', 1.0);
     const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
     });
 
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -102,18 +98,17 @@ export default function ProductosVencidos() {
     let position = 0;
     if (pdfHeight > pageHeight) {
       while (position < pdfHeight) {
-        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, -position, pageWidth, pdfHeight);
         position += pageHeight;
         if (position < pdfHeight) pdf.addPage();
       }
     } else {
-      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pdfHeight);
     }
 
-    pdf.save("reporte_productos_vencidos.pdf");
+    pdf.save('reporte_productos_vencidos.pdf');
   };
 
-  
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -133,11 +128,11 @@ export default function ProductosVencidos() {
       <div className="text-center mb-6">
         <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
         <p className="text-sm text-gray-500">
-          Reporte generado automáticamente —{" "}
-          {new Date().toLocaleDateString("es-ES", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
+          Reporte generado automáticamente —{' '}
+          {new Date().toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
           })}
         </p>
         <p className="mt-2 text-gray-700">
@@ -167,12 +162,10 @@ export default function ProductosVencidos() {
                   <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
                   <td className="border border-gray-300 px-4 py-2">{prod.nombre}</td>
                   <td className="border border-gray-300 px-4 py-2">
-                    {prod.fechaVencimiento
-                      ? new Date(prod.fechaVencimiento).toLocaleDateString("es-ES")
-                      : "Sin fecha"}
+                    {prod.fechaVencimiento ? new Date(prod.fechaVencimiento).toLocaleDateString('es-ES') : 'Sin fecha'}
                   </td>
                   <td className="border border-gray-300 px-4 py-2">
-                    {cantidadTotal > 0 ? cantidadTotal : "Sin stock"}
+                    {cantidadTotal > 0 ? cantidadTotal : 'Sin stock'}
                   </td>
                 </tr>
               );

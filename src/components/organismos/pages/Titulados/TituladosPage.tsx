@@ -34,7 +34,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+
+import axiosInstance from '@/Api/axios'; // Usa tu instancia axios configurada con baseURL y withCredentials
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -79,8 +80,8 @@ const TituladosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/titulados&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/titulados&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;
         if (permisosData) {
@@ -264,7 +265,6 @@ const TituladosPage = () => {
             </DropdownItem>,
           );
         }
-
         return (
           <Dropdown>
             <DropdownTrigger>
@@ -287,6 +287,16 @@ const TituladosPage = () => {
       return copy;
     });
   };
+
+  if (!permisos.puedeVer) {
+    return (
+      <DefaultLayout>
+        <div className="p-6 text-center font-semibold text-red-600">
+          No tienes permisos para ver esta sección.
+        </div>
+      </DefaultLayout>
+    );
+  }
 
   const topContent = (
     <div className="flex flex-col gap-4">
@@ -368,23 +378,11 @@ const TituladosPage = () => {
     </div>
   );
 
-  if (!permisos.puedeVer) {
-    return (
-      <DefaultLayout>
-        <div className="p-6 text-center font-semibold text-red-600">
-          No tienes permisos para ver esta sección.
-        </div>
-      </DefaultLayout>
-    );
-  }
-
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🎓 Gestión de Titulados
-          </h1>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🎓 Gestión de Titulados</h1>
           <p className="text-sm text-gray-600">Consulta y administra los programas titulados.</p>
         </header>
 
@@ -414,7 +412,9 @@ const TituladosPage = () => {
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron titulados">
               {(item) => (
-                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}</TableRow>
+                <TableRow key={item.id}>
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
+                </TableRow>
               )}
             </TableBody>
           </Table>
@@ -426,23 +426,17 @@ const TituladosPage = () => {
             const mobileDropdownItems = [];
             if (permisos.puedeEditar) {
               mobileDropdownItems.push(
-                <DropdownItem key="editar-mobile" onPress={() => abrirModalEditar(t)}>
-                  Editar
-                </DropdownItem>,
+                <DropdownItem key="editar-mobile" onPress={() => abrirModalEditar(t)}>Editar</DropdownItem>,
               );
             }
             if (permisos.puedeEliminar) {
               mobileDropdownItems.push(
-                <DropdownItem key="eliminar-mobile" onPress={() => eliminar(t.id)}>
-                  Eliminar
-                </DropdownItem>,
+                <DropdownItem key="eliminar-mobile" onPress={() => eliminar(t.id)}>Eliminar</DropdownItem>,
               );
             }
             if (!permisos.puedeEditar && !permisos.puedeEliminar) {
               mobileDropdownItems.push(
-                <DropdownItem key="sinAcciones-mobile" isDisabled>
-                  Sin acciones disponibles
-                </DropdownItem>,
+                <DropdownItem key="sinAcciones-mobile" isDisabled>Sin acciones disponibles</DropdownItem>,
               );
             }
 
@@ -492,9 +486,7 @@ const TituladosPage = () => {
                   />
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>
-                    Cancelar
-                  </Button>
+                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
                   <Button
                     variant="flat"
                     onPress={guardar}

@@ -37,7 +37,8 @@ import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+
+import axiosInstance from '@/Api/axios';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -122,8 +123,8 @@ const UsuariosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/usuarios&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/usuarios&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -340,8 +341,8 @@ const UsuariosPage = () => {
     const items = [...sliced];
     const { column, direction } = sortDescriptor;
     items.sort((a, b) => {
-      const x = a[column];
-      const y = b[column];
+      const x = a[column as keyof typeof a];
+      const y = b[column as keyof typeof b];
       return x === y ? 0 : (x > y ? 1 : -1) * (direction === 'ascending' ? 1 : -1);
     });
     return items;
@@ -615,7 +616,7 @@ const UsuariosPage = () => {
           isDismissable={false}
         >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-3xl w-full p-8">
-            {(onCloseLocal) => (
+            {() => (
               <>
                 <ModalHeader className="mb-4 text-xl font-semibold text-[#0D1324]">
                   {editId ? 'Editar Usuario' : 'Nuevo Usuario'}
@@ -756,7 +757,7 @@ const UsuariosPage = () => {
                     </div>
 
                     <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-                      <Button variant="light" onClick={onCloseLocal} type="button">
+                      <Button variant="light" onClick={() => closeUser()} type="button">
                         Cancelar
                       </Button>
                       <Button
@@ -774,6 +775,7 @@ const UsuariosPage = () => {
           </ModalContent>
         </Modal>
 
+        {/* Modals para crear Área, Ficha y Rol */}
         <Modal
           isOpen={areaModal.isOpen}
           onOpenChange={areaModal.onOpenChange}

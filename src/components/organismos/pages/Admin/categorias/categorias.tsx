@@ -36,7 +36,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import axios from "axios";
+import axiosInstance from "@/Api/axios"; 
 
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
@@ -103,8 +103,8 @@ const CategoriasProductosPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/categorias-productos&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        // Usar axiosInstance en lugar de axios directamente
+        const response = await axiosInstance.get(`/permisos/por-ruta?ruta=/categorias-productos&idRol=${rolId}`);
 
         const permisosData = response.data.data;
         if (permisosData) {

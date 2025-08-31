@@ -1,18 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default";
-import Modal from "@/components/ui/Modal";
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Button } from '@/components/ui/button';
+import DefaultLayout from '@/layouts/default';
+import Modal from '@/components/ui/Modal';
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
+
+interface UsuarioMayorUso {
+  id: number;
+  nombre: string;
+  apellido: string;
+  total_solicitudes: number;
+}
 
 export default function UsuariosMayorUso() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Estado permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -20,7 +28,6 @@ export default function UsuariosMayorUso() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar componente
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -28,8 +35,8 @@ export default function UsuariosMayorUso() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/UsuariosRep/UsuariosHistoria&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/report/UsuariosRep/UsuariosHistoria&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -60,20 +67,15 @@ export default function UsuariosMayorUso() {
     fetchPermisos();
   }, []);
 
-  // Obtener datos solo si puedeVer
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["usuarios-mayor-uso-productos"],
+  const { data, isLoading, error } = useQuery<UsuarioMayorUso[]>({
+    queryKey: ['usuarios-mayor-uso-productos'],
     queryFn: async () => {
-      const res = await axios.get(
-        "http://localhost:3000/usuarios/usuarios-top-solicitudes",
-        { withCredentials: true }
-      );
+      const res = await axiosInstance.get('/usuarios/usuarios-top-solicitudes', { withCredentials: true });
       return res.data;
     },
     enabled: permisos.puedeVer,
   });
 
-  // Función para exportar PDF
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -82,11 +84,11 @@ export default function UsuariosMayorUso() {
       useCORS: true,
     });
 
-    const imgData = canvas.toDataURL("image/png", 1.0);
+    const imgData = canvas.toDataURL('image/png', 1.0);
     const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
     });
 
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -97,18 +99,17 @@ export default function UsuariosMayorUso() {
     let position = 0;
     if (pdfHeight > pageHeight) {
       while (position < pdfHeight) {
-        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, -position, pageWidth, pdfHeight);
         position += pageHeight;
         if (position < pdfHeight) pdf.addPage();
       }
     } else {
-      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pdfHeight);
     }
 
-    pdf.save("usuarios_mayor_uso_productos.pdf");
+    pdf.save('usuarios_mayor_uso_productos.pdf');
   };
 
-  // Si no tiene permiso para ver, mostrar mensaje y no mostrar la página
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
@@ -121,7 +122,6 @@ export default function UsuariosMayorUso() {
 
   if (isLoading) return <p className="p-6 text-lg text-center">Cargando...</p>;
   if (error) return <p className="p-6 text-lg text-red-600 text-center">Error al cargar datos.</p>;
-
   if (!Array.isArray(data)) return <p className="p-6 text-lg text-center">No se encontraron datos.</p>;
 
   const ReportContent = () => (
@@ -129,16 +129,14 @@ export default function UsuariosMayorUso() {
       <div className="text-center mb-6">
         <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
         <p className="text-sm text-gray-500">
-          Reporte generado automáticamente —{" "}
-          {new Date().toLocaleDateString("es-ES", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
+          Reporte generado automáticamente —{' '}
+          {new Date().toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
           })}
         </p>
-        <p className="mt-2 text-gray-700">
-          Usuarios que más han utilizado productos según su historial.
-        </p>
+        <p className="mt-2 text-gray-700">Usuarios que más han utilizado productos según su historial.</p>
       </div>
 
       <table className="w-full text-center border-collapse border border-gray-300">
@@ -151,7 +149,7 @@ export default function UsuariosMayorUso() {
           </tr>
         </thead>
         <tbody className="text-sm text-blue-800">
-          {data.map((usuario: any, index: number) => (
+          {data.map((usuario, index) => (
             <tr key={usuario.id} className="hover:bg-blue-50">
               <td className="p-3 border font-bold text-blue-700">{index + 1}</td>
               <td className="p-3 border">{usuario.nombre}</td>

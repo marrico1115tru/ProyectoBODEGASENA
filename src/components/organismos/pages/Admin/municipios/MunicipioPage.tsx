@@ -34,7 +34,7 @@ import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
-import axios from 'axios';
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -54,15 +54,10 @@ const MunicipiosPage = () => {
   const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
-  });
-
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
   const [nombre, setNombre] = useState('');
   const [departamento, setDepartamento] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
-
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
   const [permisos, setPermisos] = useState({
@@ -78,10 +73,8 @@ const MunicipiosPage = () => {
         const userData = getDecodedTokenFromCookies("token");
         const rolId = userData?.rol?.id;
         if (!rolId) return;
-
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/municipios&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
-
+        const url = `/permisos/por-ruta?ruta=/municipios&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
         if (permisosData) {
           setPermisos({
@@ -91,21 +84,11 @@ const MunicipiosPage = () => {
             puedeEliminar: Boolean(permisosData.puedeEliminar),
           });
         } else {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
+          setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
         }
       } catch (error) {
         console.error("Error al obtener permisos:", error);
-        setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
-        });
+        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
       }
     };
     fetchPermisos();
@@ -140,7 +123,6 @@ const MunicipiosPage = () => {
       cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
-
     try {
       await eliminarMunicipio(id);
       await MySwal.fire('Eliminado', `Municipio eliminado: ID ${id}`, 'success');
@@ -241,11 +223,7 @@ const MunicipiosPage = () => {
   const renderCell = (item: any, columnKey: string) => {
     switch (columnKey) {
       case 'nombre':
-        return (
-          <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">
-            {item.nombre}
-          </span>
-        );
+        return <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">{item.nombre}</span>;
       case 'departamento':
         return <span className="text-sm text-gray-600">{item.departamento}</span>;
       case 'centros':
@@ -431,10 +409,7 @@ const MunicipiosPage = () => {
             bottomContent={bottomContent}
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
-            classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
-            }}
+            classNames={{ th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm', td: 'align-middle py-3 px-4' }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
@@ -472,12 +447,8 @@ const MunicipiosPage = () => {
                     </DropdownMenu>
                   </Dropdown>
                 </div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Depto:</span> {m.departamento}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Centros:</span> {m.centroFormacions?.length || 0}
-                </p>
+                <p className="text-sm text-gray-600"><span className="font-medium">Depto:</span> {m.departamento}</p>
+                <p className="text-sm text-gray-600"><span className="font-medium">Centros:</span> {m.centroFormacions?.length || 0}</p>
                 <p className="text-xs text-gray-400">ID: {m.id}</p>
               </div>
             ))
@@ -509,14 +480,8 @@ const MunicipiosPage = () => {
                   />
                 </ModalBody>
                 <ModalFooter className="flex justify-end gap-3">
-                  <Button variant="light" onPress={onClose}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="flat"
-                    onPress={guardar}
-                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
-                  >
+                  <Button variant="light" onPress={onClose}>Cancelar</Button>
+                  <Button variant="flat" onPress={guardar} disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaEnvelope } from "react-icons/fa";
+import axiosInstance from "@/Api/axios"; 
 
 const RecuperarContraseña = () => {
   const [email, setEmail] = useState("");
@@ -17,7 +18,6 @@ const RecuperarContraseña = () => {
     setError('');
   };
 
-  
   const handleRecuperar = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -28,14 +28,10 @@ const RecuperarContraseña = () => {
       return;
     }
     try {
-      const res = await fetch('http://localhost:3000/auth/recuperar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || data.error || 'Error al enviar el correo');
+      const res = await axiosInstance.post('/auth/recuperar', { email: email.trim() });
+      if (res.status !== 200) {
+        setError(res.data.message || res.data.error || 'Error al enviar el correo');
+        setIsLoading(false);
         return;
       }
       setMensaje('📩 Si el correo está registrado, recibirás instrucciones para recuperar tu contraseña.');
@@ -47,7 +43,6 @@ const RecuperarContraseña = () => {
     }
   };
 
-  
   const handleActualizarPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -75,17 +70,13 @@ const RecuperarContraseña = () => {
         codigo: codigo.trim(),
         nuevaPassword: nuevaPass.trim(),
       };
-      const res = await fetch('http://localhost:3000/auth/verificar-codigo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || data.error || 'Error al verificar el código');
+      const res = await axiosInstance.post('/auth/verificar-codigo', payload);
+      if (res.status !== 200) {
+        setError(res.data.message || res.data.error || 'Error al verificar el código');
+        setIsLoading(false);
         return;
       }
-      setMensaje(' Contraseña actualizada correctamente.');
+      setMensaje('Contraseña actualizada correctamente.');
       setCodigo('');
       setNuevaPass('');
       setShowModal(false);
@@ -100,18 +91,12 @@ const RecuperarContraseña = () => {
   return (
     <div className="h-screen flex items-center justify-center bg-slate-900">
       <div className="bg-slate-800 p-10 rounded-lg shadow-lg w-full max-w-md text-white">
-        <h2 className="text-2xl font-semibold text-center mb-6">
-          Recuperar contraseña
-        </h2>
+        <h2 className="text-2xl font-semibold text-center mb-6">Recuperar contraseña</h2>
 
         <form onSubmit={handleRecuperar} noValidate>
-          <label htmlFor="email" className="block mb-2 text-sm text-white/80">
-            Correo electrónico
-          </label>
+          <label htmlFor="email" className="block mb-2 text-sm text-white/80">Correo electrónico</label>
           <div className="relative mb-4">
-            <span className="absolute left-3 top-2.5 text-gray-400">
-              <FaEnvelope />
-            </span>
+            <span className="absolute left-3 top-2.5 text-gray-400"><FaEnvelope /></span>
             <Input
               id="email"
               type="email"
@@ -128,11 +113,7 @@ const RecuperarContraseña = () => {
           {mensaje && <p className="text-green-500 text-sm mb-2 text-center">{mensaje}</p>}
           {error && <p className="text-red-500 text-sm mb-2 text-center">{error}</p>}
 
-          <Button
-            type="submit"
-            disabled={isLoading || showModal}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
+          <Button type="submit" disabled={isLoading || showModal} className="w-full bg-blue-600 hover:bg-blue-700">
             {isLoading ? 'Enviando...' : 'Enviar enlace'}
           </Button>
         </form>
@@ -145,15 +126,11 @@ const RecuperarContraseña = () => {
             className="bg-slate-800 p-8 rounded-lg shadow-lg w-full max-w-sm text-white"
             noValidate
           >
-            <h3 className="text-xl font-semibold mb-4 text-center">
-              Verifica tu identidad
-            </h3>
+            <h3 className="text-xl font-semibold mb-4 text-center">Verifica tu identidad</h3>
 
             {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
 
-            <label htmlFor="codigo" className="block mb-2 text-sm">
-              Código de verificación
-            </label>
+            <label htmlFor="codigo" className="block mb-2 text-sm">Código de verificación</label>
             <Input
               id="codigo"
               type="text"
@@ -166,9 +143,7 @@ const RecuperarContraseña = () => {
               required
             />
 
-            <label htmlFor="nuevaPass" className="block mb-2 text-sm">
-              Nueva contraseña
-            </label>
+            <label htmlFor="nuevaPass" className="block mb-2 text-sm">Nueva contraseña</label>
             <Input
               id="nuevaPass"
               type="password"

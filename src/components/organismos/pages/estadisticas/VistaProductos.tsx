@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { BarChart } from './Graficasbases/GraficasBaseProductos'; 
+import { BarChart } from './Graficasbases/GraficasBaseProductos';
+import axiosInstance from '@/Api/axios'; 
 import { Card } from '@/components/ui/card';
 import DefaultLayout from '@/layouts/default';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
@@ -24,7 +24,6 @@ const VistaEstadisticasProductos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -39,9 +38,8 @@ const VistaEstadisticasProductos: React.FC = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/VistaProductos&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/VistaProductos&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -81,11 +79,12 @@ const VistaEstadisticasProductos: React.FC = () => {
       setError(null);
 
       try {
-        const config = { withCredentials: true };
+        const urlSolicitados = '/productos/solicitados-por-usuario';
+        const urlMovimientos = '/productos/mayor-movimiento';
 
         const [resSolicitados, resMovimientos] = await Promise.all([
-          axios.get<ProductoSolicitado[]>('http://localhost:3000/productos/solicitados-por-usuario', config),
-          axios.get<ProductoMovimiento[]>('http://localhost:3000/productos/mayor-movimiento', config),
+          axiosInstance.get<ProductoSolicitado[]>(urlSolicitados, { withCredentials: true }),
+          axiosInstance.get<ProductoMovimiento[]>(urlMovimientos, { withCredentials: true }),
         ]);
 
         setSolicitados(resSolicitados.data);

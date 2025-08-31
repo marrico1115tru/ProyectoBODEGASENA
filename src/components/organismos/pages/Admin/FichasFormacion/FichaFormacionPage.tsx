@@ -33,10 +33,9 @@ import { getUsuarios } from '@/Api/Usuariosform';
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import axios from 'axios';
+import axiosInstance from '@/Api/axios';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
@@ -50,34 +49,22 @@ const columns = [
   { name: '# Entregas', uid: 'entregas', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
-const INITIAL_VISIBLE_COLUMNS = [
-  'id',
-  'nombre',
-  'titulado',
-  'responsable',
-  'usuarios',
-  'entregas',
-  'actions',
-];
+
+const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'titulado', 'responsable', 'usuarios', 'entregas', 'actions'];
 
 const FichasFormacionPage = () => {
   const [fichas, setFichas] = useState<any[]>([]);
   const [titulados, setTitulados] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'id',
-    direction: 'ascending',
-  });
-
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
   const [nombre, setNombre] = useState('');
   const [idTitulado, setIdTitulado] = useState('');
   const [idResponsable, setIdResponsable] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
-
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
 
   const [permisos, setPermisos] = useState({
@@ -94,8 +81,8 @@ const FichasFormacionPage = () => {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/fichas-formacion&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/fichas-formacion&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true }); // Usa tu instancia axiosInstance
 
         const permisosData = response.data.data;
         if (permisosData) {
@@ -106,21 +93,11 @@ const FichasFormacionPage = () => {
             puedeEliminar: Boolean(permisosData.puedeEliminar),
           });
         } else {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
+          setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
         }
       } catch (error) {
         console.error('Error al obtener permisos:', error);
-        setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
-        });
+        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
       }
     };
     fetchPermisos();
@@ -130,11 +107,7 @@ const FichasFormacionPage = () => {
     if (!permisos.puedeVer) return;
     const cargarDatos = async () => {
       try {
-        const [fs, ts, us] = await Promise.all([
-          getFichasFormacion(),
-          getTitulados(),
-          getUsuarios(),
-        ]);
+        const [fs, ts, us] = await Promise.all([getFichasFormacion(), getTitulados(), getUsuarios()]);
         setFichas(fs);
         setTitulados(ts);
         setUsuarios(us);
@@ -192,8 +165,8 @@ const FichasFormacionPage = () => {
 
     const payload = {
       nombre,
-      idTitulado: titulados.find(t => t.id === Number(idTitulado)) || null,
-      idUsuarioResponsable: usuarios.find(u => u.id === Number(idResponsable)) || null,
+      idTitulado: titulados.find((t) => t.id === Number(idTitulado)) || null,
+      idUsuarioResponsable: usuarios.find((u) => u.id === Number(idResponsable)) || null,
     };
 
     try {
@@ -248,8 +221,8 @@ const FichasFormacionPage = () => {
   const filtered = useMemo(() => {
     if (!filterValue) return fichas;
     const fv = filterValue.toLowerCase();
-    return fichas.filter(f =>
-      (`${f.nombre} ${f.idTitulado?.nombre || ''} ${f.idUsuarioResponsable?.nombre || ''}`).toLowerCase().includes(fv)
+    return fichas.filter((f) =>
+      `${f.nombre} ${f.idTitulado?.nombre || ''} ${f.idUsuarioResponsable?.nombre || ''}`.toLowerCase().includes(fv)
     );
   }, [fichas, filterValue]);
 
@@ -325,32 +298,23 @@ const FichasFormacionPage = () => {
     }
   };
 
-  const toggleColumn = (uid: string) => {
-    setVisibleColumns((prev) => {
-      const copy = new Set(prev);
-      if (copy.has(uid)) copy.delete(uid);
-      else copy.add(uid);
-      return copy;
-    });
-  };
-
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
-        <div className="p-6 text-center font-semibold text-red-600">
-          No tienes permisos para ver esta sección.
-        </div>
+        <div className="p-6 text-center font-semibold text-red-600">No tienes permisos para ver esta sección.</div>
       </DefaultLayout>
     );
+  }
+
+  function toggleColumn(_uid: string): void {
+    throw new Error('Function not implemented.');
   }
 
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
-            🎓 Gestión de Fichas de Formación
-          </h1>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🎓 Gestión de Fichas de Formación</h1>
           <p className="text-sm text-gray-600">Consulta y administra las fichas académicas.</p>
         </header>
 
@@ -360,10 +324,7 @@ const FichasFormacionPage = () => {
             isHeaderSticky
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
-            classNames={{
-              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
-              td: 'align-middle py-3 px-4',
-            }}
+            classNames={{ th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm', td: 'align-middle py-3 px-4' }}
             topContent={
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -394,7 +355,6 @@ const FichasFormacionPage = () => {
                           ))}
                       </DropdownMenu>
                     </Dropdown>
-
                     {permisos.puedeCrear && (
                       <Button
                         className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
@@ -503,8 +463,7 @@ const FichasFormacionPage = () => {
                   </div>
                   <p className="text-sm text-gray-600">Titulado: {ficha.idTitulado?.nombre || '—'}</p>
                   <p className="text-sm text-gray-600">
-                    Responsable:{' '}
-                    {ficha.idUsuarioResponsable ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ''}` : '—'}
+                    Responsable: {ficha.idUsuarioResponsable ? `${ficha.idUsuarioResponsable.nombre} ${ficha.idUsuarioResponsable.apellido ?? ''}` : '—'}
                   </p>
                   <p className="text-sm text-gray-600">Usuarios: {ficha.usuarios?.length || 0}</p>
                   <p className="text-sm text-gray-600">Entregas: {ficha.entregaMaterials?.length || 0}</p>

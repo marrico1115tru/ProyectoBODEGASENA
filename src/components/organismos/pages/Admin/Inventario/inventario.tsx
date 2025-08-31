@@ -42,7 +42,7 @@ import {
   CubeIcon,
 } from "@heroicons/react/24/outline";
 
-import axios from "axios";
+import axiosInstance from "@/Api/axios";
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 export default function InventarioPage() {
@@ -86,8 +86,8 @@ export default function InventarioPage() {
           return;
         }
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/inventario&idRol=${rolId}`;
-        const response = await axios.get(url, {
+        const url = `/permisos/por-ruta?ruta=/inventario&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, {
           withCredentials: true,
           timeout: 10000,
         });
@@ -170,19 +170,11 @@ export default function InventarioPage() {
 
   const handleSubmit = async () => {
     if (!permisos.puedeCrear && !editId) {
-      await Swal.fire(
-        "Acceso Denegado",
-        "No tienes permiso para crear inventarios.",
-        "warning"
-      );
+      await Swal.fire("Acceso Denegado", "No tienes permiso para crear inventarios.", "warning");
       return;
     }
     if (!permisos.puedeEditar && editId) {
-      await Swal.fire(
-        "Acceso Denegado",
-        "No tienes permiso para editar inventarios.",
-        "warning"
-      );
+      await Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
       return;
     }
     if (!form.stock || !form.idProductoId || !form.fkSitioId) {
@@ -204,10 +196,7 @@ export default function InventarioPage() {
     }
 
     try {
-      const placaSenaValue =
-        form.placaSena && form.placaSena.trim().length > 0
-          ? form.placaSena.trim()
-          : undefined;
+      const placaSenaValue = form.placaSena && form.placaSena.trim().length > 0 ? form.placaSena.trim() : undefined;
 
       if (editId) {
         const payload: InventarioUpdatePayload = {
@@ -233,21 +222,13 @@ export default function InventarioPage() {
       await loadData();
     } catch (error) {
       console.error("Error al guardar:", error);
-      Swal.fire(
-        "Error",
-        "No se pudo guardar el inventario. Intente nuevamente.",
-        "error"
-      );
+      Swal.fire("Error", "No se pudo guardar el inventario. Intente nuevamente.", "error");
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      await Swal.fire(
-        "Acceso Denegado",
-        "No tienes permiso para eliminar inventarios.",
-        "warning"
-      );
+      await Swal.fire("Acceso Denegado", "No tienes permiso para eliminar inventarios.", "warning");
       return;
     }
     const result = await Swal.fire({
@@ -274,11 +255,7 @@ export default function InventarioPage() {
 
   const handleEdit = (inv: Inventario) => {
     if (!permisos.puedeEditar) {
-      Swal.fire(
-        "Acceso Denegado",
-        "No tienes permiso para editar inventarios.",
-        "warning"
-      );
+      Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
       return;
     }
     setForm({
@@ -293,11 +270,7 @@ export default function InventarioPage() {
 
   const handleNewInventario = () => {
     if (!permisos.puedeCrear) {
-      Swal.fire(
-        "Acceso Denegado",
-        "No tienes permiso para crear inventarios.",
-        "warning"
-      );
+      Swal.fire("Acceso Denegado", "No tienes permiso para crear inventarios.", "warning");
       return;
     }
     resetForm();
@@ -621,8 +594,7 @@ export default function InventarioPage() {
           {filtro && (
             <p className="text-sm text-gray-600 mt-2">
               Mostrando{" "}
-              {filteredAgrupado.reduce((acc, [, items]) => acc + items.length, 0)} resultados para "
-              {filtro}"
+              {filteredAgrupado.reduce((acc, [, items]) => acc + items.length, 0)} resultados para " {filtro}"
             </p>
           )}
         </div>
@@ -634,9 +606,7 @@ export default function InventarioPage() {
               <CubeIcon className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay inventarios</h3>
-            <p className="text-gray-600 mb-4">
-              No se encontraron registros de inventario en el sistema.
-            </p>
+            <p className="text-gray-600 mb-4">No se encontraron registros de inventario en el sistema.</p>
             {permisos.puedeCrear && (
               <HeroButton color="primary" onClick={handleNewInventario}>
                 <PlusIcon className="w-4 h-4 mr-2" />
@@ -665,11 +635,7 @@ export default function InventarioPage() {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Sin resultados</h3>
                 <p className="text-gray-600">No se encontraron resultados para "{filtro}"</p>
-                <HeroButton
-                  variant="ghost"
-                  onClick={() => setFiltro("")}
-                  className="mt-3"
-                >
+                <HeroButton variant="ghost" onClick={() => setFiltro("")} className="mt-3">
                   Limpiar búsqueda
                 </HeroButton>
               </div>
@@ -726,8 +692,8 @@ export default function InventarioPage() {
                           </thead>
                           <tbody>
                             {items.map((inv, index) => (
-                              <tr 
-                                key={inv.idProductoInventario} 
+                              <tr
+                                key={inv.idProductoInventario}
                                 className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                                   index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                                 }`}

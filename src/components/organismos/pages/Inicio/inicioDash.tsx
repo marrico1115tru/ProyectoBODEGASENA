@@ -9,6 +9,7 @@ import { useKeenSlider } from "keen-slider/react";
 import { useDashboardData } from "@/Api/Dashboard/DashboardData";
 import "keen-slider/keen-slider.min.css";
 import { getDecodedTokenFromCookies } from '@/lib/utils';
+import axiosInstance from '@/Api/axios'; 
 
 const images = [
   { id: 1, title: "Agropecuario", src: "/img/agropecuarioimg.jpeg", link: "/agropecuario" },
@@ -50,14 +51,12 @@ function AutoplayPlugin(slider: any) {
 export default function Dashboard() {
   const navigate = useNavigate();
 
-
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
     puedeEditar: false,
     puedeEliminar: false,
   });
-
 
   useEffect(() => {
     const fetchPermisos = async () => {
@@ -66,13 +65,10 @@ export default function Dashboard() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-       
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/InicioDash&idRol=${rolId}`;
-        const response = await fetch(url, {
-          credentials: 'include',
-        });
+        const url = `/permisos/por-ruta?ruta=/InicioDash&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
 
-        if (!response.ok) {
+        if (!response) {
           setPermisos({
             puedeVer: false,
             puedeCrear: false,
@@ -82,8 +78,7 @@ export default function Dashboard() {
           return;
         }
 
-        const json = await response.json();
-        const permisosData = json.data;
+        const permisosData = response.data?.data;
 
         if (permisosData) {
           setPermisos({
@@ -113,12 +108,10 @@ export default function Dashboard() {
     fetchPermisos();
   }, []);
 
- 
   const { data, loading } = useDashboardData({
     enabled: permisos.puedeVer,
   });
 
- 
   const [sliderRef] = useKeenSlider(
     {
       loop: true,
@@ -240,7 +233,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        
         <Card className="glass-card p-8 mt-10">
           <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 border-gray-200">
             Últimas Actividades

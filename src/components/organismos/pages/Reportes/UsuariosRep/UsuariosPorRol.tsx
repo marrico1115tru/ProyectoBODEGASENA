@@ -1,23 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import { Button } from "@/components/ui/button";
-import DefaultLayout from "@/layouts/default";
-import Modal from "@/components/ui/Modal";
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Button } from '@/components/ui/button';
+import DefaultLayout from '@/layouts/default';
+import Modal from '@/components/ui/Modal';
+import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface UsuarioPorRol {
   nombreRol: string;
-  cantidad: string; // viene como string según la API
+  cantidad: string; 
 }
 
 export default function UsuariosPorRolCantidad() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
-
-  // Estado de permisos
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -25,7 +25,6 @@ export default function UsuariosPorRolCantidad() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos al montar el componente
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
@@ -33,8 +32,8 @@ export default function UsuariosPorRolCantidad() {
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `http://localhost:3000/permisos/por-ruta?ruta=/report/UsuariosRep/UsuariosPorRol&idRol=${rolId}`;
-        const response = await axios.get(url, { withCredentials: true });
+        const url = `/permisos/por-ruta?ruta=/report/UsuariosRep/UsuariosPorRol&idRol=${rolId}`;
+        const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
         if (permisosData) {
@@ -65,20 +64,15 @@ export default function UsuariosPorRolCantidad() {
     fetchPermisos();
   }, []);
 
-  // Obtener datos solo si permiso para ver es true
   const { data, isLoading, error } = useQuery<UsuarioPorRol[]>({
-    queryKey: ["usuarios-por-rol"],
+    queryKey: ['usuarios-por-rol'],
     queryFn: async () => {
-      const res = await axios.get(
-        "http://localhost:3000/usuarios/estadisticas/por-rol",
-        { withCredentials: true }
-      );
+      const res = await axiosInstance.get('/usuarios/estadisticas/por-rol', { withCredentials: true });
       return res.data;
     },
     enabled: permisos.puedeVer,
   });
 
-  // Exportar a PDF
   const exportarPDF = async () => {
     if (!containerRef.current) return;
 
@@ -87,11 +81,11 @@ export default function UsuariosPorRolCantidad() {
       useCORS: true,
     });
 
-    const imgData = canvas.toDataURL("image/png", 1.0);
+    const imgData = canvas.toDataURL('image/png', 1.0);
     const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
     });
 
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -102,18 +96,17 @@ export default function UsuariosPorRolCantidad() {
     let position = 0;
     if (pdfHeight > pageHeight) {
       while (position < pdfHeight) {
-        pdf.addImage(imgData, "PNG", 0, -position, pageWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, -position, pageWidth, pdfHeight);
         position += pageHeight;
         if (position < pdfHeight) pdf.addPage();
       }
     } else {
-      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pdfHeight);
     }
 
-    pdf.save("usuarios_por_rol.pdf");
+    pdf.save('usuarios_por_rol.pdf');
   };
 
-  // Mostrar mensaje si no tiene permiso para ver
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
