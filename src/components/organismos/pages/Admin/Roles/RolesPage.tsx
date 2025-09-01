@@ -24,45 +24,51 @@ import {
 } from '@heroui/react';
 
 import {
-  obtenerMunicipios,
-  crearMunicipio,
-  actualizarMunicipio,
-  eliminarMunicipio,
-} from '@/Api/MunicipiosForm';
+  getRoles,
+  createRol,
+  updateRol,
+  deleteRol,
+} from '@/Api/RolService';
 
 import DefaultLayout from '@/layouts/default';
 import { PlusIcon, MoreVertical, Search as SearchIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-
-import axiosInstance from '@/Api/axios'; 
+import axios from 'axios';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 const MySwal = withReactContent(Swal);
 
 const columns = [
   { name: 'ID', uid: 'id', sortable: true },
-  { name: 'Nombre', uid: 'nombre', sortable: false },
-  { name: 'Departamento', uid: 'departamento', sortable: false },
-  { name: 'Centros', uid: 'centros', sortable: false },
+  { name: 'Rol', uid: 'rol', sortable: false },
+  { name: 'Usuarios', uid: 'usuarios', sortable: false },
+  { name: 'Permisos', uid: 'permisos', sortable: false },
   { name: 'Acciones', uid: 'actions' },
 ];
-const INITIAL_VISIBLE_COLUMNS = ['id', 'nombre', 'departamento', 'centros', 'actions'];
 
-const MunicipiosPage = () => {
-  const [municipios, setMunicipios] = useState<any[]>([]);
+const INITIAL_VISIBLE_COLUMNS = ['id', 'rol', 'usuarios', 'permisos', 'actions'] as const;
+
+type ColumnKey = (typeof columns)[number]['uid'];
+
+const RolesPage = () => {
+  const [roles, setRoles] = useState<any[]>([]);
   const [filterValue, setFilterValue] = useState('');
-  const [visibleColumns, setVisibleColumns] = useState(new Set(INITIAL_VISIBLE_COLUMNS));
+  const [visibleColumns, setVisibleColumns] = useState(new Set<string>(INITIAL_VISIBLE_COLUMNS));
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: 'id', direction: 'ascending' });
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'id',
+    direction: 'ascending',
+  });
 
-  const [nombre, setNombre] = useState('');
-  const [departamento, setDepartamento] = useState('');
+  const [nombreRol, setNombreRol] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
 
   const { isOpen, onOpenChange, onOpen, onClose } = useDisclosure();
+
 
   const [permisos, setPermisos] = useState({
     puedeVer: false,
@@ -71,15 +77,16 @@ const MunicipiosPage = () => {
     puedeEliminar: false,
   });
 
+
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
-        const userData = getDecodedTokenFromCookies("token");
+        const userData = getDecodedTokenFromCookies('token');
         const rolId = userData?.rol?.id;
         if (!rolId) return;
 
-        const url = `/permisos/por-ruta?ruta=/municipios&idRol=${rolId}`;
-        const response = await axiosInstance.get(url, { withCredentials: true });
+        const url = `http://localhost:3000/permisos/por-ruta?ruta=/roles&idRol=${rolId}`;
+        const response = await axios.get(url, { withCredentials: true });
 
         const permisosData = response.data.data;
         if (permisosData) {
@@ -90,38 +97,48 @@ const MunicipiosPage = () => {
             puedeEliminar: Boolean(permisosData.puedeEliminar),
           });
         } else {
-          setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
+          setPermisos({
+            puedeVer: false,
+            puedeCrear: false,
+            puedeEditar: false,
+            puedeEliminar: false,
+          });
         }
       } catch (error) {
-        console.error("Error al obtener permisos:", error);
-        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
+        console.error('Error al obtener permisos:', error);
+        setPermisos({
+          puedeVer: false,
+          puedeCrear: false,
+          puedeEditar: false,
+          puedeEliminar: false,
+        });
       }
     };
     fetchPermisos();
   }, []);
 
-  const cargarMunicipios = async () => {
+  const cargarRoles = async () => {
     if (!permisos.puedeVer) return;
     try {
-      const data = await obtenerMunicipios();
-      setMunicipios(data);
+      const data = await getRoles();
+      setRoles(data);
     } catch (err) {
-      console.error('Error cargando municipios', err);
-      await MySwal.fire('Error', 'No se pudo cargar los municipios', 'error');
+      console.error('Error cargando roles', err);
+      await MySwal.fire('Error', 'No se pudo cargar los roles', 'error');
     }
   };
 
   useEffect(() => {
-    cargarMunicipios();
+    cargarRoles();
   }, [permisos]);
 
   const eliminar = async (id: number) => {
     if (!permisos.puedeEliminar) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para eliminar municipios.", "warning");
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para eliminar roles.', 'warning');
       return;
     }
     const result = await MySwal.fire({
-      title: '¿Eliminar municipio?',
+      title: '¿Eliminar rol?',
       text: 'No se podrá recuperar.',
       icon: 'warning',
       showCancelButton: true,
@@ -129,66 +146,63 @@ const MunicipiosPage = () => {
       cancelButtonText: 'Cancelar',
     });
     if (!result.isConfirmed) return;
+
     try {
-      await eliminarMunicipio(id);
-      await MySwal.fire('Eliminado', `Municipio eliminado: ID ${id}`, 'success');
-      await cargarMunicipios();
+      await deleteRol(id);
+      await MySwal.fire('Eliminado', `Rol eliminado: ID ${id}`, 'success');
+      await cargarRoles();
     } catch (error) {
       console.error(error);
-      await MySwal.fire('Error', 'No se pudo eliminar el municipio', 'error');
+      await MySwal.fire('Error', 'No se pudo eliminar el rol', 'error');
     }
   };
 
   const guardar = async () => {
-    if (!nombre.trim()) {
-      await MySwal.fire('Error', 'El nombre es obligatorio', 'error');
-      return;
-    }
-    if (!departamento.trim()) {
-      await MySwal.fire('Error', 'El departamento es obligatorio', 'error');
+    if (!nombreRol.trim()) {
+      await MySwal.fire('Aviso', 'El nombre del rol es obligatorio', 'info');
       return;
     }
     if (editId && !permisos.puedeEditar) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para editar municipios.", "warning");
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para editar roles.', 'warning');
       return;
     }
     if (!editId && !permisos.puedeCrear) {
-      await MySwal.fire("Acceso Denegado", "No tienes permisos para crear municipios.", "warning");
+      await MySwal.fire('Acceso Denegado', 'No tienes permisos para crear roles.', 'warning');
       return;
     }
-    const payload = { nombre: nombre.trim(), departamento: departamento.trim() };
+
+    const payload = { nombreRol: nombreRol.trim() };
 
     try {
       if (editId) {
-        await actualizarMunicipio(editId, payload);
-        await MySwal.fire('Actualizado', 'Municipio actualizado', 'success');
+        await updateRol(editId, payload);
+        await MySwal.fire('Éxito', 'Rol actualizado', 'success');
       } else {
-        await crearMunicipio(payload);
-        await MySwal.fire('Creado', 'Municipio creado', 'success');
+        await createRol(payload);
+        await MySwal.fire('Éxito', 'Rol creado', 'success');
       }
       limpiarForm();
       onClose();
-      await cargarMunicipios();
+      await cargarRoles();
     } catch (error) {
       console.error(error);
-      await MySwal.fire('Error', 'Error guardando municipio', 'error');
+      await MySwal.fire('Error', 'Error guardando rol', 'error');
     }
   };
 
-  const abrirModalEditar = (m: any) => {
+  const abrirModalEditar = (r: any) => {
     if (!permisos.puedeEditar) {
-      MySwal.fire("Acceso Denegado", "No tienes permisos para editar municipios.", "warning");
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para editar roles.', 'warning');
       return;
     }
-    setEditId(m.id);
-    setNombre(m.nombre || '');
-    setDepartamento(m.departamento || '');
+    setEditId(r.id);
+    setNombreRol(r.nombreRol);
     onOpen();
   };
 
   const abrirModalNuevo = () => {
     if (!permisos.puedeCrear) {
-      MySwal.fire("Acceso Denegado", "No tienes permisos para crear municipios.", "warning");
+      MySwal.fire('Acceso Denegado', 'No tienes permisos para crear roles.', 'warning');
       return;
     }
     limpiarForm();
@@ -197,16 +211,15 @@ const MunicipiosPage = () => {
 
   const limpiarForm = () => {
     setEditId(null);
-    setNombre('');
-    setDepartamento('');
+    setNombreRol('');
   };
 
   const filtered = useMemo(() => {
-    if (!filterValue) return municipios;
-    return municipios.filter((m) =>
-      `${m.nombre} ${m.departamento}`.toLowerCase().includes(filterValue.toLowerCase())
+    if (!filterValue) return roles;
+    return roles.filter((r) =>
+      `${r.nombreRol}`.toLowerCase().includes(filterValue.toLowerCase())
     );
-  }, [municipios, filterValue]);
+  }, [roles, filterValue]);
 
   const pages = Math.ceil(filtered.length / rowsPerPage) || 1;
 
@@ -226,14 +239,18 @@ const MunicipiosPage = () => {
     return items;
   }, [sliced, sortDescriptor]);
 
-  const renderCell = (item: any, columnKey: string) => {
+  const renderCell = (item: any, columnKey: ColumnKey) => {
     switch (columnKey) {
-      case 'nombre':
-        return <span className="font-medium text-gray-800 capitalize break-words max-w-[16rem]">{item.nombre}</span>;
-      case 'departamento':
-        return <span className="text-sm text-gray-600">{item.departamento}</span>;
-      case 'centros':
-        return <span className="text-sm text-gray-600">{item.centroFormacions?.length || 0}</span>;
+      case 'rol':
+        return (
+          <span className="font-medium text-gray-800 break-words max-w-[18rem]">
+            {item.nombreRol}
+          </span>
+        );
+      case 'usuarios':
+        return <span className="text-sm text-gray-600">{item.usuarios?.length || 0}</span>;
+      case 'permisos':
+        return <span className="text-sm text-gray-600">{item.permisos?.length || 0}</span>;
       case 'actions':
         const dropdownItems = [];
         if (permisos.puedeEditar) {
@@ -245,7 +262,7 @@ const MunicipiosPage = () => {
         }
         if (permisos.puedeEliminar) {
           dropdownItems.push(
-            <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)}>
+            <DropdownItem key={`eliminar-${item.id}`} onPress={() => eliminar(item.id)} className="text-danger">
               Eliminar
             </DropdownItem>
           );
@@ -267,32 +284,37 @@ const MunicipiosPage = () => {
             <DropdownMenu>{dropdownItems}</DropdownMenu>
           </Dropdown>
         );
+
       default:
-        return item[columnKey as keyof typeof item];
+        return item[columnKey as keyof typeof item] || '—';
     }
   };
 
   const toggleColumn = (key: string) => {
     setVisibleColumns((prev) => {
       const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
+      if (copy.has(key)) {
+        if (key === 'actions') return prev;
+        copy.delete(key);
+      } else {
+        copy.add(key);
+      }
       return copy;
     });
   };
 
-  const renderMobileDropdownItems = (m: any) => {
+  const renderMobileDropdownItems = (r: any) => {
     const items = [];
     if (permisos.puedeEditar) {
       items.push(
-        <DropdownItem key={`editar-${m.id}`} onPress={() => abrirModalEditar(m)}>
+        <DropdownItem key={`editar-${r.id}`} onPress={() => abrirModalEditar(r)}>
           Editar
         </DropdownItem>
       );
     }
     if (permisos.puedeEliminar) {
       items.push(
-        <DropdownItem key={`eliminar-${m.id}`} onPress={() => eliminar(m.id)}>
+        <DropdownItem key={`eliminar-${r.id}`} onPress={() => eliminar(r.id)}>
           Eliminar
         </DropdownItem>
       );
@@ -324,14 +346,13 @@ const MunicipiosPage = () => {
           isClearable
           className="w-full md:max-w-[44%]"
           radius="lg"
-          placeholder="Buscar por nombre o departamento"
+          placeholder="Buscar por nombre de rol"
           startContent={<SearchIcon className="text-[#0D1324]" />}
           value={filterValue}
           onValueChange={setFilterValue}
           onClear={() => setFilterValue('')}
-          disabled={!permisos.puedeVer}
         />
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           <Dropdown>
             <DropdownTrigger>
               <Button variant="flat">Columnas</Button>
@@ -340,7 +361,7 @@ const MunicipiosPage = () => {
               {columns
                 .filter((c) => c.uid !== 'actions')
                 .map((col) => (
-                  <DropdownItem key={col.uid} className="py-1 px-2">
+                  <DropdownItem key={col.uid} className="py-1 px-2 flex items-center gap-2">
                     <Checkbox
                       isSelected={visibleColumns.has(col.uid)}
                       onValueChange={() => toggleColumn(col.uid)}
@@ -352,19 +373,20 @@ const MunicipiosPage = () => {
                 ))}
             </DropdownMenu>
           </Dropdown>
+
           {permisos.puedeCrear && (
             <Button
               className="bg-[#0D1324] hover:bg-[#1a2133] text-white font-medium rounded-lg shadow"
               endContent={<PlusIcon />}
               onPress={abrirModalNuevo}
             >
-              Nuevo Municipio
+              Nuevo Rol
             </Button>
           )}
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-default-400 text-sm">Total {municipios.length} municipios</span>
+        <span className="text-default-400 text-sm">Total {roles.length} roles</span>
         <label className="flex items-center text-default-400 text-sm">
           Filas por página:&nbsp;
           <select
@@ -374,7 +396,6 @@ const MunicipiosPage = () => {
               setRowsPerPage(parseInt(e.target.value));
               setPage(1);
             }}
-            disabled={!permisos.puedeVer}
           >
             {[5, 10, 15].map((n) => (
               <option key={n} value={n}>
@@ -389,11 +410,11 @@ const MunicipiosPage = () => {
 
   const bottomContent = (
     <div className="py-2 px-2 flex justify-center items-center gap-2">
-      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)} disabled={!permisos.puedeVer}>
+      <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
         Anterior
       </Button>
-      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} isDisabled={!permisos.puedeVer} />
-      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)} disabled={!permisos.puedeVer}>
+      <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
+      <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
         Siguiente
       </Button>
     </div>
@@ -403,31 +424,38 @@ const MunicipiosPage = () => {
     <DefaultLayout>
       <div className="p-6 space-y-6">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🗺️ Gestión de Municipios</h1>
-          <p className="text-sm text-gray-600">Consulta y administra los municipios registrados.</p>
+          <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">🛡️ Gestión de Roles</h1>
+          <p className="text-sm text-gray-600">Consulta y administra los roles y sus permisos.</p>
         </header>
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
           <Table
-            aria-label="Tabla de municipios"
+            aria-label="Tabla de roles"
             isHeaderSticky
             topContent={topContent}
             bottomContent={bottomContent}
             sortDescriptor={sortDescriptor}
             onSortChange={setSortDescriptor}
-            classNames={{ th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm', td: 'align-middle py-3 px-4' }}
+            classNames={{
+              th: 'py-3 px-4 bg-[#e8ecf4] text-[#0D1324] font-semibold text-sm',
+              td: 'align-middle py-3 px-4',
+            }}
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
-                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}>
+                <TableColumn
+                  key={col.uid}
+                  align={col.uid === 'actions' ? 'center' : 'start'}
+                  width={col.uid === 'rol' ? 300 : undefined}
+                >
                   {col.name}
                 </TableColumn>
               )}
             </TableHeader>
-            <TableBody items={sorted} emptyContent="No se encontraron municipios">
+            <TableBody items={sorted} emptyContent="No se encontraron roles">
               {(item) => (
                 <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
+                  {(col) => <TableCell>{renderCell(item, col as ColumnKey)}</TableCell>}
                 </TableRow>
               )}
             </TableBody>
@@ -436,56 +464,68 @@ const MunicipiosPage = () => {
 
         <div className="grid gap-4 md:hidden">
           {sorted.length === 0 ? (
-            <p className="text-center text-gray-500">No se encontraron municipios</p>
+            <p className="text-center text-gray-500">No se encontraron roles</p>
           ) : (
-            sorted.map((m) => (
-              <div key={m.id} className="shadow-sm rounded-xl bg-white p-4">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-semibold text-lg">{m.nombre}</h3>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
-                        <MoreVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu>{renderMobileDropdownItems(m)}</DropdownMenu>
-                  </Dropdown>
-                </div>
-                <p className="text-sm text-gray-600"><span className="font-medium">Depto:</span> {m.departamento}</p>
-                <p className="text-sm text-gray-600"><span className="font-medium">Centros:</span> {m.centroFormacions?.length || 0}</p>
-                <p className="text-xs text-gray-400">ID: {m.id}</p>
-              </div>
+            sorted.map((r) => (
+              <Card key={r.id} className="shadow-sm">
+                <CardContent className="space-y-2 p-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-lg break-words max-w-[14rem]">{r.nombreRol}</h3>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
+                          <MoreVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu>
+                        {renderMobileDropdownItems(r)}
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Usuarios:</span> {r.usuarios?.length || 0}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Permisos:</span> {r.permisos?.length || 0}
+                  </p>
+                  <p className="text-xs text-gray-400">ID: {r.id}</p>
+                </CardContent>
+              </Card>
             ))
           )}
         </div>
 
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="center" className="backdrop-blur-sm bg-black/30" isDismissable>
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          placement="center"
+          className="backdrop-blur-sm bg-black/30"
+          isDismissable
+        >
           <ModalContent className="backdrop-blur bg-white/60 shadow-xl rounded-xl max-w-lg w-full p-6">
             {() => (
               <>
-                <ModalHeader>{editId ? 'Editar Municipio' : 'Nuevo Municipio'}</ModalHeader>
+                <ModalHeader>{editId ? 'Editar Rol' : 'Nuevo Rol'}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <Input
-                    label="Nombre"
-                    placeholder="Ej: Neiva"
-                    value={nombre}
-                    onValueChange={setNombre}
+                    label="Nombre del rol"
+                    placeholder="Ej: Administrador"
+                    value={nombreRol}
+                    onValueChange={setNombreRol}
                     radius="sm"
-                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                     autoFocus
-                  />
-                  <Input
-                    label="Departamento"
-                    placeholder="Ej: Huila"
-                    value={departamento}
-                    onValueChange={setDepartamento}
-                    radius="sm"
                     disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                 </ModalBody>
                 <ModalFooter className="flex justify-end gap-3">
-                  <Button variant="light" onPress={onClose}>Cancelar</Button>
-                  <Button variant="flat" onPress={guardar} disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}>
+                  <Button variant="light" onPress={() => { limpiarForm(); onClose(); }}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="flat"
+                    onPress={guardar}
+                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                  >
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>
                 </ModalFooter>
@@ -498,4 +538,4 @@ const MunicipiosPage = () => {
   );
 };
 
-export default MunicipiosPage;
+export default RolesPage;
