@@ -10,19 +10,15 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-
 import Swal from "sweetalert2";
-
 import {
   getInventarios,
   createInventario,
   updateInventario,
   deleteInventario,
 } from "@/Api/inventario";
-
 import { getProductos } from "@/Api/Productosform";
 import { getSitios } from "@/Api/SitioService";
-
 import {
   Inventario,
   InventarioFormValues,
@@ -31,9 +27,7 @@ import {
 } from "@/types/types/inventario";
 import { Producto } from "@/types/types/typesProductos";
 import { Sitio } from "@/types/types/Sitio";
-
 import DefaultLayout from "@/layouts/default";
-
 import { Accordion, AccordionItem, Button as HeroButton } from "@heroui/react";
 import {
   PlusIcon,
@@ -41,7 +35,6 @@ import {
   TrashIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-
 import axiosInstance from "@/Api/axios";
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
@@ -55,11 +48,12 @@ export default function InventarioPage() {
     fkSitioId: 0,
     stock: 1,
     placaSena: "",
+    fechaEntrada: new Date().toISOString().slice(0, 10),
+    fechaSalida: "",
   });
   const [editId, setEditId] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [permisos, setPermisos] = useState({
     puedeVer: false,
     puedeCrear: false,
@@ -67,15 +61,12 @@ export default function InventarioPage() {
     puedeEliminar: false,
   });
 
-  // Cargar permisos sólo al montar el componente
   useEffect(() => {
     const fetchPermisos = async () => {
       try {
         const userData = getDecodedTokenFromCookies("token");
         const rolId = userData?.rol?.id;
-
         if (!rolId) {
-          console.warn("No se encontró rol del usuario");
           setPermisos({
             puedeVer: false,
             puedeCrear: false,
@@ -85,32 +76,18 @@ export default function InventarioPage() {
           setLoading(false);
           return;
         }
-
-        const url = `/permisos/por-ruta?ruta=/inventario&idRol=${rolId}`;
-        const response = await axiosInstance.get(url, {
-          withCredentials: true,
-          timeout: 10000,
-        });
-
+        const response = await axiosInstance.get(
+          `/permisos/por-ruta?ruta=/inventario&idRol=${rolId}`,
+          { withCredentials: true, timeout: 10000 }
+        );
         const permisosData = response.data?.data;
-
-        if (permisosData) {
-          setPermisos({
-            puedeVer: Boolean(permisosData.puedeVer),
-            puedeCrear: Boolean(permisosData.puedeCrear),
-            puedeEditar: Boolean(permisosData.puedeEditar),
-            puedeEliminar: Boolean(permisosData.puedeEliminar),
-          });
-        } else {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
-        }
-      } catch (error) {
-        console.error("Error al obtener permisos:", error);
+        setPermisos({
+          puedeVer: Boolean(permisosData?.puedeVer),
+          puedeCrear: Boolean(permisosData?.puedeCrear),
+          puedeEditar: Boolean(permisosData?.puedeEditar),
+          puedeEliminar: Boolean(permisosData?.puedeEliminar),
+        });
+      } catch {
         setPermisos({
           puedeVer: false,
           puedeCrear: false,
@@ -121,11 +98,9 @@ export default function InventarioPage() {
         setLoading(false);
       }
     };
-
     fetchPermisos();
   }, []);
 
-  // Cargar datos sólo cuando se tiene permiso para ver
   useEffect(() => {
     if (permisos.puedeVer) {
       loadData();
@@ -143,13 +118,8 @@ export default function InventarioPage() {
       setInventarios(Array.isArray(inv) ? inv : []);
       setProductos(Array.isArray(prod) ? prod : []);
       setSitios(Array.isArray(sit) ? sit : []);
-    } catch (error) {
-      console.error("Error cargando datos:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudieron cargar los datos. Verifique su conexión.",
-      });
+    } catch {
+      Swal.fire("Error", "No se pudieron cargar los datos.", "error");
       setInventarios([]);
       setProductos([]);
       setSitios([]);
@@ -164,6 +134,8 @@ export default function InventarioPage() {
       fkSitioId: 0,
       stock: 1,
       placaSena: "",
+      fechaEntrada: new Date().toISOString().slice(0, 10),
+      fechaSalida: "",
     });
     setEditId(null);
   };
@@ -177,11 +149,11 @@ export default function InventarioPage() {
       await Swal.fire("Acceso Denegado", "No tienes permiso para editar inventarios.", "warning");
       return;
     }
-    if (!form.stock || !form.idProductoId || !form.fkSitioId) {
+    if (!form.stock || !form.idProductoId || !form.fkSitioId || !form.fechaEntrada) {
       Swal.fire({
         icon: "warning",
         title: "Campos incompletos",
-        text: "Los campos Stock, Producto y Sitio son requeridos",
+        text: "Los campos Stock, Producto, Sitio y Fecha Entrada son requeridos",
       });
       return;
     }
@@ -194,9 +166,9 @@ export default function InventarioPage() {
       setForm({ ...form, stock: 1 });
       return;
     }
-
     try {
-      const placaSenaValue = form.placaSena && form.placaSena.trim().length > 0 ? form.placaSena.trim() : undefined;
+      const placaSenaValue =
+        form.placaSena && form.placaSena.trim().length > 0 ? form.placaSena.trim() : undefined;
 
       if (editId) {
         const payload: InventarioUpdatePayload = {
@@ -204,6 +176,8 @@ export default function InventarioPage() {
           fkSitioId: form.fkSitioId,
           idProductoId: form.idProductoId,
           placaSena: placaSenaValue,
+          fechaEntrada: form.fechaEntrada,
+          fechaSalida: form.fechaSalida || null,
         };
         await updateInventario(editId, payload);
         Swal.fire("Actualizado", "Inventario actualizado con éxito", "success");
@@ -213,6 +187,8 @@ export default function InventarioPage() {
           fkSitioId: form.fkSitioId,
           idProductoId: form.idProductoId,
           placaSena: placaSenaValue,
+          fechaEntrada: form.fechaEntrada,
+          fechaSalida: form.fechaSalida || undefined,
         };
         await createInventario(payload);
         Swal.fire("Creado", "Inventario creado correctamente", "success");
@@ -220,8 +196,7 @@ export default function InventarioPage() {
       resetForm();
       setIsDialogOpen(false);
       await loadData();
-    } catch (error) {
-      console.error("Error al guardar:", error);
+    } catch {
       Swal.fire("Error", "No se pudo guardar el inventario. Intente nuevamente.", "error");
     }
   };
@@ -246,8 +221,7 @@ export default function InventarioPage() {
         await deleteInventario(id);
         Swal.fire("Eliminado", "Inventario eliminado correctamente", "success");
         await loadData();
-      } catch (error) {
-        console.error("Error al eliminar:", error);
+      } catch {
         Swal.fire("Error", "No se pudo eliminar el inventario", "error");
       }
     }
@@ -263,6 +237,8 @@ export default function InventarioPage() {
       idProductoId: inv.idProducto?.id || 0,
       fkSitioId: inv.fkSitio?.id || 0,
       placaSena: inv.placaSena || "",
+      fechaEntrada: inv.fechaEntrada || new Date().toISOString().slice(0, 10),
+      fechaSalida: inv.fechaSalida || "",
     });
     setEditId(inv.idProductoInventario);
     setIsDialogOpen(true);
@@ -288,7 +264,6 @@ export default function InventarioPage() {
   // Filtrar por sitio, producto o placa SENA
   const filteredAgrupado = Object.entries(agrupado).filter(([sitio, items]) => {
     if (!filtro.trim()) return true;
-
     const filtroLower = filtro.toLowerCase().trim();
     const sitioMatch = sitio.toLowerCase().includes(filtroLower);
     const productoMatch = items.some((inv) =>
@@ -297,19 +272,16 @@ export default function InventarioPage() {
     const placaMatch = items.some((inv) =>
       inv.placaSena?.toLowerCase().includes(filtroLower)
     );
-
     return sitioMatch || productoMatch || placaMatch;
   });
 
   if (loading) {
     return (
       <DefaultLayout>
-        <div className="p-6 text-center">
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-gray-600 font-medium">Cargando inventarios...</p>
-            <p className="text-gray-500 text-sm mt-2">Por favor espere</p>
-          </div>
+        <div className="p-6 text-center min-h-[400px] flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando inventarios...</p>
+          <p className="text-gray-500 text-sm mt-2">Por favor espere</p>
         </div>
       </DefaultLayout>
     );
@@ -318,19 +290,13 @@ export default function InventarioPage() {
   if (!permisos.puedeVer) {
     return (
       <DefaultLayout>
-        <div className="p-6 text-center">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-8 max-w-md mx-auto">
-            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-              <CubeIcon className="w-8 h-8 text-red-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-red-800 mb-2">Acceso Restringido</h2>
-            <p className="text-red-600">
-              No tienes permiso para ver la sección de inventarios.
-            </p>
-            <p className="text-red-500 text-sm mt-2">
-              Contacta al administrador si necesitas acceso.
-            </p>
+        <div className="p-6 text-center max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+            <CubeIcon className="w-8 h-8 text-red-600" />
           </div>
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Acceso Restringido</h2>
+          <p className="text-red-600">No tienes permiso para ver la sección de inventarios.</p>
+          <p className="text-red-500 text-sm mt-2">Contacta al administrador si necesitas acceso.</p>
         </div>
       </DefaultLayout>
     );
@@ -339,7 +305,7 @@ export default function InventarioPage() {
   return (
     <DefaultLayout>
       <div className="p-6">
-        {/* Header */}
+        {/* Header y nuevo inventario */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -352,15 +318,10 @@ export default function InventarioPage() {
               </p>
             </div>
           </div>
-
           {permisos.puedeCrear && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <HeroButton
-                  color="primary"
-                  className="flex items-center gap-2"
-                  onClick={handleNewInventario}
-                >
+                <HeroButton color="primary" className="flex items-center gap-2" onClick={handleNewInventario}>
                   <PlusIcon className="w-4 h-4" />
                   Nuevo Inventario
                 </HeroButton>
@@ -371,7 +332,6 @@ export default function InventarioPage() {
                     {editId ? "Editar Inventario" : "Crear Inventario"}
                   </DialogTitle>
                 </DialogHeader>
-
                 <div className="space-y-4">
                   {/* Stock */}
                   <div>
@@ -382,9 +342,7 @@ export default function InventarioPage() {
                       type="number"
                       placeholder="Cantidad"
                       value={form.stock}
-                      onChange={(e) =>
-                        setForm({ ...form, stock: Number(e.target.value) || 1 })
-                      }
+                      onChange={(e) => setForm({ ...form, stock: Number(e.target.value) || 1 })}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       min={1}
@@ -395,7 +353,6 @@ export default function InventarioPage() {
                       El stock debe ser 1 para controlar unidades indivisibles.
                     </small>
                   </div>
-
                   {/* Producto */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -403,9 +360,7 @@ export default function InventarioPage() {
                     </label>
                     <select
                       value={form.idProductoId}
-                      onChange={(e) =>
-                        setForm({ ...form, idProductoId: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, idProductoId: Number(e.target.value) })}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       aria-describedby="producto-help"
@@ -421,7 +376,6 @@ export default function InventarioPage() {
                       Seleccione el producto para el inventario.
                     </small>
                   </div>
-
                   {/* Sitio */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -429,9 +383,7 @@ export default function InventarioPage() {
                     </label>
                     <select
                       value={form.fkSitioId}
-                      onChange={(e) =>
-                        setForm({ ...form, fkSitioId: Number(e.target.value) })
-                      }
+                      onChange={(e) => setForm({ ...form, fkSitioId: Number(e.target.value) })}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                       aria-describedby="sitio-help"
@@ -447,7 +399,40 @@ export default function InventarioPage() {
                       Seleccione la ubicación del inventario.
                     </small>
                   </div>
-
+                  {/* Fecha Entrada */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha Entrada <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={form.fechaEntrada}
+                      onChange={(e) => setForm({ ...form, fechaEntrada: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                      aria-describedby="fecha-entrada-help"
+                    />
+                    <small id="fecha-entrada-help" className="text-xs text-gray-500 mt-1 block">
+                      Fecha de entrada al inventario (formato ISO).
+                    </small>
+                  </div>
+                  {/* Fecha Salida */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha Salida (opcional)
+                    </label>
+                    <input
+                      type="date"
+                      value={form.fechaSalida || ""}
+                      onChange={(e) => setForm({ ...form, fechaSalida: e.target.value })}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                      aria-describedby="fecha-salida-help"
+                    />
+                    <small id="fecha-salida-help" className="text-xs text-gray-500 mt-1 block">
+                      Fecha de salida del inventario (opcional).
+                    </small>
+                  </div>
                   {/* Placa SENA */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -467,7 +452,6 @@ export default function InventarioPage() {
                       Código de identificación SENA (opcional, máximo 50 caracteres).
                     </small>
                   </div>
-
                   {/* Botones */}
                   <div className="flex justify-end gap-3 pt-4 border-t">
                     <DialogClose asChild>
@@ -495,111 +479,110 @@ export default function InventarioPage() {
           )}
         </div>
 
-        {/* Estadísticas rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CubeIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Inventarios</p>
-                <p className="text-2xl font-bold text-gray-900">{inventarios.length}</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Sitios con Stock</p>
-                <p className="text-2xl font-bold text-gray-900">{Object.keys(agrupado).length}</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Con Placa SENA</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {inventarios.filter((inv) => inv.placaSena && inv.placaSena.trim()).length}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+      {/* Estadísticas rápidas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <CubeIcon className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Inventarios</p>
+                <p className="text-2xl font-bold text-gray-900">{inventarios.length}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Sitios con Stock</p>
+                <p className="text-2xl font-bold text-gray-900">{Object.keys(agrupado).length}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Con Placa SENA</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {inventarios.filter((inv) => inv.placaSena && inv.placaSena.trim()).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
 
-        {/* Barra de búsqueda */}
-        <div className="mb-6">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar por producto, sitio o placa SENA..."
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              aria-label="Campo de búsqueda para filtrar inventarios"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <svg
-                className="w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-          {filtro && (
-            <p className="text-sm text-gray-600 mt-2">
-              Mostrando{" "}
-              {filteredAgrupado.reduce((acc, [, items]) => acc + items.length, 0)} resultados para " {filtro}"
-            </p>
-          )}
-        </div>
 
-        {/* Contenido principal */}
+        {/* Barra de búsqueda */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar por producto, sitio o placa SENA..."
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Campo de búsqueda para filtrar inventarios"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+          {filtro && (
+            <p className="text-sm text-gray-600 mt-2">
+              Mostrando{" "}
+              {filteredAgrupado.reduce((acc, [, items]) => acc + items.length, 0)} resultados para "{filtro}"
+            </p>
+          )}
+        </div>
         {inventarios.length === 0 ? (
           <div className="text-center py-12">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full">
@@ -687,6 +670,8 @@ export default function InventarioPage() {
                               <th className="text-left px-4 py-3 font-medium text-gray-700">Sitio</th>
                               <th className="text-left px-4 py-3 font-medium text-gray-700">Stock</th>
                               <th className="text-left px-4 py-3 font-medium text-gray-700">Placa SENA</th>
+                              <th className="text-left px-4 py-3 font-medium text-gray-700">Fecha Entrada</th>
+                              <th className="text-left px-4 py-3 font-medium text-gray-700">Fecha Salida</th>
                               <th className="text-left px-4 py-3 font-medium text-gray-700">Acciones</th>
                             </tr>
                           </thead>
@@ -713,9 +698,7 @@ export default function InventarioPage() {
                                     </span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-gray-600">
-                                  {inv.fkSitio?.nombre || "Sin sitio"}
-                                </td>
+                                <td className="px-4 py-3 text-gray-600">{inv.fkSitio?.nombre || "Sin sitio"}</td>
                                 <td className="px-4 py-3">
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     {inv.stock} unidad{inv.stock !== 1 ? "es" : ""}
@@ -730,6 +713,10 @@ export default function InventarioPage() {
                                     <span className="text-gray-400 italic text-xs">Sin placa</span>
                                   )}
                                 </td>
+                                <td className="px-4 py-3 font-mono text-xs">
+                                  {inv.fechaEntrada}
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs">{inv.fechaSalida || "---"}</td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-1">
                                     {permisos.puedeEditar && (
@@ -764,7 +751,6 @@ export default function InventarioPage() {
                           </tbody>
                         </table>
                       </div>
-
                       {/* Resumen del sitio */}
                       <div className="bg-gray-50 px-4 py-3 border-t">
                         <div className="flex justify-between items-center text-sm">
@@ -787,7 +773,8 @@ export default function InventarioPage() {
             )}
           </Accordion>
         )}
-        {/* Footer con información adicional */}
+
+        {/* Footer con info */}
         {inventarios.length > 0 && (
           <div className="mt-8 p-4 bg-blue-50 rounded-lg">
             <div className="flex items-start gap-3">

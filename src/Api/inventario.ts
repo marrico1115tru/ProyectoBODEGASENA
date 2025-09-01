@@ -2,7 +2,7 @@ import axiosInstance from "./../Api/axios";
 import {
   Inventario,
   InventarioCreatePayload,
-  InventarioUpdatePayload
+  InventarioUpdatePayload,
 } from "@/types/types/inventario";
 
 export const getInventarios = async (): Promise<Inventario[]> => {
@@ -11,33 +11,31 @@ export const getInventarios = async (): Promise<Inventario[]> => {
 };
 
 export const createInventario = async (
-  data: InventarioCreatePayload // ¡Ya corregido!
+  data: InventarioCreatePayload
 ): Promise<Inventario> => {
-  const res = await axiosInstance.post(
-    "/inventario",
-    {
-      stock: data.stock,
-      fkSitioId: data.fkSitioId,
-      idProductoId: data.idProductoId,
-      placaSena: data.placaSena ? data.placaSena : undefined,
-    }
-  );
+  const res = await axiosInstance.post("/inventario", {
+    stock: data.stock,
+    fkSitioId: data.fkSitioId,
+    idProductoId: data.idProductoId,
+    placaSena: data.placaSena ?? undefined,
+    fechaEntrada: data.fechaEntrada,
+    fechaSalida: data.fechaSalida ?? undefined,
+  });
   return res.data;
 };
 
 export const updateInventario = async (
   id: number,
-  data: InventarioUpdatePayload // ¡Ya corregido!
+  data: InventarioUpdatePayload
 ): Promise<Inventario> => {
-  const res = await axiosInstance.put(
-    `/inventario/${id}`,
-    {
-      stock: data.stock,
-      fkSitioId: data.fkSitioId,
-      idProductoId: data.idProductoId,
-      placaSena: data.placaSena ? data.placaSena : undefined,
-    }
-  );
+  const res = await axiosInstance.put(`/inventario/${id}`, {
+    stock: data.stock,
+    fkSitioId: data.fkSitioId,
+    idProductoId: data.idProductoId,
+    placaSena: data.placaSena ?? undefined,
+    fechaEntrada: data.fechaEntrada,
+    fechaSalida: data.fechaSalida ?? undefined,
+  });
   return res.data;
 };
 

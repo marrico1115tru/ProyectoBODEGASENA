@@ -25,30 +25,39 @@ export interface Inventario {
   idProductoInventario: number;
   stock: number;
   placaSena?: string;
+  fechaEntrada: string;  // ISO date string
+  fechaSalida?: string;  // ISO date string or undefined
   fkSitio: Sitio;
   idProducto: Producto;
   movimientos: Movimiento[];
 }
 
-// Solo datos del form
+// Datos para formularios (frontend)
 export interface InventarioFormValues {
   stock: number;
   fkSitioId: number;
   idProductoId: number;
-  placaSena?: string; // nunca null
+  placaSena?: string;
+  fechaEntrada: string;
+  fechaSalida?: string;
 }
 
-// Para peticiones al backend
+// Payload para creación backend
 export interface InventarioCreatePayload {
   stock: number;
   fkSitioId: number;
   idProductoId: number;
   placaSena?: string;
+  fechaEntrada: string;
+  fechaSalida?: string;
 }
 
+// Payload para actualización backend
 export interface InventarioUpdatePayload {
-  stock: number;
-  fkSitioId: number;
-  idProductoId: number;
+  stock?: number;
+  fkSitioId?: number;
+  idProductoId?: number;
   placaSena?: string;
+  fechaEntrada?: string;
+  fechaSalida?: string | null;
 }
