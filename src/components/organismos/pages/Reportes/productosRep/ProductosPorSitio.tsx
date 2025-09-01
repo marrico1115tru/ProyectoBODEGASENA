@@ -3,28 +3,29 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
 import DefaultLayout from '@/layouts/default';
 import Modal from '@/components/ui/Modal';
 import axiosInstance from '@/Api/axios'; 
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
-interface ProductoPorSitio {
-  nombreProducto: string;
-  nombreSitio: string | null;
-  stock: string | null;
+interface ProductoReporte {
+  idsolicitud: number;
+  solicitante: string;
+  producto: string;
+  cantidadsolicitada: number | null;
+  sitioalmacen: string | null;
+  fechaentrega: string | null;
+  estadosolicitud: string | null;
 }
 
-export default function ProductosPorSitio() {
+export default function ReporteProductosCompleto() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
 
   const [permisos, setPermisos] = useState({
     puedeVer: false,
-    puedeCrear: false,
-    puedeEditar: false,
-    puedeEliminar: false,
   });
 
   useEffect(() => {
@@ -38,36 +39,18 @@ export default function ProductosPorSitio() {
         const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
 
-        if (permisosData) {
-          setPermisos({
-            puedeVer: Boolean(permisosData.puedeVer),
-            puedeCrear: Boolean(permisosData.puedeCrear),
-            puedeEditar: Boolean(permisosData.puedeEditar),
-            puedeEliminar: Boolean(permisosData.puedeEliminar),
-          });
-        } else {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error al obtener permisos:', error);
         setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
+          puedeVer: Boolean(permisosData?.puedeVer || false),
         });
+      } catch (error) {
+        setPermisos({ puedeVer: false });
       }
     };
     fetchPermisos();
   }, []);
 
-  const { data, isLoading, error } = useQuery<ProductoPorSitio[]>({
-    queryKey: ['productos-por-sitio'],
+  const { data, isLoading, error } = useQuery<ProductoReporte[]>({
+    queryKey: ['reporte-productos-completo'],
     queryFn: async () => {
       const res = await axiosInstance.get('/productos/por-sitio', { withCredentials: true });
       return res.data;
@@ -97,8 +80,7 @@ export default function ProductosPorSitio() {
     } else {
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pdfHeight);
     }
-
-    pdf.save('reporte_productos_por_sitio.pdf');
+    pdf.save('reporte_productos_completo.pdf');
   };
 
   if (!permisos.puedeVer) {
@@ -113,13 +95,14 @@ export default function ProductosPorSitio() {
 
   if (isLoading) return <p className="p-6">Cargando datos...</p>;
   if (error) return <p className="p-6 text-red-500">Error al cargar datos.</p>;
-  if (!Array.isArray(data)) return <p className="p-6">No se encontraron datos válidos.</p>;
+  if (!Array.isArray(data) || data.length === 0)
+    return <p className="p-6">No se encontraron datos válidos.</p>;
 
   const ReportContent = () => (
-    <div className="bg-white p-8 rounded-xl shadow-lg max-w-5xl mx-auto">
+    <div className="bg-white p-8 rounded-xl shadow-lg max-w-7xl mx-auto">
       <div className="text-center mb-8">
         <h2 className="text-4xl font-bold text-blue-800">INNOVASOFT</h2>
-        <p className="text-lg text-gray-600">Reporte de Productos por Sitio</p>
+        <p className="text-lg text-gray-600">Reporte Completo de Productos</p>
         <p className="text-sm text-gray-500 mt-1">
           Generado automáticamente — {new Date().toLocaleDateString()}
         </p>
@@ -129,19 +112,25 @@ export default function ProductosPorSitio() {
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-blue-800 text-white">
-            <th className="p-3 border border-gray-300 text-left">#</th>
+            <th className="p-3 border border-gray-300 text-left">ID Solicitud</th>
             <th className="p-3 border border-gray-300 text-left">Producto</th>
-            <th className="p-3 border border-gray-300 text-left">Sitio</th>
-            <th className="p-3 border border-gray-300 text-right">Stock</th>
+            <th className="p-3 border border-gray-300 text-left">Cantidad Solicitada</th>
+            <th className="p-3 border border-gray-300 text-left">Solicitante</th>
+            <th className="p-3 border border-gray-300 text-left">Sitio Almacenamiento</th>
+            <th className="p-3 border border-gray-300 text-left">Fecha Entrega</th>
+            <th className="p-3 border border-gray-300 text-left">Estado Solicitud</th>
           </tr>
         </thead>
         <tbody>
           {data.map((item, index) => (
             <tr key={index} className="hover:bg-gray-100">
-              <td className="p-3 border border-gray-300">{index + 1}</td>
-              <td className="p-3 border border-gray-300">{item?.nombreProducto ?? "N/A"}</td>
-              <td className="p-3 border border-gray-300">{item?.nombreSitio ?? "No asignado"}</td>
-              <td className="p-3 border border-gray-300 text-right">{item?.stock ?? "0"}</td>
+              <td className="p-3 border border-gray-300">{item.idsolicitud}</td>
+              <td className="p-3 border border-gray-300">{item.producto}</td>
+              <td className="p-3 border border-gray-300">{item.cantidadsolicitada ?? 'N/A'}</td>
+              <td className="p-3 border border-gray-300">{item.solicitante}</td>
+              <td className="p-3 border border-gray-300">{item.sitioalmacen ?? 'No asignado'}</td>
+              <td className="p-3 border border-gray-300">{item.fechaentrega ?? 'N/A'}</td>
+              <td className="p-3 border border-gray-300">{item.estadosolicitud ?? 'N/A'}</td>
             </tr>
           ))}
         </tbody>
@@ -153,7 +142,7 @@ export default function ProductosPorSitio() {
     <DefaultLayout>
       <div className="p-8 bg-blue-50 min-h-screen">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-blue-800">Productos por Sitio</h1>
+          <h1 className="text-4xl font-bold text-blue-800">Reporte Completo de Productos</h1>
           <div className="flex gap-4">
             <Button
               onClick={() => setShowPreview(true)}
