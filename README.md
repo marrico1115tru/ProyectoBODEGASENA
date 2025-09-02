@@ -38,6 +38,15 @@ npm install
 npm run dev
 ```
 ---
+```
+---
+
+### CREDENCIALES PARA INGRESAR
+``` bash
+email:admin@sena.edu.co
+Contraseña:admin123
+```
+---
 
 ### Setup pnpm (optional)
 If you are using pnpm, you need to add the following code to your .npmrc file:
