@@ -21,6 +21,8 @@ This is a template for creating applications using Vite and HeroUI (v2).
 ```bash
 git clone https://github.com/frontio-ai/vite-template.git
 cd vite-template
+```
+---
 
 ### 2️⃣ Install Dependencies
 You can use npm, yarn, pnpm, or bun.
@@ -28,20 +30,26 @@ Example with npm:
 
 ``` bash
 npm install
+```
+---
 
 ### 3️⃣ Run the Development Server
 ``` bash
 npm run dev
+```
+---
 
 ### ⚙️ Setup pnpm (optional)
 If you are using pnpm, you need to add the following code to your .npmrc file:
 ``` bash
 public-hoist-pattern[]=*@heroui/*
 After modifying the .npmrc file, run:
-
+```
 ``` bash
 pnpm install
 to ensure dependencies are installed correctly.
+```
+---
 
 ### 🐳 Run with Docker
 You can also run this project inside a Docker container.
@@ -50,6 +58,8 @@ Example with Docker Compose:
 
 ``` bash
 docker-compose up --build
+```
+---
 
 ## License
 Licensed under the MIT license.
