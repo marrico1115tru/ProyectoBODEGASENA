@@ -62,7 +62,10 @@ const MovimientosPage = () => {
 
   const [tipoMovimiento, setTipoMovimiento] = useState('ENTRADA');
   const [cantidad, setCantidad] = useState<number | ''>('');
-  const [fecha, setFecha] = useState('');
+  
+  const [fechaDia, setFechaDia] = useState('');
+  const [fechaMes, setFechaMes] = useState('');
+  const [fechaAno, setFechaAno] = useState('');
   const [idInventario, setIdInventario] = useState<number | ''>('');
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -103,13 +106,23 @@ const MovimientosPage = () => {
     }
   };
 
+  const limpiarForm = () => {
+    setEditId(null);
+    setTipoMovimiento('ENTRADA');
+    setCantidad('');
+    setFechaDia('');
+    setFechaMes('');
+    setFechaAno('');
+    setIdInventario('');
+  };
+
   const guardar = async () => {
     if (!cantidad || cantidad <= 0) {
       await MySwal.fire('Error', 'La cantidad debe ser mayor que cero', 'error');
       return;
     }
-    if (!fecha) {
-      await MySwal.fire('Error', 'La fecha es obligatoria', 'error');
+    if (!fechaDia || !fechaMes || !fechaAno) {
+      await MySwal.fire('Error', 'Debe seleccionar día, mes y año para la fecha', 'error');
       return;
     }
     if (!idInventario) {
@@ -123,11 +136,14 @@ const MovimientosPage = () => {
       return;
     }
 
+    
+    const fechaMovimiento = `${fechaAno}-${fechaMes.padStart(2, '0')}-${fechaDia.padStart(2, '0')}`;
+
     const payload = {
       id: editId ?? 0,
       tipoMovimiento,
       cantidad: Number(cantidad),
-      fechaMovimiento: fecha,
+      fechaMovimiento,
       idProductoInventario: {
         idProductoInventario: inventarioSeleccionado.idProductoInventario,
         stock: inventarioSeleccionado.stock,
@@ -157,17 +173,19 @@ const MovimientosPage = () => {
     setEditId(m.id);
     setTipoMovimiento(m.tipoMovimiento);
     setCantidad(m.cantidad);
-    setFecha(m.fechaMovimiento);
+    // Parsear fecha y setear selects
+    if (m.fechaMovimiento) {
+      const [ano, mes, dia] = m.fechaMovimiento.split('-');
+      setFechaAno(ano);
+      setFechaMes(mes);
+      setFechaDia(dia);
+    } else {
+      setFechaAno('');
+      setFechaMes('');
+      setFechaDia('');
+    }
     setIdInventario(m.idProductoInventario?.idProductoInventario || '');
     onOpen();
-  };
-
-  const limpiarForm = () => {
-    setEditId(null);
-    setTipoMovimiento('ENTRADA');
-    setCantidad('');
-    setFecha('');
-    setIdInventario('');
   };
 
   const filtered = useMemo(() => {
@@ -216,8 +234,12 @@ const MovimientosPage = () => {
               </Button>
             </DropdownTrigger>
             <DropdownMenu>
-              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">Editar</DropdownItem>
-              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">Eliminar</DropdownItem>
+              <DropdownItem onPress={() => abrirModalEditar(item)} key="editar">
+                Editar
+              </DropdownItem>
+              <DropdownItem onPress={() => eliminar(item.id)} key="eliminar">
+                Eliminar
+              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         );
@@ -234,6 +256,31 @@ const MovimientosPage = () => {
     });
   };
 
+  
+  const años: string[] = [];
+  const añoActual = new Date().getFullYear();
+  for (let y = añoActual; y >= añoActual - 30; y--) {
+    años.push(String(y));
+  }
+  const meses = [
+    { value: '01', name: 'Enero' },
+    { value: '02', name: 'Febrero' },
+    { value: '03', name: 'Marzo' },
+    { value: '04', name: 'Abril' },
+    { value: '05', name: 'Mayo' },
+    { value: '06', name: 'Junio' },
+    { value: '07', name: 'Julio' },
+    { value: '08', name: 'Agosto' },
+    { value: '09', name: 'Septiembre' },
+    { value: '10', name: 'Octubre' },
+    { value: '11', name: 'Noviembre' },
+    { value: '12', name: 'Diciembre' },
+  ];
+  const dias: string[] = [];
+  for (let d = 1; d <= 31; d++) {
+    dias.push(d.toString().padStart(2, '0'));
+  }
+
   return (
     <DefaultLayout>
       <div className="p-6 space-y-6">
@@ -241,9 +288,7 @@ const MovimientosPage = () => {
           <h1 className="text-2xl font-semibold text-[#0D1324] flex items-center gap-2">
             🔄 Movimientos de Inventario
           </h1>
-          <p className="text-sm text-gray-600">
-            Registra y gestiona entradas y salidas de inventario.
-          </p>
+          <p className="text-sm text-gray-600">Registra y gestiona entradas y salidas de inventario.</p>
         </header>
 
         <div className="hidden md:block rounded-xl shadow-sm bg-white overflow-x-auto">
@@ -309,7 +354,9 @@ const MovimientosPage = () => {
                       }}
                     >
                       {[5, 10, 15].map((n) => (
-                        <option key={n} value={n}>{n}</option>
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -318,9 +365,13 @@ const MovimientosPage = () => {
             }
             bottomContent={
               <div className="py-2 px-2 flex justify-center items-center gap-2">
-                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>Anterior</Button>
+                <Button size="sm" variant="flat" isDisabled={page === 1} onPress={() => setPage(page - 1)}>
+                  Anterior
+                </Button>
                 <Pagination isCompact showControls page={page} total={pages} onChange={setPage} />
-                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>Siguiente</Button>
+                <Button size="sm" variant="flat" isDisabled={page === pages} onPress={() => setPage(page + 1)}>
+                  Siguiente
+                </Button>
               </div>
             }
             sortDescriptor={sortDescriptor}
@@ -332,28 +383,21 @@ const MovimientosPage = () => {
           >
             <TableHeader columns={columns.filter((c) => visibleColumns.has(c.uid))}>
               {(col) => (
-                <TableColumn
-                  key={col.uid}
-                  align={col.uid === 'actions' ? 'center' : 'start'}
-                >
+                <TableColumn key={col.uid} align={col.uid === 'actions' ? 'center' : 'start'}>
                   {col.name}
                 </TableColumn>
               )}
             </TableHeader>
             <TableBody items={sorted} emptyContent="No se encontraron movimientos">
               {(item) => (
-                <TableRow key={item.id}>
-                  {(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}
-                </TableRow>
+                <TableRow key={item.id}>{(col) => <TableCell>{renderCell(item, String(col))}</TableCell>}</TableRow>
               )}
             </TableBody>
           </Table>
         </div>
 
         <div className="grid gap-4 md:hidden">
-          {sorted.length === 0 && (
-            <p className="text-center text-gray-500">No se encontraron movimientos</p>
-          )}
+          {sorted.length === 0 && <p className="text-center text-gray-500">No se encontraron movimientos</p>}
           {sorted.map((m) => (
             <Card key={m.id} className="shadow-sm">
               <CardContent className="space-y-2 p-4">
@@ -363,18 +407,17 @@ const MovimientosPage = () => {
                   </h3>
                   <Dropdown>
                     <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="rounded-full text-[#0D1324]"
-                      >
+                      <Button isIconOnly size="sm" variant="light" className="rounded-full text-[#0D1324]">
                         <MoreVertical />
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu>
-                      <DropdownItem onPress={() => abrirModalEditar(m)} key="editar">Editar</DropdownItem>
-                      <DropdownItem onPress={() => eliminar(m.id)} key="eliminar">Eliminar</DropdownItem>
+                      <DropdownItem onPress={() => abrirModalEditar(m)} key="editar">
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem onPress={() => eliminar(m.id)} key="eliminar">
+                        Eliminar
+                      </DropdownItem>
                     </DropdownMenu>
                   </Dropdown>
                 </div>
@@ -382,8 +425,7 @@ const MovimientosPage = () => {
                   <span className="font-medium">Fecha:</span> {m.fechaMovimiento}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Inventario:</span>{' '}
-                  {m.idProductoInventario?.idProductoInventario ?? '—'}
+                  <span className="font-medium">Inventario:</span> {m.idProductoInventario?.idProductoInventario ?? '—'}
                 </p>
                 <p className="text-xs text-gray-400">ID: {m.id}</p>
               </CardContent>
@@ -398,9 +440,7 @@ const MovimientosPage = () => {
                 <ModalHeader>{editId ? 'Editar Movimiento' : 'Nuevo Movimiento'}</ModalHeader>
                 <ModalBody className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Tipo de movimiento
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Tipo de movimiento</label>
                     <select
                       value={tipoMovimiento}
                       onChange={(e) => setTipoMovimiento(e.target.value)}
@@ -418,17 +458,50 @@ const MovimientosPage = () => {
                     onValueChange={(v) => setCantidad(v ? Number(v) : '')}
                     radius="sm"
                   />
-                  <Input
-                    label="Fecha (YYYY-MM-DD)"
-                    placeholder="2025-06-21"
-                    value={fecha}
-                    onValueChange={setFecha}
-                    radius="sm"
-                  />
+                  {/* Fecha con selects */}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Producto Inventario
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Fecha</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={fechaDia}
+                        onChange={(e) => setFechaDia(e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Día</option>
+                        {dias.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={fechaMes}
+                        onChange={(e) => setFechaMes(e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Mes</option>
+                        {meses.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={fechaAno}
+                        onChange={(e) => setFechaAno(e.target.value)}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Año</option>
+                        {años.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Producto Inventario</label>
                     <select
                       value={idInventario}
                       onChange={(e) => setIdInventario(Number(e.target.value) || '')}
@@ -444,7 +517,9 @@ const MovimientosPage = () => {
                   </div>
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onCloseLocal}>Cancelar</Button>
+                  <Button variant="light" onPress={onCloseLocal}>
+                    Cancelar
+                  </Button>
                   <Button variant="flat" onPress={guardar}>
                     {editId ? 'Actualizar' : 'Crear'}
                   </Button>

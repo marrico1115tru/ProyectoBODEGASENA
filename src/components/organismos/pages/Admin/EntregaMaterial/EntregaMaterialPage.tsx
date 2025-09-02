@@ -39,7 +39,7 @@ import { PlusIcon, MoreVertical, Search as SearchIcon } from "lucide-react";
 
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import axiosInstance from "@/Api/axios"; 
+import axiosInstance from "@/Api/axios";
 import { getDecodedTokenFromCookies } from "@/lib/utils";
 
 const MySwal = withReactContent(Swal);
@@ -82,7 +82,11 @@ const EntregaMaterialPage = () => {
     direction: "ascending",
   });
 
-  const [fechaEntrega, setFechaEntrega] = useState("");
+  // Separamos día, mes y año para el select
+  const [fechaDia, setFechaDia] = useState<string>("");
+  const [fechaMes, setFechaMes] = useState<string>("");
+  const [fechaAno, setFechaAno] = useState<string>("");
+
   const [observaciones, setObservaciones] = useState("");
   const [idFicha, setIdFicha] = useState<number | "">("");
   const [idSolicitud, setIdSolicitud] = useState<number | "">("");
@@ -198,11 +202,25 @@ const EntregaMaterialPage = () => {
     }
   };
 
+  const limpiarFormulario = () => {
+    setEditId(null);
+    setFechaDia("");
+    setFechaMes("");
+    setFechaAno("");
+    setObservaciones("");
+    setIdFicha("");
+    setIdSolicitud("");
+    setIdResponsable("");
+  };
+
   const guardar = async () => {
-    if (!fechaEntrega || !idFicha || !idSolicitud || !idResponsable) {
+    if (!fechaDia || !fechaMes || !fechaAno || !idFicha || !idSolicitud || !idResponsable) {
       await MySwal.fire("Error", "Completa todos los campos obligatorios", "error");
       return;
     }
+
+    // Formatear fecha
+    const fechaEntrega = `${fechaAno}-${fechaMes.padStart(2, "0")}-${fechaDia.padStart(2, "0")}`;
 
     if (editId && !permisos.puedeEditar) {
       await MySwal.fire("Acceso Denegado", "No tienes permisos para editar entregas.", "warning");
@@ -244,7 +262,15 @@ const EntregaMaterialPage = () => {
       return;
     }
     setEditId(item.id);
-    setFechaEntrega(item.fechaEntrega);
+
+  
+    const fecha = item.fechaEntrega || "";
+    const [ano, mes, dia] = fecha.split("-");
+
+    setFechaAno(ano || "");
+    setFechaMes(mes || "");
+    setFechaDia(dia || "");
+
     setObservaciones(item.observaciones || "");
     setIdFicha(item.idFichaFormacion?.id || "");
     setIdSolicitud(item.idSolicitud?.id || "");
@@ -259,15 +285,6 @@ const EntregaMaterialPage = () => {
     }
     limpiarFormulario();
     onOpen();
-  };
-
-  const limpiarFormulario = () => {
-    setEditId(null);
-    setFechaEntrega("");
-    setObservaciones("");
-    setIdFicha("");
-    setIdSolicitud("");
-    setIdResponsable("");
   };
 
   const filtered = useMemo(() => {
@@ -364,6 +381,31 @@ const EntregaMaterialPage = () => {
         </div>
       </DefaultLayout>
     );
+  }
+
+  
+  const años: string[] = [];
+  const añoActual = new Date().getFullYear();
+  for (let y = añoActual; y >= añoActual - 30; y--) {
+    años.push(String(y));
+  }
+  const meses = [
+    { value: "01", name: "Enero" },
+    { value: "02", name: "Febrero" },
+    { value: "03", name: "Marzo" },
+    { value: "04", name: "Abril" },
+    { value: "05", name: "Mayo" },
+    { value: "06", name: "Junio" },
+    { value: "07", name: "Julio" },
+    { value: "08", name: "Agosto" },
+    { value: "09", name: "Septiembre" },
+    { value: "10", name: "Octubre" },
+    { value: "11", name: "Noviembre" },
+    { value: "12", name: "Diciembre" },
+  ];
+  const dias: string[] = [];
+  for (let d = 1; d <= 31; d++) {
+    dias.push(d.toString().padStart(2, "0"));
   }
 
   return (
@@ -491,14 +533,52 @@ const EntregaMaterialPage = () => {
               <>
                 <ModalHeader>{editId ? "Editar Entrega" : "Nueva Entrega"}</ModalHeader>
                 <ModalBody className="space-y-4">
-                  <Input
-                    label="Fecha de entrega (YYYY-MM-DD)"
-                    placeholder="2025-06-22"
-                    value={fechaEntrega}
-                    onValueChange={setFechaEntrega}
-                    radius="sm"
-                    disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
-                  />
+            
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Fecha de entrega</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={fechaDia}
+                        onChange={(e) => setFechaDia(e.target.value)}
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Día</option>
+                        {dias.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={fechaMes}
+                        onChange={(e) => setFechaMes(e.target.value)}
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Mes</option>
+                        {meses.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={fechaAno}
+                        onChange={(e) => setFechaAno(e.target.value)}
+                        disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
+                        className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Año</option>
+                        {años.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <Input
                     label="Observaciones"
                     placeholder="Observaciones (opcional)"
@@ -508,9 +588,7 @@ const EntregaMaterialPage = () => {
                     disabled={editId ? !permisos.puedeEditar : !permisos.puedeCrear}
                   />
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      Ficha Formación
-                    </label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Ficha Formación</label>
                     <select
                       value={idFicha}
                       onChange={(e) => setIdFicha(Number(e.target.value) || "")}
