@@ -1,13 +1,20 @@
-interface CardProps {
-  title: string;
-  content: string;
-}
+"use client";
 
-export const Card = ({ title, content }: CardProps) => {
-  return (
-    <div className="p-4 bg-white shadow-md rounded-lg">
-      <h3 className="font-semibold text-lg">{title}</h3>
-      <p>{content}</p>
-    </div>
-  );
+import { Card, CardBody } from "@heroui/react";
+
+type CustomCardProps = {
+  conten?: string;
+  children?: React.ReactNode;
+  className?: string;
 };
+
+export default function CustomCard({ conten, children, className = "" }: CustomCardProps) {
+  return (
+    <Card className={`glass-card hover:scale-105 transition-transform duration-300 ${className}`}>
+      <CardBody>
+        {conten && <p className="text-default-500 text-sm mb-2">{conten}</p>}
+        {children}
+      </CardBody>
+    </Card>
+  );
+}

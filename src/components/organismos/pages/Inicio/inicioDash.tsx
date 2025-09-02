@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import DefaultLayout from "@/layouts/default";
-import { Card } from "@/components/ui/card";
 import { UserGroupIcon, CubeIcon, Squares2X2Icon, ChartBarSquareIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useKeenSlider } from "keen-slider/react";
 import { useDashboardData } from "@/Api/Dashboard/DashboardData";
 import "keen-slider/keen-slider.min.css";
 import { getDecodedTokenFromCookies } from '@/lib/utils';
-import axiosInstance from '@/Api/axios'; 
+import axiosInstance from '@/Api/axios';
+
+import CardInfo from "../../CardInfo";
+import CustomCard from "../../../molecula/Card";
 
 const images = [
   { id: 1, title: "Agropecuario", src: "/img/agropecuarioimg.jpeg", link: "/agropecuario" },
@@ -69,12 +71,7 @@ export default function Dashboard() {
         const response = await axiosInstance.get(url, { withCredentials: true });
 
         if (!response) {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
+          setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
           return;
         }
 
@@ -88,29 +85,17 @@ export default function Dashboard() {
             puedeEliminar: Boolean(permisosData.puedeEliminar),
           });
         } else {
-          setPermisos({
-            puedeVer: false,
-            puedeCrear: false,
-            puedeEditar: false,
-            puedeEliminar: false,
-          });
+          setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
         }
       } catch (error) {
         console.error('Error al obtener permisos:', error);
-        setPermisos({
-          puedeVer: false,
-          puedeCrear: false,
-          puedeEditar: false,
-          puedeEliminar: false,
-        });
+        setPermisos({ puedeVer: false, puedeCrear: false, puedeEditar: false, puedeEliminar: false });
       }
     };
     fetchPermisos();
   }, []);
 
-  const { data, loading } = useDashboardData({
-    enabled: permisos.puedeVer,
-  });
+  const { data, loading } = useDashboardData({ enabled: permisos.puedeVer });
 
   const [sliderRef] = useKeenSlider(
     {
@@ -150,59 +135,38 @@ export default function Dashboard() {
           <h1 className="text-4xl font-extrabold text-slate-800 mb-2 tracking-tight drop-shadow">¡Bienvenido!</h1>
           <p className="text-slate-500 text-lg">Visualiza el resumen del sistema de inventario.</p>
         </div>
+
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 mb-12">
-          <Card className="glass-card hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Total de Usuarios</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalUsuarios}</h2>
-              </div>
-              <div className="icon-glass">
-                <UserGroupIcon className="h-8 w-8 text-blue-600" />
-              </div>
-            </div>
-          </Card>
-          <Card className="glass-card hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Productos</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalProductos}</h2>
-              </div>
-              <div className="icon-glass">
-                <CubeIcon className="h-8 w-8 text-emerald-600" />
-              </div>
-            </div>
-          </Card>
-          <Card className="glass-card hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Áreas</p>
-                <h2 className="text-3xl font-bold text-gray-900">{loading ? "..." : data?.totalAreas}</h2>
-              </div>
-              <div className="icon-glass">
-                <Squares2X2Icon className="h-8 w-8 text-orange-500" />
-              </div>
-            </div>
-          </Card>
-          <Card className="glass-card hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Resumen</p>
-                <h2 className="text-3xl font-bold text-gray-900">
-                  {loading
-                    ? "..."
-                    : Math.floor(
-                        ((Number(data?.totalUsuarios ?? 0) + Number(data?.totalProductos ?? 0) + Number(data?.totalAreas ?? 0)) /
-                          500) *
-                          100
-                      ) + "%"}
-                </h2>
-              </div>
-              <div className="icon-glass">
-                <ChartBarSquareIcon className="h-8 w-8 text-fuchsia-600" />
-              </div>
-            </div>
-          </Card>
+          <CardInfo
+            label="Total de Usuarios"
+            value={loading ? "..." : data?.totalUsuarios}
+            icon={<UserGroupIcon className="h-8 w-8 text-blue-600" />}
+          />
+          <CardInfo
+            label="Productos"
+            value={loading ? "..." : data?.totalProductos}
+            icon={<CubeIcon className="h-8 w-8 text-emerald-600" />}
+          />
+          <CardInfo
+            label="Áreas"
+            value={loading ? "..." : data?.totalAreas}
+            icon={<Squares2X2Icon className="h-8 w-8 text-orange-500" />}
+          />
+          <CardInfo
+            label="Resumen"
+            value={
+              loading
+                ? "..."
+                : Math.floor(
+                    ((Number(data?.totalUsuarios ?? 0) +
+                      Number(data?.totalProductos ?? 0) +
+                      Number(data?.totalAreas ?? 0)) /
+                      500) *
+                      100
+                  ) + "%"
+            }
+            icon={<ChartBarSquareIcon className="h-8 w-8 text-fuchsia-600" />}
+          />
         </div>
 
         <div className="mb-14">
@@ -233,7 +197,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <Card className="glass-card p-8 mt-10">
+        <CustomCard className="p-8 mt-10">
           <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 border-gray-200">
             Últimas Actividades
           </h2>
@@ -245,8 +209,7 @@ export default function Dashboard() {
               </li>
             ))}
           </ul>
-        </Card>
-
+        </CustomCard>
       </div>
 
       <style>{`
