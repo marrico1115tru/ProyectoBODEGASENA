@@ -20,7 +20,7 @@ This is a template for creating applications using Vite and HeroUI (v2).
 ### Clone the Project
 ```bash
 git clone https://github.com/frontio-ai/vite-template.git
-cd vite-template
+cd BODEGASENA
 ```
 ---
 
