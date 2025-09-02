@@ -1,6 +1,9 @@
+'use client';
+
 import { useEffect, useState } from "react";
 import DefaultLayout from "@/layouts/default";
 import axios from "@/Api/axios";
+import Swal from "sweetalert2";
 
 interface Rol {
   id: number;
@@ -58,7 +61,7 @@ export default function GestionPermisosPage() {
         setRoles(resRoles.data);
         setModulosTotales(resModulos.data);
       } catch {
-        alert("Error cargando roles o módulos");
+        Swal.fire("Error", "Error cargando roles o módulos", "error");
       }
     };
     fetchData();
@@ -76,7 +79,7 @@ export default function GestionPermisosPage() {
       const res = await axios.get(`/permisos/rol/${rolSeleccionado}`);
       setPermisos(res.data.data);
     } catch {
-      alert("Error al obtener permisos");
+      Swal.fire("Error", "Error al obtener permisos", "error");
     }
   };
 
@@ -86,11 +89,12 @@ export default function GestionPermisosPage() {
       const modulosRolIds = res.data.map((m: any) => m.id);
       setModulosConPermisos(modulosTotales.filter(m => modulosRolIds.includes(m.id)));
     } catch {
-      alert("Error cargando módulos con permisos para el rol");
+      Swal.fire("Error", "Error cargando módulos con permisos para el rol", "error");
     }
   };
 
-  const getPermiso = (opcionId: number) => permisos.find((p) => p.opcion.id === opcionId);
+  const getPermiso = (opcionId: number) =>
+    permisos.find((p) => p.opcion.id === opcionId);
 
   const handleCheckboxChange = (
     opcionId: number,
@@ -105,14 +109,22 @@ export default function GestionPermisosPage() {
   };
 
   const eliminarPermiso = async (permiso: Permiso) => {
-    if (!confirm("¿Seguro de eliminar este permiso?")) return;
-    try {
-      await axios.delete(`/permisos/${permiso.id}`);
-      setPermisos((prev) => prev.filter((p) => p.id !== permiso.id));
-      alert("Permiso eliminado");
-      cargarModulosConPermisos();
-    } catch {
-      alert("Error eliminando permiso");
+    const result = await Swal.fire({
+      title: "¿Seguro de eliminar este permiso?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`/permisos/${permiso.id}`);
+        setPermisos((prev) => prev.filter((p) => p.id !== permiso.id));
+        Swal.fire("Eliminado", "Permiso eliminado correctamente", "success");
+        cargarModulosConPermisos();
+      } catch {
+        Swal.fire("Error", "Error eliminando permiso", "error");
+      }
     }
   };
 
@@ -121,11 +133,11 @@ export default function GestionPermisosPage() {
   );
 
   const crearPermiso = async () => {
+    if (!rolSeleccionado || !nuevoPermiso.id_opcion) {
+      Swal.fire("Advertencia", "Debes seleccionar un rol y una opción", "warning");
+      return;
+    }
     try {
-      if (!rolSeleccionado || !nuevoPermiso.id_opcion) {
-        alert("Debes seleccionar un rol y una opción");
-        return;
-      }
       await axios.post("/permisos", {
         id_rol: rolSeleccionado,
         id_opcion: Number(nuevoPermiso.id_opcion),
@@ -134,7 +146,7 @@ export default function GestionPermisosPage() {
         puedeEditar: nuevoPermiso.puedeEditar,
         puedeEliminar: nuevoPermiso.puedeEliminar,
       });
-      alert("Permiso creado correctamente");
+      Swal.fire("Éxito", "Permiso creado correctamente", "success");
       setNuevoPermiso({
         id_opcion: "",
         puedeVer: false,
@@ -146,7 +158,7 @@ export default function GestionPermisosPage() {
       cargarPermisos();
       cargarModulosConPermisos();
     } catch {
-      alert("Error al crear permiso");
+      Swal.fire("Error", "Error al crear permiso", "error");
     }
   };
 
@@ -161,10 +173,10 @@ export default function GestionPermisosPage() {
         puedeEliminar: p.puedeEliminar,
       }));
       await axios.put("/permisos/actualizar-masivo", { permisos: permisosAEnviar });
-      alert("Permisos actualizados correctamente");
+      Swal.fire("Éxito", "Permisos actualizados correctamente", "success");
       cargarPermisos();
     } catch {
-      alert("Error al guardar permisos");
+      Swal.fire("Error", "Error al guardar permisos", "error");
     } finally {
       setGuardando(false);
     }
@@ -183,9 +195,7 @@ export default function GestionPermisosPage() {
         <select
           className="w-full border px-2 py-1 rounded"
           value={nuevoPermiso.id_opcion}
-          onChange={(e) =>
-            setNuevoPermiso({ ...nuevoPermiso, id_opcion: e.target.value })
-          }
+          onChange={(e) => setNuevoPermiso({ ...nuevoPermiso, id_opcion: e.target.value })}
         >
           <option value="">-- Selecciona opción --</option>
           {modulosTotales.flatMap((modulo) =>
@@ -267,7 +277,7 @@ export default function GestionPermisosPage() {
                       <button
                         className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                         onClick={() => {
-                          alert(`Para crear permisos en módulo '${modulo.nombreModulo}', usa el formulario de 'Crear nuevo permiso'.`);
+                          Swal.fire("Info", `Para crear permisos en módulo '${modulo.nombreModulo}', usa el formulario de 'Crear nuevo permiso'.`, "info");
                         }}
                         type="button"
                       >

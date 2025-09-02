@@ -124,87 +124,99 @@ export default function ProductosProximosAVencer() {
   if (!Array.isArray(data)) return <p className="p-6">No se encontraron datos.</p>;
 
   const ReportContent = () => (
-    <div className="bg-white p-6 rounded-xl shadow-lg max-w-6xl mx-auto border border-gray-200">
-      <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
-        <p className="text-sm text-gray-500">
-          Reporte generado automáticamente —{' '}
-          {new Date().toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}
+    <div className="bg-gradient-to-tr from-blue-100 via-white to-blue-150 p-10 rounded-3xl shadow-2xl max-w-6xl mx-auto border border-gray-300">
+      <div className="flex flex-col items-center mb-8">
+        <div className="bg-blue-700 rounded-full px-6 py-3 mb-4 shadow-lg shadow-blue-400/25">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide text-white drop-shadow">
+            INNOVASOFT
+          </h2>
+        </div>
+        <p className="text-xl text-blue-900 font-semibold mb-2">Productos Próximos a Vencer</p>
+        <p className="text-sm text-gray-600 mb-3">
+          Generado automáticamente — {new Date().toLocaleDateString()}
         </p>
-        <p className="mt-2 text-gray-700">Productos cuya fecha de vencimiento está próxima.</p>
+        <div className="bg-blue-200 border-l-6 border-blue-800 text-blue-900 px-6 py-5 mb-6 w-full md:w-3/4 text-center rounded-xl shadow-md shadow-blue-300/40 font-semibold leading-relaxed">
+          Este reporte muestra los productos que tienen fecha de vencimiento próxima, junto con el stock disponible.
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-auto border-collapse border border-gray-300">
-          <thead className="bg-blue-100 text-blue-900 text-left text-sm font-semibold">
-            <tr>
-              <th className="border border-gray-300 px-4 py-2">#</th>
-              <th className="border border-gray-300 px-4 py-2">Producto</th>
-              <th className="border border-gray-300 px-4 py-2">Fecha de Vencimiento</th>
-              <th className="border border-gray-300 px-4 py-2 text-right">Stock Total</th>
+
+      <div className="overflow-auto rounded-2xl border border-gray-300 shadow-xl shadow-gray-300/40">
+        <table className="w-full border-collapse text-sm bg-white rounded-2xl">
+          <thead>
+            <tr className="bg-blue-600 text-white uppercase shadow-inner shadow-blue-700">
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">#</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Producto</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Fecha de Vencimiento</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide text-right">Stock Total</th>
             </tr>
           </thead>
-          <tbody className="text-sm text-gray-700">
+          <tbody>
             {data.map((prod, index) => {
               const totalStock = prod.inventarios?.reduce(
-                (acc: number, inv: any) => acc + (inv?.stock || 0),
+                (acc, inv) => acc + (inv?.stock ?? 0),
                 0
               );
               return (
-                <tr key={prod.id} className="hover:bg-blue-50 transition-colors">
-                  <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
-                  <td className="border border-gray-300 px-4 py-2">{prod.nombre}</td>
-                  <td className="border border-gray-300 px-4 py-2">
-                    {prod.fechaVencimiento
-                      ? new Date(prod.fechaVencimiento).toLocaleDateString('es-ES')
-                      : 'Sin fecha'}
+                <tr
+                  key={prod.id}
+                  className={index % 2 === 0 ? "bg-white" : "bg-blue-50"}
+                  style={{ transition: "background-color 0.3s ease" }}
+                >
+                  <td className="p-4 border border-gray-200">{index + 1}</td>
+                  <td className="p-4 border border-gray-200">{prod.nombre}</td>
+                  <td className="p-4 border border-gray-200">
+                    {prod.fechaVencimiento ? new Date(prod.fechaVencimiento).toLocaleDateString('es-ES') : 'Sin fecha'}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-right">{totalStock ?? 0}</td>
+                  <td className="p-4 border border-gray-200 text-right">{totalStock ?? 0}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <div className="mt-8 text-center text-xs text-gray-400 font-mono select-none">
+        Reporte generado por INNOVASOFT | Todos los derechos reservados {new Date().getFullYear()}
+      </div>
     </div>
   );
 
   return (
     <DefaultLayout>
-      <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="p-10 bg-gradient-to-br from-blue-100 via-white to-blue-150 min-h-screen">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-900">Productos Próximos a Vencer</h1>
-          <div className="flex gap-4">
+          <h1 className="text-4xl font-extrabold text-blue-800 tracking-tight drop-shadow-md">
+            Productos Próximos a Vencer
+          </h1>
+          <div className="flex gap-5">
             <Button
               onClick={() => setShowPreview(true)}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg shadow"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-gray-400/40"
             >
               Previsualizar
             </Button>
             <Button
               onClick={exportarPDF}
-              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-lg shadow"
+              className="bg-blue-700 hover:bg-blue-900 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-blue-400/40"
             >
               Exportar PDF
             </Button>
           </div>
         </div>
-
         <div ref={containerRef}>
           <ReportContent />
         </div>
-
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
-            <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">
-              <div className="text-center mb-4">
-                <h2 className="text-2xl font-bold text-blue-700">Previsualización del Reporte</h2>
+            <div className="p-6 max-h-[80vh] overflow-auto bg-gradient-to-tr from-blue-50 via-white to-blue-100 rounded-3xl shadow-2xl border border-gray-300">
+              <div className="text-center mb-5">
+                <h2 className="text-2xl font-bold text-blue-700 drop-shadow-sm">
+                  Previsualización del Reporte
+                </h2>
               </div>
-              <hr className="my-2 border-gray-200" />
-              <ReportContent />
+              <hr className="my-2 border-t-4 border-blue-200" />
+              <div className="p-4">
+                <ReportContent />
+              </div>
             </div>
           </Modal>
         )}

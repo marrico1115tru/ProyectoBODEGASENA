@@ -121,19 +121,35 @@ export default function UsuariosPorRolCantidad() {
   if (error || !data) return <p className="p-6 text-lg text-red-600 text-center">Error al cargar datos.</p>;
 
   const ReportContent = () => (
-    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-3xl mx-auto space-y-6 border border-gray-200">
-      <table className="w-full text-sm border border-gray-300 rounded text-center">
-        <thead className="bg-indigo-100 text-indigo-900 uppercase">
+    <div className="bg-gradient-to-tr from-blue-100 via-white to-blue-150 p-10 rounded-3xl shadow-2xl w-full max-w-3xl mx-auto border border-gray-300">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl font-extrabold text-blue-800 drop-shadow">
+          INNOVASOFT
+        </h2>
+        <p className="text-sm text-gray-600">
+          Reporte generado automáticamente — {new Date().toLocaleDateString()}
+        </p>
+        <p className="mt-2 text-gray-700 font-semibold max-w-xl mx-auto">
+          Este reporte muestra cuántos usuarios hay agrupados por su rol en el sistema.
+        </p>
+      </div>
+
+      <table className="w-full text-center border-collapse border border-gray-300 rounded-xl overflow-hidden shadow-lg shadow-gray-300/40 bg-white">
+        <thead className="bg-indigo-600 text-white text-md uppercase shadow-inner shadow-indigo-700">
           <tr>
-            <th className="px-4 py-2 border">Rol</th>
-            <th className="px-4 py-2 border">Cantidad de usuarios</th>
+            <th className="p-4 border border-indigo-500 font-semibold">Rol</th>
+            <th className="p-4 border border-indigo-500 font-semibold">Cantidad de usuarios</th>
           </tr>
         </thead>
-        <tbody className="text-indigo-800 divide-y divide-gray-200">
+        <tbody className="text-sm text-indigo-900">
           {data.map((rol, i) => (
-            <tr key={i} className="hover:bg-indigo-50 text-sm">
-              <td className="px-4 py-2 border font-medium">{rol.nombreRol}</td>
-              <td className="px-4 py-2 border">{parseInt(rol.cantidad, 10)}</td>
+            <tr
+              key={i}
+              className={i % 2 === 0 ? "bg-white" : "bg-indigo-50"}
+              style={{ transition: "background-color 0.3s ease" }}
+            >
+              <td className="p-4 border border-indigo-200 font-medium">{rol.nombreRol}</td>
+              <td className="p-4 border border-indigo-200">{parseInt(rol.cantidad, 10)}</td>
             </tr>
           ))}
         </tbody>

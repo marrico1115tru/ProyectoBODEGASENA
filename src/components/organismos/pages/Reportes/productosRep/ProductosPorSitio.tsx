@@ -7,7 +7,7 @@ import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
 import DefaultLayout from '@/layouts/default';
 import Modal from '@/components/ui/Modal';
-import axiosInstance from '@/Api/axios'; 
+import axiosInstance from '@/Api/axios';
 import { getDecodedTokenFromCookies } from '@/lib/utils';
 
 interface ProductoReporte {
@@ -23,10 +23,7 @@ interface ProductoReporte {
 export default function ReporteProductosCompleto() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
-
-  const [permisos, setPermisos] = useState({
-    puedeVer: false,
-  });
+  const [permisos, setPermisos] = useState({ puedeVer: false });
 
   useEffect(() => {
     const fetchPermisos = async () => {
@@ -34,14 +31,10 @@ export default function ReporteProductosCompleto() {
         const userData = getDecodedTokenFromCookies('token');
         const rolId = userData?.rol?.id;
         if (!rolId) return;
-
         const url = `/permisos/por-ruta?ruta=/report/productosRep/ProductosPorSitio&idRol=${rolId}`;
         const response = await axiosInstance.get(url, { withCredentials: true });
         const permisosData = response.data.data;
-
-        setPermisos({
-          puedeVer: Boolean(permisosData?.puedeVer || false),
-        });
+        setPermisos({ puedeVer: Boolean(permisosData?.puedeVer || false) });
       } catch (error) {
         setPermisos({ puedeVer: false });
       }
@@ -60,16 +53,13 @@ export default function ReporteProductosCompleto() {
 
   const exportarPDF = async () => {
     if (!containerRef.current) return;
-
     const canvas = await html2canvas(containerRef.current, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF();
-
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const imgProps = pdf.getImageProperties(imgData);
     const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
-
     let position = 0;
     if (pdfHeight > pageHeight) {
       while (position < pdfHeight) {
@@ -99,77 +89,94 @@ export default function ReporteProductosCompleto() {
     return <p className="p-6">No se encontraron datos válidos.</p>;
 
   const ReportContent = () => (
-    <div className="bg-white p-8 rounded-xl shadow-lg max-w-7xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-4xl font-bold text-blue-800">INNOVASOFT</h2>
-        <p className="text-lg text-gray-600">Reporte Completo de Productos</p>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="bg-gradient-to-tr from-blue-100 via-white to-blue-150 p-10 rounded-3xl shadow-2xl max-w-6xl mx-auto border border-gray-300">
+      <div className="flex flex-col items-center mb-8">
+        <div className="bg-blue-700 rounded-full px-6 py-3 mb-4 shadow-lg shadow-blue-400/25">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide text-white drop-shadow">INNOVASOFT</h2>
+        </div>
+        <p className="text-xl text-blue-900 font-semibold mb-2">Informe completo de productos</p>
+        <p className="text-sm text-gray-600 mb-3">
           Generado automáticamente — {new Date().toLocaleDateString()}
         </p>
-        <hr className="my-4 border-t-2 border-gray-200" />
+        <div className="bg-blue-200 border-l-6 border-blue-800 text-blue-900 px-6 py-5 mb-6 w-full md:w-3/4 text-center rounded-xl shadow-md shadow-blue-300/40 font-semibold leading-relaxed">
+          Este reporte muestra el resumen detallado de todas las solicitudes de productos realizadas en el sistema, incluyendo información de cada solicitud, estado, fecha de entrega y sitio de almacenamiento.
+        </div>
       </div>
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-blue-800 text-white">
-            <th className="p-3 border border-gray-300 text-left">ID Solicitud</th>
-            <th className="p-3 border border-gray-300 text-left">Producto</th>
-            <th className="p-3 border border-gray-300 text-left">Cantidad Solicitada</th>
-            <th className="p-3 border border-gray-300 text-left">Solicitante</th>
-            <th className="p-3 border border-gray-300 text-left">Sitio Almacenamiento</th>
-            <th className="p-3 border border-gray-300 text-left">Fecha Entrega</th>
-            <th className="p-3 border border-gray-300 text-left">Estado Solicitud</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item, index) => (
-            <tr key={index} className="hover:bg-gray-100">
-              <td className="p-3 border border-gray-300">{item.idsolicitud}</td>
-              <td className="p-3 border border-gray-300">{item.producto}</td>
-              <td className="p-3 border border-gray-300">{item.cantidadsolicitada ?? 'N/A'}</td>
-              <td className="p-3 border border-gray-300">{item.solicitante}</td>
-              <td className="p-3 border border-gray-300">{item.sitioalmacen ?? 'No asignado'}</td>
-              <td className="p-3 border border-gray-300">{item.fechaentrega ?? 'N/A'}</td>
-              <td className="p-3 border border-gray-300">{item.estadosolicitud ?? 'N/A'}</td>
+      <div className="overflow-auto rounded-2xl border border-gray-300 shadow-xl shadow-gray-300/40">
+        <table className="w-full border-collapse text-sm bg-white rounded-2xl">
+          <thead>
+            <tr className="bg-blue-600 text-white uppercase shadow-inner shadow-blue-700">
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">ID Solicitud</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Producto</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Cantidad Solicitada</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Solicitante</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Sitio Almacenamiento</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Fecha Entrega</th>
+              <th className="p-4 border border-gray-300 font-semibold tracking-wide">Estado Solicitud</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.map((item, index) => (
+              <tr
+                key={index}
+                className={index % 2 === 0 ? "bg-white" : "bg-blue-50"}
+                style={{ transition: "background-color 0.3s ease" }}
+              >
+                <td className="p-4 border border-gray-200">{item.idsolicitud}</td>
+                <td className="p-4 border border-gray-200">{item.producto}</td>
+                <td className="p-4 border border-gray-200">{item.cantidadsolicitada ?? 'N/A'}</td>
+                <td className="p-4 border border-gray-200">{item.solicitante}</td>
+                <td className="p-4 border border-gray-200">{item.sitioalmacen ?? 'No asignado'}</td>
+                <td className="p-4 border border-gray-200">{item.fechaentrega ?? 'N/A'}</td>
+                <td className="p-4 border border-gray-200 text-blue-800 font-bold">
+                  {item.estadosolicitud ?? 'N/A'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 text-center text-xs text-gray-400 font-mono select-none">
+        Reporte generado por INNOVASOFT | Todos los derechos reservados {new Date().getFullYear()}
+      </div>
     </div>
   );
 
   return (
     <DefaultLayout>
-      <div className="p-8 bg-blue-50 min-h-screen">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold text-blue-800">Reporte Completo de Productos</h1>
-          <div className="flex gap-4">
+      <div className="p-10 bg-gradient-to-br from-blue-100 via-white to-blue-150 min-h-screen">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-extrabold text-blue-800 tracking-tight drop-shadow-md">
+            Reporte Completo de Productos
+          </h1>
+          <div className="flex gap-5">
             <Button
               onClick={() => setShowPreview(true)}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-gray-400/40"
             >
               Previsualizar
             </Button>
             <Button
               onClick={exportarPDF}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+              className="bg-blue-700 hover:bg-blue-900 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-blue-400/40"
             >
               Exportar PDF
             </Button>
           </div>
         </div>
-
         <div ref={containerRef}>
           <ReportContent />
         </div>
-
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
-            <div className="p-6 max-h-[80vh] overflow-auto bg-white rounded-lg shadow-lg">
-              <div className="text-center mb-4">
-                <h2 className="text-2xl font-bold text-blue-700">Previsualización del Reporte</h2>
+            <div className="p-6 max-h-[80vh] overflow-auto bg-gradient-to-tr from-blue-50 via-white to-blue-100 rounded-3xl shadow-2xl border border-gray-300">
+              <div className="text-center mb-5">
+                <h2 className="text-2xl font-bold text-blue-700 drop-shadow-sm">
+                  Previsualización del Reporte
+                </h2>
               </div>
-              <hr className="my-2 border-t-2 border-gray-200" />
+              <hr className="my-2 border-t-4 border-blue-200" />
               <div className="p-4">
                 <ReportContent />
               </div>

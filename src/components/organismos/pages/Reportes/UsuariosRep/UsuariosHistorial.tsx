@@ -125,10 +125,12 @@ export default function UsuariosMayorUso() {
   if (!Array.isArray(data)) return <p className="p-6 text-lg text-center">No se encontraron datos.</p>;
 
   const ReportContent = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-5xl mx-auto border border-gray-200">
+    <div className="bg-gradient-to-tr from-blue-100 via-white to-blue-150 p-10 rounded-3xl shadow-2xl w-full max-w-5xl mx-auto border border-gray-300">
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-blue-800">INNOVASOFT</h2>
-        <p className="text-sm text-gray-500">
+        <h2 className="text-3xl font-extrabold text-blue-800 drop-shadow">
+          INNOVASOFT
+        </h2>
+        <p className="text-sm text-gray-600">
           Reporte generado automáticamente —{' '}
           {new Date().toLocaleDateString('es-ES', {
             day: '2-digit',
@@ -136,25 +138,31 @@ export default function UsuariosMayorUso() {
             year: 'numeric',
           })}
         </p>
-        <p className="mt-2 text-gray-700">Usuarios que más han utilizado productos según su historial.</p>
+        <p className="mt-2 text-gray-700 font-semibold">
+          Usuarios que más han utilizado productos según su historial.
+        </p>
       </div>
 
-      <table className="w-full text-center border-collapse border border-gray-300">
-        <thead className="bg-blue-200 text-blue-900 text-md">
+      <table className="w-full text-center border-collapse border border-gray-300 rounded-xl overflow-hidden shadow-lg shadow-gray-300/40 bg-white">
+        <thead className="bg-blue-600 text-white text-md uppercase shadow-inner shadow-blue-700">
           <tr>
-            <th className="p-3 border">#</th>
-            <th className="p-3 border">Nombre</th>
-            <th className="p-3 border">Apellido</th>
-            <th className="p-3 border">Total de Solicitudes</th>
+            <th className="p-4 border border-blue-500 font-semibold">#</th>
+            <th className="p-4 border border-blue-500 font-semibold">Nombre</th>
+            <th className="p-4 border border-blue-500 font-semibold">Apellido</th>
+            <th className="p-4 border border-blue-500 font-semibold">Total de Solicitudes</th>
           </tr>
         </thead>
-        <tbody className="text-sm text-blue-800">
+        <tbody className="text-sm text-blue-900">
           {data.map((usuario, index) => (
-            <tr key={usuario.id} className="hover:bg-blue-50">
-              <td className="p-3 border font-bold text-blue-700">{index + 1}</td>
-              <td className="p-3 border">{usuario.nombre}</td>
-              <td className="p-3 border">{usuario.apellido}</td>
-              <td className="p-3 border">{usuario.total_solicitudes}</td>
+            <tr
+              key={usuario.id}
+              className={index % 2 === 0 ? "bg-white" : "bg-blue-50"}
+              style={{ transition: "background-color 0.3s ease" }}
+            >
+              <td className="p-4 border border-blue-200 font-bold">{index + 1}</td>
+              <td className="p-4 border border-blue-200">{usuario.nombre}</td>
+              <td className="p-4 border border-blue-200">{usuario.apellido}</td>
+              <td className="p-4 border border-blue-200">{usuario.total_solicitudes}</td>
             </tr>
           ))}
         </tbody>
@@ -164,19 +172,21 @@ export default function UsuariosMayorUso() {
 
   return (
     <DefaultLayout>
-      <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="p-10 bg-gradient-to-br from-blue-100 via-white to-blue-150 min-h-screen">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-900">Usuarios con Mayor Uso de Productos</h1>
-          <div className="flex gap-4">
+          <h1 className="text-4xl font-extrabold text-blue-800 tracking-tight drop-shadow-md">
+            Usuarios con Mayor Uso de Productos
+          </h1>
+          <div className="flex gap-5">
             <Button
               onClick={() => setShowPreview(true)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-gray-400/40"
             >
               Previsualizar
             </Button>
             <Button
               onClick={exportarPDF}
-              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg shadow"
+              className="bg-blue-700 hover:bg-blue-900 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-blue-400/40"
             >
               Exportar PDF
             </Button>
@@ -189,12 +199,16 @@ export default function UsuariosMayorUso() {
 
         {showPreview && (
           <Modal onClose={() => setShowPreview(false)}>
-            <div className="p-6 bg-white rounded-lg shadow-lg max-h-[80vh] overflow-auto">
-              <div className="text-center mb-4">
-                <h2 className="text-2xl font-bold text-blue-700">Previsualización del Reporte</h2>
+            <div className="p-6 max-h-[80vh] overflow-auto bg-gradient-to-tr from-blue-50 via-white to-blue-100 rounded-3xl shadow-2xl border border-gray-300">
+              <div className="text-center mb-5">
+                <h2 className="text-2xl font-bold text-blue-700 drop-shadow-sm">
+                  Previsualización del Reporte
+                </h2>
               </div>
-              <hr className="my-2 border-gray-200" />
-              <ReportContent />
+              <hr className="my-2 border-t-4 border-blue-200" />
+              <div className="p-4">
+                <ReportContent />
+              </div>
             </div>
           </Modal>
         )}

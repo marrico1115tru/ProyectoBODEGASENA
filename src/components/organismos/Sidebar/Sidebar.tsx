@@ -149,40 +149,55 @@ const Sidebar = () => {
               </>
             )}
 
-            {modulosPermitidos.includes("estadisticas") && (
-              <>
-                <SidebarButton icon={<ChartBarSquareIcon className="w-5 h-5" />} label="Estadísticas" isOpen={isOpen} onClick={() => toggleMenu("reports")} endIcon={openMenus.reports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
-                {openMenus.reports && isOpen && (
-                  <Submenu>
-                    <SidebarButton to="/VistaProductos" icon={<MagnifyingGlassCircleIcon className="w-5 h-5" />} label="Productos" isOpen={isOpen} />
-                    <SidebarButton to="/VistaEstadisticasUsuarios" icon={<UsersIcon className="w-5 h-5" />} label="Usuarios" isOpen={isOpen} />
-                    <SidebarButton to="/VistaEstadisticasSitios" icon={<MapPinIcon className="w-5 h-5" />} label="Sitios" isOpen={isOpen} />
-                  </Submenu>
-                )}
+{modulosPermitidos.includes("estadisticas") && (
+  <>
+    <SidebarButton icon={<ChartBarSquareIcon className="w-5 h-5" />} label="Estadísticas" isOpen={isOpen} onClick={() => toggleMenu("reports")} endIcon={openMenus.reports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
+    {openMenus.reports && isOpen && (
+      <Submenu>
+        <SidebarButton to="/VistaProductos" icon={<MagnifyingGlassCircleIcon className="w-5 h-5" />} label="Productos" isOpen={isOpen} />
+        <SidebarButton to="/VistaEstadisticasUsuarios" icon={<UsersIcon className="w-5 h-5" />} label="Usuarios" isOpen={isOpen} />
+        <SidebarButton to="/VistaEstadisticasSitios" icon={<MapPinIcon className="w-5 h-5" />} label="Sitios" isOpen={isOpen} />
+      </Submenu>
+    )}
+  </>
+)}
 
-                <SidebarButton icon={<DocumentTextIcon className="w-5 h-5" />} label="Reportes" isOpen={isOpen} onClick={() => toggleMenu("infoReports")} endIcon={openMenus.infoReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
-                {openMenus.infoReports && isOpen && (
-                  <Submenu>
-                    <SidebarButton icon={<MagnifyingGlassCircleIcon className="w-5 h-5" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("productReports")} endIcon={openMenus.productReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
-                    {openMenus.productReports && (
-                      <Submenu indent>
-                        <SidebarButton to="/report/productosRep/ProductosPorSitio" icon={<Squares2X2Icon className="w-5 h-5" />} label="Productos por Sitio" isOpen={isOpen} />
-                        <SidebarButton to="/report/productosRep/ProductosVencidos" icon={<ExclamationTriangleIcon className="w-5 h-5" />} label="Productos vencidos" isOpen={isOpen} />
-                        <SidebarButton to="/report/productosRep/ProductosVencimiento" icon={<ClockIcon className="w-5 h-5" />} label="Próximos a vencer" isOpen={isOpen} />
-                      </Submenu>
-                    )}
-
-                    <SidebarButton icon={<UserGroupIcon className="w-5 h-5" />} label="Usuarios" isOpen={isOpen} onClick={() => toggleMenu("userReports")} endIcon={openMenus.userReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
-                    {openMenus.userReports && (
-                      <Submenu indent>
-                        <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" icon={<Cog6ToothIcon className="w-5 h-5" />} label="Usuarios por rol" isOpen={isOpen} />
-                        <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<ArrowPathIcon className="w-5 h-5" />} label="Historial materiales" isOpen={isOpen} />
-                      </Submenu>
-                    )}
-                  </Submenu>
-                )}
-              </>
+{modulosPermitidos.includes("reportesdeproductos") || modulosPermitidos.includes("reportesdeusuarios") ? (
+  <>
+    <SidebarButton icon={<DocumentTextIcon className="w-5 h-5" />} label="Reportes" isOpen={isOpen} onClick={() => toggleMenu("infoReports")} endIcon={openMenus.infoReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
+    {openMenus.infoReports && isOpen && (
+      <Submenu>
+        {/* Productos */}
+        {modulosPermitidos.includes("reportesdeproductos") && (
+          <>
+            <SidebarButton icon={<MagnifyingGlassCircleIcon className="w-5 h-5" />} label="Productos" isOpen={isOpen} onClick={() => toggleMenu("productReports")} endIcon={openMenus.productReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
+            {openMenus.productReports && (
+              <Submenu indent>
+                <SidebarButton to="/report/productosRep/ProductosPorSitio" icon={<Squares2X2Icon className="w-5 h-5" />} label="Productos por Sitio" isOpen={isOpen} />
+                <SidebarButton to="/report/productosRep/ProductosVencidos" icon={<ExclamationTriangleIcon className="w-5 h-5" />} label="Productos vencidos" isOpen={isOpen} />
+                <SidebarButton to="/report/productosRep/ProductosVencimiento" icon={<ClockIcon className="w-5 h-5" />} label="Próximos a vencer" isOpen={isOpen} />
+              </Submenu>
             )}
+          </>
+        )}
+
+        {/* Usuarios */}
+        {modulosPermitidos.includes("reportesdeusuarios") && (
+          <>
+            <SidebarButton icon={<UserGroupIcon className="w-5 h-5" />} label="Usuarios" isOpen={isOpen} onClick={() => toggleMenu("userReports")} endIcon={openMenus.userReports ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
+            {openMenus.userReports && (
+              <Submenu indent>
+                <SidebarButton to="/report/UsuariosRep/UsuariosPorRol" icon={<Cog6ToothIcon className="w-5 h-5" />} label="Usuarios por rol" isOpen={isOpen} />
+                <SidebarButton to="/report/UsuariosRep/UsuariosHistoria" icon={<ArrowPathIcon className="w-5 h-5" />} label="Historial materiales" isOpen={isOpen} />
+              </Submenu>
+            )}
+          </>
+        )}
+      </Submenu>
+    )}
+  </>
+) : null}
+
             {modulosPermitidos.includes("ubicacion") && (
               <>
                 <SidebarButton icon={<MapPinIcon className="w-5 h-5" />} label="Ubicación" isOpen={isOpen} onClick={() => toggleMenu("ubicacion")} endIcon={openMenus.ubicacion ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />} />
