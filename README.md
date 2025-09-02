@@ -4,7 +4,7 @@ This is a template for creating applications using Vite and HeroUI (v2).
 
 [Try it on CodeSandbox](https://githubbox.com/frontio-ai/vite-template)
 
-## Technologies Used
+##  Technologies Used
 
 - [Vite](https://vitejs.dev/guide/)
 - [HeroUI](https://heroui.com)
@@ -13,38 +13,45 @@ This is a template for creating applications using Vite and HeroUI (v2).
 - [TypeScript](https://www.typescriptlang.org)
 - [Framer Motion](https://www.framer.com/motion)
 
-## How to Use
+---
 
-To clone the project, run the following command:
+##  How to Use
 
+### 1️⃣ Clone the Project
 ```bash
 git clone https://github.com/frontio-ai/vite-template.git
-```
+cd vite-template
+2️⃣ Install Dependencies
+You can use npm, yarn, pnpm, or bun.
+Example with npm:
 
-### Install dependencies
-
-You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
-
-```bash
+bash
+Copiar código
 npm install
-```
-
-### Run the development server
-
-```bash
+3️⃣ Run the Development Server
+bash
+Copiar código
 npm run dev
-```
+⚙️ Setup pnpm (optional)
+If you are using pnpm, you need to add the following code to your .npmrc file:
 
-### Setup pnpm (optional)
-
-If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
-
-```bash
+ini
+Copiar código
 public-hoist-pattern[]=*@heroui/*
-```
+After modifying the .npmrc file, run:
 
-After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
+bash
+Copiar código
+pnpm install
+to ensure dependencies are installed correctly.
 
-## License
+🐳 Run with Docker
+You can also run this project inside a Docker container.
 
-Licensed under the [MIT license](https://github.com/frontio-ai/vite-template/blob/main/LICENSE).
+Example with Docker Compose:
+
+bash
+Copiar código
+docker-compose up --build
+📄 License
+Licensed under the MIT license.
